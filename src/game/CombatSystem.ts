@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import type { AnyEnemy } from './Enemy'
+import type { ClientEnemy } from './ClientEnemy'
 import { Projectile } from './Projectile'
 import { XPOrb } from './XPOrb'
 import { CoinOrb } from './CoinOrb'
@@ -8,6 +9,7 @@ import { EffectsSystem } from './EffectsSystem'
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
 import { soundSystem } from './SoundSystem'
+import { activeNetClient } from '../net/netState'
 
 const HIT_RADIUS = 20
 const CONTACT_RADIUS = 28
@@ -80,10 +82,7 @@ export class CombatSystem {
         const dx = p.x - e.x
         const dy = p.y - e.y
         if (dx * dx + dy * dy < HIT_RADIUS * HIT_RADIUS) {
-          e.takeDamage(damage)
-          this.effects.showDamageNumber(e.x, e.y, this.jitter(damage))
-          soundSystem.enemyHit()
-          if (e.hp <= 0) this.killEnemy(e, coinDropChance, lifeDrain)
+          this.applyHit(e, damage, coinDropChance, lifeDrain)
           if (p.piercing) {
             p.hitTargets.add(e)
           } else {
@@ -200,9 +199,7 @@ export class CombatSystem {
           const dx = e.x - playerX
           const dy = e.y - playerY
           if (dx * dx + dy * dy < radius * radius) {
-            e.takeDamage(auraDmg)
-            this.effects.showDamageNumber(e.x, e.y, this.jitter(auraDmg))
-            if (e.hp <= 0) this.killEnemy(e, coinDropChance, lifeDrain)
+            this.applyHit(e, auraDmg, coinDropChance, lifeDrain)
           }
         }
       }
@@ -261,9 +258,7 @@ export class CombatSystem {
             const lastHit = this.orbHitCooldowns.get(e) ?? 0
             if (now - lastHit >= HIT_COOLDOWN) {
               this.orbHitCooldowns.set(e, now)
-              e.takeDamage(orbDamage)
-              this.effects.showDamageNumber(e.x, e.y, this.jitter(orbDamage))
-              if (e.hp <= 0) this.killEnemy(e, coinDropChance, lifeDrain)
+              this.applyHit(e, orbDamage, coinDropChance, lifeDrain)
             }
           }
         }
@@ -273,6 +268,20 @@ export class CombatSystem {
       for (const [e] of this.orbHitCooldowns) {
         if (!e.active) this.orbHitCooldowns.delete(e)
       }
+    }
+  }
+
+  private applyHit(e: AnyEnemy, damage: number, coinDropChance: number, lifeDrain: number) {
+    const net = activeNetClient
+    this.effects.showDamageNumber(e.x, e.y, this.jitter(damage))
+    soundSystem.enemyHit()
+    if (net && 'serverId' in e) {
+      // Multiplayer: report hit to server, server decides outcome
+      net.send({ type: 'hit', enemyId: (e as ClientEnemy).serverId, damage })
+      e.takeDamage(damage)  // visual flash only
+    } else {
+      e.takeDamage(damage)
+      if (e.hp <= 0) this.killEnemy(e, coinDropChance, lifeDrain)
     }
   }
 

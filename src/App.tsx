@@ -10,10 +10,14 @@ import { PauseMenu } from './ui/PauseMenu'
 import { DeathScreen } from './ui/DeathScreen'
 import { WinScreen } from './ui/WinScreen'
 import { MainMenu } from './ui/MainMenu'
+import { MultiplayerLobby } from './ui/MultiplayerLobby'
 import { useGameStore, DASH_COOLDOWN_MS } from './store/gameStore'
 import { useProfileStore } from './store/profileStore'
 import { useCharacterStore } from './store/characterStore'
 import { CHARACTER_DEFS } from './game/characters'
+import { setNetClient } from './net/netState'
+import type { NetClient } from './net/NetClient'
+import type { PlayerSnapshot } from './net/protocol'
 
 function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -59,6 +63,7 @@ function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: ()
 
 function App() {
   const [inGame, setInGame] = useState(false)
+  const [inLobby, setInLobby] = useState(false)
   const [runKey, setRunKey] = useState(0)
   const activeProfileId = useProfileStore(s => s.activeProfileId)
 
@@ -87,22 +92,51 @@ function App() {
   }
 
   function handlePlay() {
+    setNetClient(null)
     startRun()
     setInGame(true)
   }
 
+  function handleMultiplayer() {
+    setInLobby(true)
+  }
+
+  function handleLobbyReady(net: NetClient, _players: PlayerSnapshot[]) {
+    setNetClient(net)
+    startRun()
+    setInLobby(false)
+    setInGame(true)
+  }
+
+  function handleLobbyCancel() {
+    setInLobby(false)
+  }
+
   function handleQuit() {
+    setNetClient(null)
     useGameStore.getState().resetRun()
     setInGame(false)
   }
 
   function handlePlayAgain() {
+    setNetClient(null)
     startRun()
     setRunKey(k => k + 1)
   }
 
+  if (inLobby) {
+    const charType = useCharacterStore.getState().selectedCharacter
+    return (
+      <MultiplayerLobby
+        characterType={charType}
+        onReady={handleLobbyReady}
+        onCancel={handleLobbyCancel}
+      />
+    )
+  }
+
   if (!inGame || !activeProfileId) {
-    return <MainMenu onPlay={handlePlay} />
+    return <MainMenu onPlay={handlePlay} onMultiplayer={handleMultiplayer} />
   }
 
   return <GameView key={runKey} onQuit={handleQuit} onPlayAgain={handlePlayAgain} />

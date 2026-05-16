@@ -28,7 +28,7 @@ const btnBase: React.CSSProperties = {
   cursor: 'pointer', letterSpacing: 2,
 }
 
-export function MainMenu({ onPlay }: { onPlay: () => void }) {
+export function MainMenu({ onPlay, onMultiplayer }: { onPlay: () => void; onMultiplayer: () => void }) {
   const { profiles, activeProfileId, createProfile, selectProfile, deleteProfile, purchaseUpgrade } = useProfileStore()
   const { selectedCharacter, setCharacter } = useCharacterStore()
   const [newName, setNewName] = useState('')
@@ -442,7 +442,26 @@ export function MainMenu({ onPlay }: { onPlay: () => void }) {
           onMouseEnter={e => { if (canPlay) e.currentTarget.style.background = '#2828aa' }}
           onMouseLeave={e => { if (canPlay) e.currentTarget.style.background = '#1e1e88' }}
         >
-          PLAY
+          SINGLEPLAYER
+        </button>
+
+        <button
+          type="button"
+          onClick={onMultiplayer}
+          disabled={!canPlay}
+          style={{
+            ...btnBase,
+            padding: '12px 0', fontSize: 14,
+            color: canPlay ? '#88ffcc' : '#333355',
+            background: 'transparent',
+            borderColor: canPlay ? '#228855' : '#1a1a33',
+            boxShadow: canPlay ? '0 0 12px #22885544' : 'none',
+            cursor: canPlay ? 'pointer' : 'not-allowed',
+          }}
+          onMouseEnter={e => { if (canPlay) e.currentTarget.style.background = '#0a2218' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+        >
+          MULTIPLAYER
         </button>
         </>
       )}

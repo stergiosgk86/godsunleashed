@@ -3,6 +3,8 @@ import { Player } from './Player'
 import { EnemySpawner } from './EnemySpawner'
 import { CombatSystem } from './CombatSystem'
 import { EffectsSystem } from './EffectsSystem'
+import { ClientEnemy } from './ClientEnemy'
+import { RemotePlayer } from './RemotePlayer'
 import { generateAssets, generateTilesetTexture, generateBushTexture } from './AssetGenerator'
 import { useGameStore } from '../store/gameStore'
 import { useCharacterStore } from '../store/characterStore'
@@ -10,6 +12,8 @@ import { CHARACTER_DEFS } from './characters'
 import { minimapData } from './minimapData'
 import { runData } from './runData'
 import { soundSystem } from './SoundSystem'
+import { activeNetClient } from '../net/netState'
+import type { EnemySnapshot, PlayerSnapshot } from '../net/protocol'
 
 const WORLD_SIZE = 4000
 const SPAWN_X = WORLD_SIZE / 2
@@ -25,6 +29,11 @@ export class MainScene extends Phaser.Scene {
   private finalWarningText!: Phaser.GameObjects.Text
   private prevLevelUpPending = false
   private healPool = 0
+
+  // Multiplayer
+  private clientEnemies = new Map<number, ClientEnemy>()
+  private remotePlayers = new Map<string, RemotePlayer>()
+  private netSendTimer = 0
 
   constructor() {
     super({ key: 'MainScene' })
@@ -106,6 +115,8 @@ export class MainScene extends Phaser.Scene {
       this.scene.pause()
     }
 
+    this.setupMultiplayer()
+
     // Only resume here — pausing on level-up is handled in update() to avoid
     // calling scene.pause() from within a zustand subscriber mid-update-loop.
     const unsubLevelUp = useGameStore.subscribe(
@@ -131,6 +142,9 @@ export class MainScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       unsubLevelUp(); unsubPause(); unsubDamage()
       runData.elapsed = 0
+      for (const r of this.remotePlayers.values()) r.destroy()
+      this.remotePlayers.clear()
+      this.clientEnemies.clear()
     })
   }
 
@@ -259,12 +273,106 @@ export class MainScene extends Phaser.Scene {
     })
   }
 
+  private setupMultiplayer() {
+    const net = activeNetClient
+    if (!net) return
+
+    net.on('tick', (msg) => this.applyTick(msg.enemies, msg.players, msg.elapsed))
+
+    net.on('enemyDied', (msg) => {
+      const ce = this.clientEnemies.get(msg.enemyId)
+      if (ce) { this.effects.showDeathBurst(msg.x, msg.y); ce.destroy(); this.clientEnemies.delete(msg.enemyId) }
+      useGameStore.getState().addXP(msg.xpValue)
+      soundSystem.enemyDie()
+    })
+
+    net.on('bossWarning', (msg) => {
+      if (msg.final) this.showFinalWarning(); else this.showWarning()
+      soundSystem.bossWarning()
+    })
+
+    net.on('bossSpawn', (msg) => {
+      this.cameras.main.shake(msg.final ? 1000 : 600, msg.final ? 0.04 : 0.02)
+      useGameStore.getState().setBossHp(msg.maxHp, msg.maxHp)
+      this.warningText.setAlpha(0)
+      this.finalWarningText.setAlpha(0)
+    })
+
+    net.on('bossHp', (msg) => {
+      useGameStore.getState().setBossHp(msg.hp === 0 ? null : msg.hp)
+      if (msg.hp === 0) soundSystem.bossDie()
+    })
+
+    net.on('gameOver', (msg) => {
+      if (msg.won) { soundSystem.bossDie(); useGameStore.getState().win() }
+      else useGameStore.getState().die()
+      this.scene.pause()
+    })
+
+    net.on('playerLeft', () => {
+      useGameStore.getState().die()
+      this.scene.pause()
+    })
+  }
+
+  private applyTick(
+    enemies: EnemySnapshot[],
+    players: PlayerSnapshot[],
+    elapsed: number,
+  ) {
+    runData.elapsed = elapsed
+
+    // Reconcile enemy map
+    const incoming = new Set(enemies.map(e => e.id))
+    for (const [id, ce] of this.clientEnemies) {
+      if (!incoming.has(id)) { ce.destroy(); this.clientEnemies.delete(id) }
+    }
+    for (const snap of enemies) {
+      const existing = this.clientEnemies.get(snap.id)
+      if (existing) {
+        existing.applySnapshot(snap)
+      } else {
+        this.clientEnemies.set(snap.id, new ClientEnemy(this, snap))
+      }
+    }
+
+    // Reconcile remote players
+    const myId = activeNetClient?.playerId ?? ''
+    const incomingPlayers = new Set(players.map(p => p.id))
+    for (const [id, rp] of this.remotePlayers) {
+      if (!incomingPlayers.has(id)) { rp.destroy(); this.remotePlayers.delete(id) }
+    }
+    for (const snap of players) {
+      if (snap.id === myId) continue
+      const existing = this.remotePlayers.get(snap.id)
+      if (existing) {
+        existing.update(snap.x, snap.y)
+      } else {
+        this.remotePlayers.set(snap.id, new RemotePlayer(this, snap.x, snap.y, snap.characterType, 'P2'))
+      }
+    }
+  }
+
   update(_time: number, delta: number) {
-    runData.elapsed += delta
     this.player.update(delta, this.effects)
-    this.spawner.update(this.player.x, this.player.y, delta)
-    this.combat.update(this.player.x, this.player.y, this.spawner.all, delta)
     this.effects.update(delta)
+
+    const net = activeNetClient
+    if (net) {
+      // Multiplayer: server drives enemies and elapsed; we drive position
+      this.netSendTimer += delta
+      if (this.netSendTimer >= 50) {
+        this.netSendTimer = 0
+        net.send({ type: 'input', x: this.player.x, y: this.player.y })
+      }
+      const allClientEnemies = Array.from(this.clientEnemies.values())
+      this.combat.update(this.player.x, this.player.y, allClientEnemies, delta)
+    } else {
+      // Singleplayer
+      runData.elapsed += delta
+      this.spawner.update(this.player.x, this.player.y, delta)
+      this.combat.update(this.player.x, this.player.y, this.spawner.all, delta)
+    }
 
     const state = useGameStore.getState()
 
@@ -297,7 +405,10 @@ export class MainScene extends Phaser.Scene {
     // Feed minimap
     minimapData.playerX = this.player.x
     minimapData.playerY = this.player.y
-    minimapData.enemies = this.spawner.all
+    const allEnemies = net
+      ? Array.from(this.clientEnemies.values())
+      : this.spawner.all
+    minimapData.enemies = allEnemies
       .filter(e => e.active)
       .map(e => ({ x: e.x, y: e.y, isBoss: !!e.isBoss }))
   }
