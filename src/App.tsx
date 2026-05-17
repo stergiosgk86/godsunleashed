@@ -201,10 +201,17 @@ function App() {
   }
 
   function handlePlayAgain() {
+    const wasMultiplayer = !!activeNetClient
     setNetClient(null)
     clearRun()
-    startRun()
-    setRunKey(k => k + 1)
+    if (wasMultiplayer) {
+      useGameStore.getState().resetRun()
+      setInGame(false)
+      setInLobby(true)
+    } else {
+      startRun()
+      setRunKey(k => k + 1)
+    }
   }
 
   function handleLogout() {
