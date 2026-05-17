@@ -134,9 +134,9 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
 
     this.fpsText = this.add
-      .text(110, 14, '', { fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace' })
-      .setAlpha(0.7)
+      .text(110, 14, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' })
       .setScrollFactor(0)
+      .setDepth(100)
 
     // Boss warning text (hidden until triggered)
     this.warningText = this.add
