@@ -45,6 +45,9 @@ export class CombatSystem {
   private auraFlashTimer = -1
   private auraGraphic: Phaser.GameObjects.Graphics
   private orbAngle = 0
+  private orbCenterX = 0
+  private orbCenterY = 0
+  private orbCenterInit = false
   private orbGraphic: Phaser.GameObjects.Graphics
   private orbHitCooldowns = new Map<AnyEnemy, number>()
   // Boomerang
@@ -252,7 +255,7 @@ export class CombatSystem {
     // Spirit Orbs
     this.orbGraphic.clear()
     if (orbital > 0) {
-      const ORBIT_RADIUS = 85
+      const ORBIT_RADIUS = 115
       const ORB_RADIUS = 13
       const ORB_HIT_RADIUS = 20
       const HIT_COOLDOWN = 500
@@ -260,11 +263,17 @@ export class CombatSystem {
 
       this.orbAngle += delta * 0.0018
 
+      // Smooth the orbit center so fast player movement doesn't distort apparent rotation speed
+      if (!this.orbCenterInit) { this.orbCenterX = playerX; this.orbCenterY = playerY; this.orbCenterInit = true }
+      const lag = 1 - Math.exp(-delta / 90)
+      this.orbCenterX += (playerX - this.orbCenterX) * lag
+      this.orbCenterY += (playerY - this.orbCenterY) * lag
+
       const now = Date.now()
       for (let i = 0; i < orbital; i++) {
         const angle = this.orbAngle + (i / orbital) * Math.PI * 2
-        const ox = playerX + Math.cos(angle) * ORBIT_RADIUS
-        const oy = playerY + Math.sin(angle) * ORBIT_RADIUS
+        const ox = this.orbCenterX + Math.cos(angle) * ORBIT_RADIUS
+        const oy = this.orbCenterY + Math.sin(angle) * ORBIT_RADIUS
 
         // Glow ring
         this.orbGraphic.fillStyle(0x8833ff, 0.18)
@@ -283,7 +292,11 @@ export class CombatSystem {
           if (!e.active) continue
           const dx = e.x - ox
           const dy = e.y - oy
-          if (dx * dx + dy * dy < ORB_HIT_RADIUS * ORB_HIT_RADIUS) {
+          const dist2 = dx * dx + dy * dy
+          if (dist2 < ORB_HIT_RADIUS * ORB_HIT_RADIUS) {
+            const dist = Math.sqrt(dist2) || 1
+            e.x += (dx / dist) * 28
+            e.y += (dy / dist) * 28
             const lastHit = this.orbHitCooldowns.get(e) ?? 0
             if (now - lastHit >= HIT_COOLDOWN) {
               this.orbHitCooldowns.set(e, now)
