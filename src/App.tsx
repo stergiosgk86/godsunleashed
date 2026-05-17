@@ -55,9 +55,13 @@ function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: ()
 
     const game = new Phaser.Game(config)
 
-    // Reset all key states when the window loses focus so held keys
-    // don't get stuck (e.g. after right-click opens the context menu).
-    const onBlur = () => game.input?.keyboard?.resetKeys()
+    // Fire synthetic keyup events when the window loses focus so held
+    // keys don't get stuck (e.g. after right-click opens the context menu).
+    const onBlur = () => {
+      for (const key of ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', ' ']) {
+        window.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }))
+      }
+    }
     window.addEventListener('blur', onBlur)
 
     return () => {
@@ -108,8 +112,8 @@ function App() {
       maxHp:          startMaxHp,
       hp:             startMaxHp,
       hpRegen:        (upgrades.recovery ?? 0) * 0.1 + char.bonusHpRegen,
-      moveSpeed:      Math.floor((200 + char.bonusMoveSpeed) * (1 + (upgrades.moveSpeed ?? 0) * 0.02)),
-      attackInterval: Math.max(100, Math.floor(600 * char.attackIntervalMult)),
+      moveSpeed:      Math.min(300, Math.floor((200 + char.bonusMoveSpeed) * (1 + (upgrades.moveSpeed ?? 0) * 0.02))),
+      attackInterval: Math.max(250, Math.floor(600 * char.attackIntervalMult)),
       dashCooldown:   Math.max(400, Math.floor(DASH_COOLDOWN_MS * char.dashCooldownMult)),
       dashDistance:   1 + char.bonusDashDistance,
       aura:           char.startAura,
@@ -155,33 +159,37 @@ function App() {
     sessionStorage.setItem('gods_screen', inGame ? 'game' : 'menu')
   }, [inGame])
 
-  // Submit run to leaderboard when game ends (once per run)
+  const runSubmittedRef = useRef(false)
+
+  function submitRun() {
+    if (runSubmittedRef.current) return
+    const s = useGameStore.getState()
+    const token = useAuthStore.getState().token
+    if (!token || s.kills === 0) return  // skip empty runs
+    runSubmittedRef.current = true
+    const timeMs = runData.elapsed
+    const score = s.kills * 10 + s.sessionCoins * 5 + Math.floor(timeMs / 1000) * 2 + (s.isWon ? 5000 : 0)
+    fetch('/api/runs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        score,
+        kills: s.kills,
+        timeSurvived: timeMs,
+        coins: s.sessionCoins,
+        won: s.isWon,
+        multiplayer: !!activeNetClient,
+      }),
+    }).catch(() => { /* non-fatal */ })
+  }
+
+  // Submit run to leaderboard on death or win
   useEffect(() => {
     if (!inGame) return
-    let submitted = false
+    runSubmittedRef.current = false
     const unsub = useGameStore.subscribe(
       s => s.isDead || s.isWon,
-      (ended) => {
-        if (!ended || submitted) return
-        submitted = true
-        const s = useGameStore.getState()
-        const token = useAuthStore.getState().token
-        if (!token) return
-        const timeMs = runData.elapsed
-        const score = s.kills * 10 + s.sessionCoins * 5 + Math.floor(timeMs / 1000) * 2 + (s.isWon ? 5000 : 0)
-        fetch('/api/runs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            score,
-            kills: s.kills,
-            timeSurvived: timeMs,
-            coins: s.sessionCoins,
-            won: s.isWon,
-            multiplayer: !!activeNetClient,
-          }),
-        }).catch(() => { /* non-fatal */ })
-      },
+      (ended) => { if (ended) submitRun() },
     )
     return unsub
   }, [inGame])
@@ -209,6 +217,7 @@ function App() {
   }
 
   function handleQuit() {
+    submitRun()
     setNetClient(null)
     useGameStore.getState().resetRun()
     setInGame(false)

@@ -218,9 +218,9 @@ export const useGameStore = create<GameState>()(
       set(s => {
         switch (id) {
           case 'attackSpeed':
-            return { attackInterval: Math.max(100, Math.floor(s.attackInterval * 0.85)), isLevelUpPending: false }
+            return { attackInterval: Math.max(250, Math.floor(s.attackInterval * 0.85)), isLevelUpPending: false }
           case 'moveSpeed':
-            return { moveSpeed: Math.floor(s.moveSpeed * 1.15), isLevelUpPending: false }
+            return { moveSpeed: Math.min(300, Math.floor(s.moveSpeed * 1.15)), isLevelUpPending: false }
           case 'dashCooldown':
             return { dashCooldown: Math.max(400, Math.floor(s.dashCooldown * 0.75)), isLevelUpPending: false }
           case 'dashDistance':

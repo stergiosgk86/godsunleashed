@@ -62,10 +62,10 @@ export class PassiveItem {
         useGameStore.setState({ might: s.might + 0.15 })
         break
       case 'eldritchEye':
-        useGameStore.setState({ attackInterval: Math.max(100, Math.floor(s.attackInterval * 0.82)) })
+        useGameStore.setState({ attackInterval: Math.max(250, Math.floor(s.attackInterval * 0.82)) })
         break
       case 'shadowCloak':
-        useGameStore.setState({ moveSpeed: s.moveSpeed + 30 })
+        useGameStore.setState({ moveSpeed: Math.min(300, s.moveSpeed + 30) })
         break
     }
   }
