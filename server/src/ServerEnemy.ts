@@ -35,6 +35,8 @@ export class ServerEnemy {
   private chargeVy = 0
   private chargeTimer = 6000
   private shootTimer = 1500
+  private ringTimer = 9000 * 0.6  // finalBoss 360° ring
+  pendingProjectiles: Array<{ x: number; y: number; vx: number; vy: number }> = []
 
   // Exploder state
   private exploderArmed = false
@@ -119,6 +121,17 @@ export class ServerEnemy {
       this.y += (dy / dist) * this.speed * spdMult * dt
       this.shootTimer -= delta
       this.chargeTimer -= delta
+      if (this.shootTimer <= 0) {
+        this.shootTimer = (isFinal ? 2200 : 3000) * tmMult
+        this.fireSpread(dx, dy, dist, isFinal, phase2)
+      }
+      if (isFinal) {
+        this.ringTimer -= delta
+        if (this.ringTimer <= 0) {
+          this.ringTimer = 9000 * tmMult
+          this.fireRing(phase2)
+        }
+      }
       if (this.chargeTimer <= 0) {
         this.chargeTimer = (isFinal ? 4500 : 6000) * tmMult
         this.bossState = 'windup'
@@ -137,6 +150,27 @@ export class ServerEnemy {
       this.x += this.chargeVx * dt
       this.y += this.chargeVy * dt
       if (this.bossTimer <= 0) this.bossState = 'chase'
+    }
+  }
+
+  private fireSpread(dx: number, dy: number, dist: number, isFinal: boolean, phase2: boolean) {
+    const baseAngle = Math.atan2(dy, dx)
+    const spread = isFinal ? Math.PI / 2.2 : Math.PI / 3
+    const baseCount = isFinal ? 10 : 7
+    const count = phase2 ? baseCount + (isFinal ? 6 : 4) : baseCount
+    const speed = isFinal ? 230 : 220
+    for (let i = 0; i < count; i++) {
+      const angle = baseAngle - spread / 2 + (spread / (count - 1)) * i
+      this.pendingProjectiles.push({ x: this.x, y: this.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed })
+    }
+  }
+
+  private fireRing(phase2: boolean) {
+    const count = phase2 ? 24 : 16
+    const speed = phase2 ? 280 : 220
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2
+      this.pendingProjectiles.push({ x: this.x, y: this.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed })
     }
   }
 

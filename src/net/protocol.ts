@@ -40,3 +40,4 @@ export type S2CMessage =
   | { type: 'gameOver'; won: boolean }
   | { type: 'playerLeft' }
   | { type: 'projectile'; playerId: string; x: number; y: number; vx: number; vy: number }
+  | { type: 'bossProjectile'; enemyId: number; x: number; y: number; vx: number; vy: number }

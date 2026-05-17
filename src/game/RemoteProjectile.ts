@@ -5,8 +5,8 @@ const LIFETIME = 1500
 export class RemoteProjectile {
   private graphic: Phaser.GameObjects.Image
   active = true
-  private x: number
-  private y: number
+  x: number
+  y: number
   private vx: number
   private vy: number
   private age = 0

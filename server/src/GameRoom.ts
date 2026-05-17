@@ -89,8 +89,13 @@ export class GameRoom {
   }
 
   removePlayer(id: string): boolean {
+    const leaving = this.players.find(p => p.id === id)
     this.players = this.players.filter(p => p.id !== id)
-    this.broadcast({ type: 'playerLeft' })
+    // Only force-kill survivors if an alive player disconnects mid-game.
+    // Dead players navigating to Main Menu should not affect living players.
+    if (leaving && !leaving.dead) {
+      this.broadcast({ type: 'playerLeft' })
+    }
     if (this.players.length === 0) {
       this.stop()
       return true  // room is empty, discard it
@@ -126,6 +131,17 @@ export class GameRoom {
         ? alivePlayers.map(p => ({ x: p.x, y: p.y }))
         : this.players.map(p => ({ x: p.x, y: p.y }))
       this.spawner.update(positions, TICK_MS)
+
+      for (const e of this.spawner.all) {
+        if (e.pendingProjectiles.length > 0) {
+          console.log(`[Boss] ${e.kind} id=${e.id} fired ${e.pendingProjectiles.length} projectiles`)
+          for (const proj of e.pendingProjectiles) {
+            this.broadcast({ type: 'bossProjectile', enemyId: e.id, x: proj.x, y: proj.y, vx: proj.vx, vy: proj.vy })
+          }
+          e.pendingProjectiles = []
+        }
+      }
+
       this.broadcast({
         type: 'tick',
         enemies: this.spawner.all.map(e => e.snapshot()),

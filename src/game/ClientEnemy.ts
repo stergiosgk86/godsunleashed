@@ -1,7 +1,43 @@
 import Phaser, { TintModes } from 'phaser'
-import type { AnyEnemy } from './Enemy'
+import type { AnyEnemy, EnemyBullet } from './Enemy'
 import type { EnemySnapshot, EnemyKind } from '../net/protocol'
 import { type Direction, getDirection, playDir } from './spriteUtils'
+
+class BossProjectile implements EnemyBullet {
+  x: number
+  y: number
+  active = true
+  private graphic: Phaser.GameObjects.Image
+  private vx: number
+  private vy: number
+  private age = 0
+  private maxAge: number
+
+  constructor(scene: Phaser.Scene, x: number, y: number, vx: number, vy: number, kind: EnemyKind) {
+    this.x = x
+    this.y = y
+    this.vx = vx
+    this.vy = vy
+    const isFinal = kind === 'finalBoss'
+    this.maxAge = isFinal ? 5000 : 4000
+    this.graphic = scene.add.image(x, y, 'enemy_bullet')
+      .setRotation(Math.atan2(vy, vx))
+      .setTint(isFinal ? 0xcc00ff : 0xff6600)
+      .setScale(isFinal ? 2.5 : 2.0)
+      .setDepth(3)
+  }
+
+  update(delta: number) {
+    this.age += delta
+    if (this.age > this.maxAge) { this.destroy(); return }
+    const dt = delta / 1000
+    this.x += this.vx * dt
+    this.y += this.vy * dt
+    this.graphic.setPosition(this.x, this.y)
+  }
+
+  destroy() { this.graphic.destroy(); this.active = false }
+}
 
 const KIND_TO_SPRITE: Record<EnemyKind, string> = {
   basic:     'enemy_basic',
@@ -45,6 +81,7 @@ export class ClientEnemy implements AnyEnemy {
   private hitFlashTimer = 0
   private prevX: number
   private prevY: number
+  private projectiles: BossProjectile[] = []
 
   constructor(scene: Phaser.Scene, snap: EnemySnapshot) {
     this.serverId = snap.id
@@ -94,10 +131,22 @@ export class ClientEnemy implements AnyEnemy {
       this.hitFlashTimer -= delta
       if (this.hitFlashTimer <= 0) this.sprite.clearTint()
     }
+    for (const p of this.projectiles) p.update(delta)
+    this.projectiles = this.projectiles.filter(p => p.active)
+  }
+
+  addProjectile(x: number, y: number, vx: number, vy: number) {
+    this.projectiles.push(new BossProjectile(this.sprite.scene, x, y, vx, vy, this.kind))
+  }
+
+  getProjectiles(): BossProjectile[] {
+    return this.projectiles
   }
 
   destroy() {
     this.active = false
+    for (const p of this.projectiles) p.destroy()
+    this.projectiles = []
     const baseScale = KIND_SCALE[this.kind]
     this.sprite.anims.stop()
     this.sprite.setTint(0xff2222).setTintMode(TintModes.FILL)

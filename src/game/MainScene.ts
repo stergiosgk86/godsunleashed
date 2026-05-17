@@ -404,6 +404,12 @@ export class MainScene extends Phaser.Scene {
     net.on('projectile', (msg) => {
       this.remoteProjectiles.push(new RemoteProjectile(this, msg.x, msg.y, msg.vx, msg.vy))
     })
+
+    net.on('bossProjectile', (msg) => {
+      console.log(`[bossProjectile] received enemyId=${msg.enemyId} clientEnemies has=${this.clientEnemies.has(msg.enemyId)}`)
+      const ce = this.clientEnemies.get(msg.enemyId)
+      if (ce) ce.addProjectile(msg.x, msg.y, msg.vx, msg.vy)
+    })
   }
 
   private applyTick(
@@ -463,7 +469,16 @@ export class MainScene extends Phaser.Scene {
       for (const ce of allClientEnemies) ce.update(0, 0, delta)
       this.combat.update(this.player.x, this.player.y, allClientEnemies, delta)
       for (const rp of this.remotePlayers.values()) rp.tick(delta)
-      for (const rp of this.remoteProjectiles) rp.update(delta)
+      const REMOTE_HIT_R = 25 * 25
+      for (const rp of this.remoteProjectiles) {
+        rp.update(delta)
+        if (!rp.active) continue
+        for (const ce of allClientEnemies) {
+          if (!ce.active) continue
+          const dx = rp.x - ce.x, dy = rp.y - ce.y
+          if (dx * dx + dy * dy < REMOTE_HIT_R) { rp.destroy(); break }
+        }
+      }
       this.remoteProjectiles = this.remoteProjectiles.filter(rp => rp.active)
     } else {
       // Singleplayer

@@ -51,7 +51,7 @@ apiRouter.post('/runs', async (req: Request, res: Response) => {
     `INSERT INTO runs (user_id, username, score, kills, time_survived, coins, won, multiplayer)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [req.userId, user.rows[0].username,
-     score, kills ?? 0, timeSurvived ?? 0, coins ?? 0, won ?? false, multiplayer ?? false],
+     score, kills ?? 0, Math.round(timeSurvived ?? 0), coins ?? 0, won ?? false, multiplayer ?? false],
   )
   res.json({ ok: true })
 })
