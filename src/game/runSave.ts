@@ -31,6 +31,7 @@ export interface RunSnapshot {
   boomerang: boolean
   flameTrail: boolean
   bloodNova: boolean
+  vampiric: boolean
   hpRegen: number
   lifeDrain: number
   sessionCoins: number

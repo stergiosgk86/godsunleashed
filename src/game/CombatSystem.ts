@@ -65,7 +65,7 @@ export class CombatSystem {
   }
 
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
-    const { might, level, attackInterval, addXP, takeDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova } = useGameStore.getState()
+    const { might, level, attackInterval, addXP, takeDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric } = useGameStore.getState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -110,7 +110,7 @@ export class CombatSystem {
         const dx = p.x - e.x
         const dy = p.y - e.y
         if (dx * dx + dy * dy < HIT_RADIUS * HIT_RADIUS) {
-          this.applyHit(e, damage, coinDropChance, lifeDrain)
+          this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
           if (p.piercing) {
             p.hitTargets.add(e)
           } else {
@@ -227,7 +227,7 @@ export class CombatSystem {
           const dx = e.x - playerX
           const dy = e.y - playerY
           if (dx * dx + dy * dy < radius * radius) {
-            this.applyHit(e, auraDmg, coinDropChance, lifeDrain)
+            this.applyHit(e, auraDmg, coinDropChance, lifeDrain, vampiric)
           }
         }
       }
@@ -286,7 +286,7 @@ export class CombatSystem {
             const lastHit = this.orbHitCooldowns.get(e) ?? 0
             if (now - lastHit >= HIT_COOLDOWN) {
               this.orbHitCooldowns.set(e, now)
-              this.applyHit(e, orbDamage, coinDropChance, lifeDrain)
+              this.applyHit(e, orbDamage, coinDropChance, lifeDrain, vampiric)
             }
           }
         }
@@ -321,7 +321,7 @@ export class CombatSystem {
           if (dx * dx + dy * dy < BOOMERANG_HIT_R * BOOMERANG_HIT_R) {
             hitTargets.add(e)
             const bmgDamage = b.returning ? damage : Math.floor(damage * 1.5)
-            this.applyHit(e, bmgDamage, coinDropChance, lifeDrain)
+            this.applyHit(e, bmgDamage, coinDropChance, lifeDrain, vampiric)
           }
         }
       }
@@ -351,7 +351,7 @@ export class CombatSystem {
             const dx = e.x - f.x
             const dy = e.y - f.y
             if (dx * dx + dy * dy < FLAME_RADIUS * FLAME_RADIUS) {
-              this.applyHit(e, flameDmg, coinDropChance, lifeDrain)
+              this.applyHit(e, flameDmg, coinDropChance, lifeDrain, vampiric)
             }
           }
         }
@@ -366,7 +366,7 @@ export class CombatSystem {
       if (this.bloodNovaTimer >= NOVA_INTERVAL) {
         this.bloodNovaTimer = 0
         const novaDmg = Math.floor(weaponBaseDamage(level) * might * 5)
-        this.fireBloodNova(playerX, playerY, novaDmg, enemies, coinDropChance, lifeDrain)
+        this.fireBloodNova(playerX, playerY, novaDmg, enemies, coinDropChance, lifeDrain, vampiric)
       }
     }
   }
@@ -383,7 +383,7 @@ export class CombatSystem {
     this.flamePools.push({ x, y, timer: FLAME_DURATION, tickTimer: 0, graphic: g })
   }
 
-  private fireBloodNova(playerX: number, playerY: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number) {
+  private fireBloodNova(playerX: number, playerY: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
     const { maxHp } = useGameStore.getState()
     const cost = Math.max(1, Math.floor(maxHp * 0.08))
     useGameStore.setState(s => ({ hp: Math.max(1, s.hp - cost) }))
@@ -393,7 +393,7 @@ export class CombatSystem {
       const dx = e.x - playerX
       const dy = e.y - playerY
       if (dx * dx + dy * dy < NOVA_RADIUS * NOVA_RADIUS) {
-        this.applyHit(e, damage, coinDropChance, lifeDrain)
+        this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
       }
     }
 
@@ -418,12 +418,16 @@ export class CombatSystem {
     })
   }
 
-  private applyHit(e: AnyEnemy, damage: number, coinDropChance: number, lifeDrain: number) {
+  private applyHit(e: AnyEnemy, damage: number, coinDropChance: number, lifeDrain: number, vampiric: boolean) {
     const net = activeNetClient
     const actual = this.jitter(damage)
     useGameStore.getState().addDamage(actual)
     this.effects.showDamageNumber(e.x, e.y, actual)
     soundSystem.enemyHit()
+    if (vampiric) {
+      const heal = Math.max(1, Math.round(actual * 0.08))
+      useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + heal) }))
+    }
     if (net && 'serverId' in e) {
       // Multiplayer: report hit to server, server decides outcome
       net.send({ type: 'hit', enemyId: (e as ClientEnemy).serverId, damage })

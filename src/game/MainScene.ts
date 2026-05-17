@@ -124,6 +124,7 @@ export class MainScene extends Phaser.Scene {
         boomerang: savedRun.boomerang,
         flameTrail: savedRun.flameTrail,
         bloodNova: savedRun.bloodNova,
+        vampiric: savedRun.vampiric ?? false,
         hpRegen: savedRun.hpRegen,
         lifeDrain: savedRun.lifeDrain,
         sessionCoins: savedRun.sessionCoins,
@@ -176,6 +177,7 @@ export class MainScene extends Phaser.Scene {
 
     // Only resume here — pausing on level-up is handled in update() to avoid
     // calling scene.pause() from within a zustand subscriber mid-update-loop.
+    let sceneAlive = true
     const unsubLevelUp = useGameStore.subscribe(
       s => s.isLevelUpPending,
       (pending) => {
@@ -187,18 +189,21 @@ export class MainScene extends Phaser.Scene {
           // 2-second grace period after resuming so enemies that walked
           // onto the player during the pause don't instantly deal damage
           useGameStore.setState({ invincibleUntil: Date.now() + 2000 })
-          this.scene.resume()
+          if (sceneAlive) this.scene.resume()
         }
       }
     )
     const unsubPause = useGameStore.subscribe(
       s => s.isPaused,
-      (paused) => { if (paused) this.scene.pause(); else this.scene.resume() }
+      (paused) => {
+        if (!sceneAlive) return
+        if (paused) this.scene.pause(); else this.scene.resume()
+      }
     )
     const unsubDamage = useGameStore.subscribe(
       s => s.damageFlashUntil,
       () => {
-        if (useGameStore.getState().hp > 0 && this.scene.isActive()) {
+        if (sceneAlive && useGameStore.getState().hp > 0) {
           this.effects.shakeCamera()
           soundSystem.playerHit()
         }
@@ -207,6 +212,7 @@ export class MainScene extends Phaser.Scene {
     const unsubDead = useGameStore.subscribe(s => s.isDead, isDead => { if (isDead) clearRun() })
     const unsubWon  = useGameStore.subscribe(s => s.isWon,  isWon  => { if (isWon)  clearRun() })
     this.events.once('shutdown', () => {
+      sceneAlive = false
       unsubLevelUp(); unsubPause(); unsubDamage(); unsubDead(); unsubWon()
       this.joystick.destroy()
       runData.elapsed = 0
@@ -504,7 +510,7 @@ export class MainScene extends Phaser.Scene {
           dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
           multiShot: s.multiShot, piercing: s.piercing, aura: s.aura,
           orbital: s.orbital, boomerang: s.boomerang, flameTrail: s.flameTrail,
-          bloodNova: s.bloodNova, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
+          bloodNova: s.bloodNova, vampiric: s.vampiric, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
           sessionCoins: s.sessionCoins,
         })
       }

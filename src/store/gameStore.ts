@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'attackSpeed' | 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova'
+export type UpgradeId = 'attackSpeed' | 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric'
 
 export function weaponBaseDamage(level: number): number {
   return Math.floor(3 + level * 2)
@@ -26,6 +26,7 @@ const UPGRADE_POOL: Upgrade[] = [
   { id: 'boomerang',   label: 'Boomerang',        description: 'Throws a disc that flies out then returns, hitting enemies twice' },
   { id: 'flameTrail',  label: 'Flame Trail',      description: 'Leaves burning patches as you move that damage nearby enemies' },
   { id: 'bloodNova',   label: 'Blood Nova',       description: 'Every 7s releases a massive red ring — costs 8% of your max HP' },
+  { id: 'vampiric',   label: 'Soul Drain',       description: 'Each hit restores 8% of damage dealt as HP' },
 ]
 
 function xpNeeded(level: number) {
@@ -34,7 +35,7 @@ function xpNeeded(level: number) {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean }): Upgrade[] {
+function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean }): Upgrade[] {
   const pool = UPGRADE_POOL.filter(u => {
     if (u.id === 'piercing'   && state.piercing)       return false
     if (u.id === 'multiShot'  && state.multiShot >= 4) return false
@@ -42,6 +43,7 @@ function pickChoices(state: { piercing: boolean; multiShot: number; orbital: num
     if (u.id === 'boomerang'  && state.boomerang)      return false
     if (u.id === 'flameTrail' && state.flameTrail)     return false
     if (u.id === 'bloodNova'  && state.bloodNova)      return false
+    if (u.id === 'vampiric'   && state.vampiric)       return false
     return true
   })
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
@@ -81,6 +83,7 @@ interface GameState {
   boomerang: boolean
   flameTrail: boolean
   bloodNova: boolean
+  vampiric: boolean
   sessionCoins: number
   isDead: boolean
   isWon: boolean
@@ -135,6 +138,7 @@ export const useGameStore = create<GameState>()(
     boomerang: false,
     flameTrail: false,
     bloodNova: false,
+    vampiric: false,
     sessionCoins: 0,
     isDead: false,
     isWon: false,
@@ -205,7 +209,7 @@ export const useGameStore = create<GameState>()(
       invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, orbital: 0,
-      boomerang: false, flameTrail: false, bloodNova: false,
+      boomerang: false, flameTrail: false, bloodNova: false, vampiric: false,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
     }),
@@ -235,6 +239,8 @@ export const useGameStore = create<GameState>()(
             return { flameTrail: true, isLevelUpPending: false }
           case 'bloodNova':
             return { bloodNova: true, isLevelUpPending: false }
+          case 'vampiric':
+            return { vampiric: true, isLevelUpPending: false }
         }
       })
     },

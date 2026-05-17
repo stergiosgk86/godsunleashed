@@ -54,11 +54,23 @@ function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: ()
     }
 
     const game = new Phaser.Game(config)
-    return () => game.destroy(true)
+
+    // Reset all key states when the window loses focus so held keys
+    // don't get stuck (e.g. after right-click opens the context menu).
+    const onBlur = () => game.input?.keyboard?.resetKeys()
+    window.addEventListener('blur', onBlur)
+
+    return () => {
+      window.removeEventListener('blur', onBlur)
+      game.destroy(true)
+    }
   }, [])
 
   return (
-    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+    <div
+      style={{ position: 'relative', width: '100vw', height: '100vh' }}
+      onContextMenu={e => e.preventDefault()}
+    >
       <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
       <HUD />
       <BossHPBar />
@@ -123,10 +135,12 @@ function App() {
 
       // Load profile if authenticated
       const currentToken = useAuthStore.getState().token
+      // Read gods_screen before any await — a later effect overwrites it with 'menu'
+      const shouldRestoreGame = sessionStorage.getItem('gods_screen') === 'game'
       if (currentToken) {
         await fetchProfile()
         // Restore singleplayer session after page reload
-        if (sessionStorage.getItem('gods_screen') === 'game') {
+        if (shouldRestoreGame) {
           startRun()
           setInGame(true)
         }
