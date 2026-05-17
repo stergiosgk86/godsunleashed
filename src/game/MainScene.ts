@@ -538,8 +538,10 @@ export class MainScene extends Phaser.Scene {
     }
     if (!state.isLevelUpPending) this.prevLevelUpPending = false
 
+    const enemyCount = net ? this.clientEnemies.size : this.spawner.all.length
+    const waveLabel  = net ? this.spawner.waveLabel(runData.elapsed) : this.spawner.waveLabel()
     this.fpsText.setText(
-      `FPS: ${Math.round(this.game.loop.actualFps)}  |  ${this.spawner.waveLabel()}  |  Enemies: ${this.spawner.all.length}`
+      `FPS: ${Math.round(this.game.loop.actualFps)}  |  ${waveLabel}  |  Enemies: ${enemyCount}`
     )
 
     // Feed minimap

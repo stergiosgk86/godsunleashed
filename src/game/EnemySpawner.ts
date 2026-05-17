@@ -190,13 +190,14 @@ export class EnemySpawner {
     return pool[Math.floor(Math.random() * pool.length)]
   }
 
-  waveLabel(): string {
+  waveLabel(overrideElapsed?: number): string {
     if (this.finalBossAlive) return '☠ THE DEATH'
     if (this.bossAlive) return '⚠ BOSS FIGHT'
-    if (this.elapsed < 20_000) return 'Wave 1 — Basic'
-    if (this.elapsed < 45_000) return 'Wave 2 — + Speeders'
-    if (this.elapsed < 60_000) return 'Wave 3 — + Tanks'
-    if (this.elapsed < 70_000) return 'Wave 4 — + Exploders'
+    const t = overrideElapsed ?? this.elapsed
+    if (t < 20_000) return 'Wave 1 — Basic'
+    if (t < 45_000) return 'Wave 2 — + Speeders'
+    if (t < 60_000) return 'Wave 3 — + Tanks'
+    if (t < 70_000) return 'Wave 4 — + Exploders'
     return 'Wave 5 — + Ranged'
   }
 }
