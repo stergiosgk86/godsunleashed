@@ -103,6 +103,16 @@ export class EnemySpawner {
       } else if (save.type === 'summoner') {
         const s = new SummonerBoss(this.scene, save.x, save.y)
         s.hp = save.hp
+        s.onSummon = (bx, by, count, phase2) => {
+          for (let i = 0; i < count; i++) {
+            const a = (i / count) * Math.PI * 2
+            const mx = bx + Math.cos(a) * (80 + Math.random() * 60)
+            const my = by + Math.sin(a) * (80 + Math.random() * 60)
+            this.enemies.push(phase2 && i % 2 === 0
+              ? new Enemy(this.scene, mx, my, 'speeder')
+              : new Enemy(this.scene, mx, my, 'basic'))
+          }
+        }
         this.enemies.push(s)
       } else if (save.type === 'finalBoss') {
         const fb = new FinalBossEnemy(this.scene, save.x, save.y)
@@ -122,6 +132,10 @@ export class EnemySpawner {
         this.enemies.push(e)
       }
     }
+    // Infer boss flags from the actual restored entities — avoids stale flag
+    // if the boss died between the last save and the page refresh.
+    this.bossAlive = this.enemies.some(e => (e instanceof BossEnemy || e instanceof SummonerBoss) && e.active)
+    this.finalBossAlive = this.enemies.some(e => e instanceof FinalBossEnemy && e.active)
   }
 
   update(playerX: number, playerY: number, delta: number) {
@@ -134,9 +148,9 @@ export class EnemySpawner {
 
     const inFinalPhase = this.finalBossAlive || this.elapsed >= FINAL_BOSS_LOCK
 
-    // Regular enemy spawning (paused during any boss fight or final phase lock)
+    // Regular enemy spawning (paused only during final phase lock)
     const spawnInterval = SPAWN_INTERVAL_START - (SPAWN_INTERVAL_START - SPAWN_INTERVAL_END) * Math.min(this.elapsed / RUN_DURATION, 1)
-    if (!this.bossAlive && !inFinalPhase && this.spawnTimer >= spawnInterval && this.enemies.length < MAX_ENEMIES) {
+    if (!inFinalPhase && this.spawnTimer >= spawnInterval && this.enemies.length < MAX_ENEMIES) {
       this.spawnTimer = 0
       this.spawnEnemy(playerX, playerY)
     }

@@ -2,6 +2,7 @@ import musicUrl from '../assets/Graveyard Dash.mp3'
 
 const STORAGE_KEY     = 'gods_muted'
 const MUSIC_VOL_KEY   = 'gods_music_vol'
+const MUSIC_POS_KEY   = 'gods_music_pos'
 const MUSIC_VOLUME    = 0.35
 
 class SoundSystem {
@@ -24,6 +25,10 @@ class SoundSystem {
     }
     window.addEventListener('keydown', resumeCtx)
     window.addEventListener('mousedown', resumeCtx)
+    // Save playback position before the page unloads so we can resume after refresh
+    window.addEventListener('beforeunload', () => {
+      if (this.music) sessionStorage.setItem(MUSIC_POS_KEY, String(this.music.currentTime))
+    })
   }
 
   get muted() { return this._muted }
@@ -47,6 +52,11 @@ class SoundSystem {
     this.music = new Audio(musicUrl)
     this.music.loop = true
     this.music.volume = this._muted ? 0 : this._musicVolume
+    const saved = sessionStorage.getItem(MUSIC_POS_KEY)
+    if (saved) {
+      this.music.currentTime = parseFloat(saved)
+      sessionStorage.removeItem(MUSIC_POS_KEY)
+    }
     this.music.play().catch(() => {})
   }
 
@@ -54,6 +64,7 @@ class SoundSystem {
     if (!this.music) return
     this.music.pause()
     this.music.currentTime = 0
+    sessionStorage.removeItem(MUSIC_POS_KEY)
     this.music = null
   }
 
