@@ -11,7 +11,6 @@ const SUMMON_INTERVAL_P1 = 8_000
 const SUMMON_INTERVAL_P2 = 4_500
 const SUMMON_COUNT_P1  = 3
 const SUMMON_COUNT_P2  = 6
-const SUMMON_RADIUS    = 110
 
 const TINT_NORMAL = 0x33dd77
 const TINT_P2     = 0xff8844
@@ -103,7 +102,7 @@ export class SummonerBoss implements AnyEnemy {
       this.shield.clear()
       this.invulnCountdown -= delta
       if (this.invulnCountdown <= 0) {
-        this.activateShield(targetX, targetY)
+        this.activateShield()
       }
     }
 
@@ -116,7 +115,7 @@ export class SummonerBoss implements AnyEnemy {
     }
   }
 
-  private activateShield(targetX: number, targetY: number) {
+  private activateShield() {
     this.isInvulnerable = true
     this.invulnRemaining = INVULN_DURATION
     // Summon a burst of minions when the shield goes up
@@ -139,8 +138,7 @@ export class SummonerBoss implements AnyEnemy {
     })
   }
 
-  private drawShield(t: number) {
-    // t goes from 1 (just activated) to 0 (about to expire)
+  private drawShield(_t: number) {
     const pulse = 0.65 + Math.sin(Date.now() / 180) * 0.35
     const r = 52 + pulse * 10
     this.shield.clear()

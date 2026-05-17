@@ -77,12 +77,19 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   const isPaused = useGameStore(s => s.isPaused)
   const togglePause = useGameStore(s => s.togglePause)
   const depositCoins = useProfileStore(s => s.depositCoins)
-  const [view, setView] = useState<'main' | 'controls' | 'stats'>('main')
+  const [view, setView] = useState<'main' | 'controls' | 'stats' | 'sounds'>('main')
   const [muted, setMuted] = useState(() => soundSystem.muted)
+  const [musicVol, setMusicVol] = useState(() => soundSystem.musicVolume)
 
   function handleMute() {
     soundSystem.toggleMute()
     setMuted(soundSystem.muted)
+  }
+
+  function handleMusicVol(delta: number) {
+    const next = Math.round((soundSystem.musicVolume + delta) * 10) / 10
+    soundSystem.setMusicVolume(next)
+    setMusicVol(soundSystem.musicVolume)
   }
 
   function handleQuit() {
@@ -143,12 +150,12 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
           </button>
 
           <button
-            onClick={handleMute}
+            onClick={() => setView('sounds')}
             style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none' }}
             onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            {muted ? 'SOUND: OFF' : 'SOUND: ON'}
+            SOUNDS
           </button>
 
           <div style={{ width: '100%', height: 1, background: '#1a1a3a' }} />
@@ -171,6 +178,56 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
       ) : view === 'stats' ? (
         <>
           <StatsView />
+          <button
+            onClick={() => setView('main')}
+            style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none', marginTop: 8 }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            ← BACK
+          </button>
+        </>
+      ) : view === 'sounds' ? (
+        <>
+          <div style={{
+            color: '#aaaaff', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold',
+            letterSpacing: 3, textShadow: '0 0 10px #4444ff',
+          }}>
+            SOUNDS
+          </div>
+
+          <button
+            onClick={handleMute}
+            style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            {muted ? 'SOUND: OFF' : 'SOUND: ON'}
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ color: '#aaaaff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 2, minWidth: 60 }}>
+              MUSIC
+            </span>
+            <button
+              onClick={() => handleMusicVol(-0.1)}
+              disabled={musicVol <= 0}
+              style={{ ...btnBase, width: 36, minWidth: 36, padding: '8px 0', color: '#aaaaff', background: 'transparent', boxShadow: 'none', opacity: musicVol <= 0 ? 0.3 : 1 }}
+              onMouseEnter={e => { if (musicVol > 0) e.currentTarget.style.background = '#111133' }}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >−</button>
+            <span style={{ color: '#ffffff', fontFamily: 'monospace', fontSize: 14, minWidth: 38, textAlign: 'center' }}>
+              {Math.round(musicVol * 100)}%
+            </span>
+            <button
+              onClick={() => handleMusicVol(0.1)}
+              disabled={musicVol >= 1}
+              style={{ ...btnBase, width: 36, minWidth: 36, padding: '8px 0', color: '#aaaaff', background: 'transparent', boxShadow: 'none', opacity: musicVol >= 1 ? 0.3 : 1 }}
+              onMouseEnter={e => { if (musicVol < 1) e.currentTarget.style.background = '#111133' }}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >+</button>
+          </div>
+
           <button
             onClick={() => setView('main')}
             style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none', marginTop: 8 }}

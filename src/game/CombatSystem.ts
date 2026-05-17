@@ -175,7 +175,7 @@ export class CombatSystem {
         const dx = b.x - playerX
         const dy = b.y - playerY
         if (dx * dx + dy * dy < BULLET_HIT_RADIUS * BULLET_HIT_RADIUS) {
-          takeDamage(20)
+          takeDamage(Math.round(20 * difficultyScale.damage))
           b.destroy()
           this.effects.shakeCamera()
         }
@@ -253,8 +253,8 @@ export class CombatSystem {
     this.orbGraphic.clear()
     if (orbital > 0) {
       const ORBIT_RADIUS = 85
-      const ORB_RADIUS = 9
-      const ORB_HIT_RADIUS = 16
+      const ORB_RADIUS = 13
+      const ORB_HIT_RADIUS = 20
       const HIT_COOLDOWN = 500
       const orbDamage = Math.max(1, Math.floor(weaponBaseDamage(level) * might * 0.65))
 
@@ -268,7 +268,7 @@ export class CombatSystem {
 
         // Glow ring
         this.orbGraphic.fillStyle(0x8833ff, 0.18)
-        this.orbGraphic.fillCircle(ox, oy, ORB_RADIUS + 6)
+        this.orbGraphic.fillCircle(ox, oy, ORB_RADIUS + 8)
         // Core
         this.orbGraphic.fillStyle(0xcc88ff, 1)
         this.orbGraphic.fillCircle(ox, oy, ORB_RADIUS)

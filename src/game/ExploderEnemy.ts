@@ -5,7 +5,7 @@ import { useGameStore } from '../store/gameStore'
 import { difficultyScale } from './difficultyScale'
 
 const SPEED = 65
-const MAX_HP = 55
+const MAX_HP = 100
 const XP_VALUE = 2
 const TRIGGER_RADIUS = 110   // arms the bomb when player is this close
 const COUNTDOWN_MS = 1200    // ms from trigger to detonation
@@ -96,7 +96,7 @@ export class ExploderEnemy implements AnyEnemy {
     const dx = this.lastPlayerX - this.x
     const dy = this.lastPlayerY - this.y
     if (dx * dx + dy * dy < EXPLODE_RADIUS * EXPLODE_RADIUS) {
-      useGameStore.getState().takeDamage(EXPLODE_DAMAGE)
+      useGameStore.getState().takeDamage(Math.round(EXPLODE_DAMAGE * difficultyScale.damage))
     }
 
     // Expanding ring

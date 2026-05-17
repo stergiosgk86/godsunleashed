@@ -38,7 +38,7 @@ export class AchievementSystem {
     const isMultiplayer = !!activeNetClient
 
     if (elapsed >= 5 * 60 * 1000)  this.unlock('survivor_5')
-    if (elapsed >= 20 * 60 * 1000) this.unlock('veteran')
+    if (elapsed >= 30 * 60 * 1000) this.unlock('veteran')
     if (s.bossKills >= 1)          this.unlock('boss_slayer')
     if (s.kills >= 100)            this.unlock('hunter')
     if (s.kills >= 500)            this.unlock('slaughterer')

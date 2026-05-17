@@ -1,15 +1,22 @@
-const STORAGE_KEY = 'gods_muted'
+import musicUrl from '../assets/Graveyard Dash.mp3'
+
+const STORAGE_KEY     = 'gods_muted'
+const MUSIC_VOL_KEY   = 'gods_music_vol'
+const MUSIC_VOLUME    = 0.35
 
 class SoundSystem {
   private ctx: AudioContext | null = null
   private master: GainNode | null = null
   private _muted: boolean
+  private music: HTMLAudioElement | null = null
+  private _musicVolume: number
   private xpLastPlayed = 0
   private coinLastPlayed = 0
   private hitLastPlayed = 0
 
   constructor() {
     this._muted = localStorage.getItem(STORAGE_KEY) === 'true'
+    this._musicVolume = parseFloat(localStorage.getItem(MUSIC_VOL_KEY) ?? String(MUSIC_VOLUME))
     // Resume the context on every user gesture — browsers may suspend it on
     // page blur or if created before sufficient user engagement.
     const resumeCtx = () => {
@@ -20,11 +27,42 @@ class SoundSystem {
   }
 
   get muted() { return this._muted }
+  get musicVolume() { return this._musicVolume }
 
   toggleMute() {
     this._muted = !this._muted
     localStorage.setItem(STORAGE_KEY, String(this._muted))
     if (this.master) this.master.gain.value = this._muted ? 0 : 0.3
+    if (this.music) this.music.volume = this._muted ? 0 : this._musicVolume
+  }
+
+  setMusicVolume(v: number) {
+    this._musicVolume = Math.max(0, Math.min(1, v))
+    localStorage.setItem(MUSIC_VOL_KEY, String(this._musicVolume))
+    if (this.music && !this._muted) this.music.volume = this._musicVolume
+  }
+
+  startMusic() {
+    if (this.music) this.stopMusic()
+    this.music = new Audio(musicUrl)
+    this.music.loop = true
+    this.music.volume = this._muted ? 0 : this._musicVolume
+    this.music.play().catch(() => {})
+  }
+
+  stopMusic() {
+    if (!this.music) return
+    this.music.pause()
+    this.music.currentTime = 0
+    this.music = null
+  }
+
+  pauseMusic() {
+    this.music?.pause()
+  }
+
+  resumeMusic() {
+    if (this.music && !this._muted) this.music.play().catch(() => {})
   }
 
   private getCtx(): { ctx: AudioContext; out: AudioNode } | null {

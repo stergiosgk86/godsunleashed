@@ -7,7 +7,7 @@ export interface Achievement {
 
 export const ACHIEVEMENTS: Achievement[] = [
   { id: 'survivor_5',   name: 'Survivor',     description: 'Survive for 5 minutes',                icon: '▶' },
-  { id: 'veteran',      name: 'Veteran',      description: 'Survive for 20 minutes (full run)',     icon: '◈' },
+  { id: 'veteran',      name: 'Veteran',      description: 'Survive for 30 minutes (full run)',     icon: '◈' },
   { id: 'boss_slayer',  name: 'Boss Slayer',  description: 'Defeat your first boss',                icon: '⚔' },
   { id: 'god_slayer',   name: 'God Slayer',   description: 'Defeat the final boss and win',         icon: '☠' },
   { id: 'hunter',       name: 'Hunter',       description: 'Kill 100 enemies in one run',           icon: '►' },

@@ -1,4 +1,4 @@
-export const RUN_DURATION = 20 * 60 * 1000  // 20 minutes in ms
+export const RUN_DURATION = 30 * 60 * 1000  // 30 minutes in ms
 
 // Mutable shared object — written by MainScene each frame, polled by HUD via rAF.
 // Intentionally not in Zustand to avoid per-frame React re-renders.

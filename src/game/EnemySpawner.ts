@@ -10,7 +10,7 @@ import { SummonerBoss } from './SummonerBoss'
 export type SavedEnemyType = EnemyType | 'ranged' | 'exploder'
 export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: number }
 import { RUN_DURATION } from './runData'
-import { difficultyScale, computeSpeedScale, computeHpScale, computeXpScale } from './difficultyScale'
+import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
 
 const SPAWN_INTERVAL_START = 700
 const SPAWN_INTERVAL_END   = 200
@@ -62,9 +62,10 @@ export class EnemySpawner {
     this.nextBossAt = snap.nextBossAt
     this.warningFired = snap.warningFired
     this.finalBossWarningFired = snap.finalBossWarningFired
-    difficultyScale.speed = computeSpeedScale(this.elapsed)
-    difficultyScale.hp    = computeHpScale(this.elapsed)
-    difficultyScale.xp    = computeXpScale(this.elapsed)
+    difficultyScale.speed  = computeSpeedScale(this.elapsed)
+    difficultyScale.hp     = computeHpScale(this.elapsed)
+    difficultyScale.damage = computeDamageScale(this.elapsed)
+    difficultyScale.xp     = computeXpScale(this.elapsed)
   }
 
   getSaveableEnemies(): EnemySave[] {
@@ -101,9 +102,10 @@ export class EnemySpawner {
   update(playerX: number, playerY: number, delta: number) {
     this.elapsed += delta
     this.spawnTimer += delta
-    difficultyScale.speed = computeSpeedScale(this.elapsed)
-    difficultyScale.hp    = computeHpScale(this.elapsed)
-    difficultyScale.xp    = computeXpScale(this.elapsed)
+    difficultyScale.speed  = computeSpeedScale(this.elapsed)
+    difficultyScale.hp     = computeHpScale(this.elapsed)
+    difficultyScale.damage = computeDamageScale(this.elapsed)
+    difficultyScale.xp     = computeXpScale(this.elapsed)
 
     const inFinalPhase = this.finalBossAlive || this.elapsed >= FINAL_BOSS_LOCK
 

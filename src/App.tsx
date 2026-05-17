@@ -21,6 +21,7 @@ import { CHARACTER_DEFS } from './game/characters'
 import { setNetClient, activeNetClient } from './net/netState'
 import { runData } from './game/runData'
 import { AchievementToast } from './ui/AchievementToast'
+import { soundSystem } from './game/SoundSystem'
 import type { NetClient } from './net/NetClient'
 import type { PlayerSnapshot } from './net/protocol'
 
@@ -218,6 +219,7 @@ function App() {
 
   function handleQuit() {
     submitRun()
+    soundSystem.stopMusic()
     setNetClient(null)
     useGameStore.getState().resetRun()
     setInGame(false)

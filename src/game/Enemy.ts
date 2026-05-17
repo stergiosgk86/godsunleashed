@@ -36,9 +36,9 @@ interface EnemyConfig {
 }
 
 const CONFIGS: Record<EnemyType, EnemyConfig> = {
-  basic:   { speed: 80,  maxHp: 25,  textureKey: 'enemy_basic',   contactDamage: 15, xpValue: 1, scale: 1.2, frameRate: 8  },
-  speeder: { speed: 190, maxHp: 8,   textureKey: 'enemy_speeder',  contactDamage: 10, xpValue: 1, scale: 0.9, frameRate: 12 },
-  tank:    { speed: 35,  maxHp: 100, textureKey: 'enemy_tank',     contactDamage: 30, xpValue: 3, scale: 1.8, frameRate: 5  },
+  basic:   { speed: 80,  maxHp: 60,  textureKey: 'enemy_basic',   contactDamage: 15, xpValue: 1, scale: 1.2, frameRate: 8  },
+  speeder: { speed: 190, maxHp: 20,  textureKey: 'enemy_speeder',  contactDamage: 10, xpValue: 1, scale: 0.9, frameRate: 12 },
+  tank:    { speed: 35,  maxHp: 250, textureKey: 'enemy_tank',     contactDamage: 30, xpValue: 3, scale: 1.8, frameRate: 5  },
 }
 
 export class Enemy implements AnyEnemy {
@@ -65,7 +65,7 @@ export class Enemy implements AnyEnemy {
     this.y = y
     this.hp = Math.round(cfg.maxHp * difficultyScale.hp)
     this.speed = cfg.speed
-    this.contactDamage = cfg.contactDamage
+    this.contactDamage = Math.round(cfg.contactDamage * difficultyScale.damage)
     this.xpValue = cfg.xpValue
     this.textureKey = cfg.textureKey
     this.baseScale = cfg.scale

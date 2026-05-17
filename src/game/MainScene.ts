@@ -177,18 +177,22 @@ export class MainScene extends Phaser.Scene {
 
     // Only resume here — pausing on level-up is handled in update() to avoid
     // calling scene.pause() from within a zustand subscriber mid-update-loop.
+    soundSystem.startMusic()
+
     let sceneAlive = true
     const unsubLevelUp = useGameStore.subscribe(
       s => s.isLevelUpPending,
       (pending) => {
         if (pending) {
           soundSystem.levelUp()
+          soundSystem.pauseMusic()
           // Stay invulnerable for the entire level-up screen
           useGameStore.setState({ invincibleUntil: Infinity })
         } else {
           // 2-second grace period after resuming so enemies that walked
           // onto the player during the pause don't instantly deal damage
           useGameStore.setState({ invincibleUntil: Date.now() + 2000 })
+          soundSystem.resumeMusic()
           if (sceneAlive) this.scene.resume()
         }
       }
@@ -197,7 +201,8 @@ export class MainScene extends Phaser.Scene {
       s => s.isPaused,
       (paused) => {
         if (!sceneAlive) return
-        if (paused) this.scene.pause(); else this.scene.resume()
+        if (paused) { this.scene.pause(); soundSystem.pauseMusic() }
+        else { this.scene.resume(); soundSystem.resumeMusic() }
       }
     )
     const unsubDamage = useGameStore.subscribe(
@@ -213,6 +218,7 @@ export class MainScene extends Phaser.Scene {
     const unsubWon  = useGameStore.subscribe(s => s.isWon,  isWon  => { if (isWon)  clearRun() })
     this.events.once('shutdown', () => {
       sceneAlive = false
+      soundSystem.stopMusic()
       unsubLevelUp(); unsubPause(); unsubDamage(); unsubDead(); unsubWon()
       this.joystick.destroy()
       runData.elapsed = 0
