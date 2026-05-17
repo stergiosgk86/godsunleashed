@@ -57,7 +57,18 @@ class SoundSystem {
       this.music.currentTime = parseFloat(saved)
       sessionStorage.removeItem(MUSIC_POS_KEY)
     }
-    this.music.play().catch(() => {})
+    this.music.play().catch(() => {
+      // Browser blocked autoplay — retry on first user gesture
+      const retry = () => {
+        this.music?.play().catch(() => {})
+        window.removeEventListener('keydown', retry)
+        window.removeEventListener('mousedown', retry)
+        window.removeEventListener('touchstart', retry)
+      }
+      window.addEventListener('keydown', retry, { once: true })
+      window.addEventListener('mousedown', retry, { once: true })
+      window.addEventListener('touchstart', retry, { once: true })
+    })
   }
 
   stopMusic() {

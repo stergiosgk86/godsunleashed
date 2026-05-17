@@ -439,7 +439,7 @@ export class CombatSystem {
     this.effects.showDamageNumber(e.x, e.y, actual)
     soundSystem.enemyHit()
     if (vampiric) {
-      const heal = Math.max(1, Math.round(actual * 0.08))
+      const heal = Math.max(1, Math.round(actual * 0.02))
       useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + heal) }))
     }
     if (net && 'serverId' in e) {
