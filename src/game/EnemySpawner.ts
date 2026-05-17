@@ -7,7 +7,7 @@ import { BossEnemy } from './BossEnemy'
 import { FinalBossEnemy } from './FinalBossEnemy'
 import { SummonerBoss } from './SummonerBoss'
 
-export type SavedEnemyType = EnemyType | 'ranged' | 'exploder'
+export type SavedEnemyType = EnemyType | 'ranged' | 'exploder' | 'boss' | 'summoner' | 'finalBoss'
 export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: number }
 import { RUN_DURATION } from './runData'
 import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
@@ -54,14 +54,18 @@ export class EnemySpawner {
       nextBossAt: this.nextBossAt,
       warningFired: this.warningFired,
       finalBossWarningFired: this.finalBossWarningFired,
+      bossAlive: this.bossAlive,
+      finalBossAlive: this.finalBossAlive,
     }
   }
 
-  restore(snap: { elapsed: number; nextBossAt: number; warningFired: boolean; finalBossWarningFired: boolean }) {
+  restore(snap: { elapsed: number; nextBossAt: number; warningFired: boolean; finalBossWarningFired: boolean; bossAlive?: boolean; finalBossAlive?: boolean }) {
     this.elapsed = snap.elapsed
     this.nextBossAt = snap.nextBossAt
     this.warningFired = snap.warningFired
     this.finalBossWarningFired = snap.finalBossWarningFired
+    this.bossAlive = snap.bossAlive ?? false
+    this.finalBossAlive = snap.finalBossAlive ?? false
     difficultyScale.speed  = computeSpeedScale(this.elapsed)
     difficultyScale.hp     = computeHpScale(this.elapsed)
     difficultyScale.damage = computeDamageScale(this.elapsed)
@@ -72,8 +76,13 @@ export class EnemySpawner {
     const result: EnemySave[] = []
     for (const e of this.enemies) {
       if (!e.active) continue
-      if (e instanceof BossEnemy || e instanceof FinalBossEnemy || e instanceof SummonerBoss) continue
-      if (e instanceof RangedEnemy) {
+      if (e instanceof FinalBossEnemy) {
+        result.push({ type: 'finalBoss', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof SummonerBoss) {
+        result.push({ type: 'summoner', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof BossEnemy) {
+        result.push({ type: 'boss', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof RangedEnemy) {
         result.push({ type: 'ranged', x: e.x, y: e.y, hp: e.hp })
       } else if (e instanceof ExploderEnemy) {
         result.push({ type: 'exploder', x: e.x, y: e.y, hp: e.hp })
@@ -87,15 +96,31 @@ export class EnemySpawner {
   restoreEnemies(saves: EnemySave[]) {
     for (const save of saves) {
       let e: AnyEnemy
-      if (save.type === 'ranged') {
+      if (save.type === 'boss') {
+        const b = new BossEnemy(this.scene, save.x, save.y)
+        b.hp = save.hp
+        this.enemies.push(b)
+      } else if (save.type === 'summoner') {
+        const s = new SummonerBoss(this.scene, save.x, save.y)
+        s.hp = save.hp
+        this.enemies.push(s)
+      } else if (save.type === 'finalBoss') {
+        const fb = new FinalBossEnemy(this.scene, save.x, save.y)
+        fb.hp = save.hp
+        this.enemies.push(fb)
+      } else if (save.type === 'ranged') {
         e = new RangedEnemy(this.scene, save.x, save.y)
+        e.hp = save.hp
+        this.enemies.push(e)
       } else if (save.type === 'exploder') {
         e = new ExploderEnemy(this.scene, save.x, save.y)
+        e.hp = save.hp
+        this.enemies.push(e)
       } else {
         e = new Enemy(this.scene, save.x, save.y, save.type)
+        e.hp = save.hp
+        this.enemies.push(e)
       }
-      e.hp = save.hp
-      this.enemies.push(e)
     }
   }
 

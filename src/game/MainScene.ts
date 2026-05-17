@@ -43,7 +43,7 @@ export class MainScene extends Phaser.Scene {
   private remoteProjectiles: RemoteProjectile[] = []
   private netSendTimer = 0
   private saveTimer = 0
-  private readonly SAVE_INTERVAL = 5000
+  private readonly SAVE_INTERVAL = 1000
   private joystick!: TouchJoystick
 
   constructor() {
@@ -128,6 +128,8 @@ export class MainScene extends Phaser.Scene {
         hpRegen: savedRun.hpRegen,
         lifeDrain: savedRun.lifeDrain,
         sessionCoins: savedRun.sessionCoins,
+        kills: savedRun.kills ?? 0,
+        bossKills: savedRun.bossKills ?? 0,
       })
     }
 
@@ -507,9 +509,12 @@ export class MainScene extends Phaser.Scene {
           nextBossAt: sp.nextBossAt,
           warningFired: sp.warningFired,
           finalBossWarningFired: sp.finalBossWarningFired,
+          bossAlive: sp.bossAlive,
+          finalBossAlive: sp.finalBossAlive,
           playerX: this.player.x,
           playerY: this.player.y,
           enemies: this.spawner.getSaveableEnemies(),
+          kills: s.kills, bossKills: s.bossKills,
           xp: s.xp, xpNeeded: s.xpNeeded, level: s.level,
           hp: s.hp, maxHp: s.maxHp,
           might: s.might, attackInterval: s.attackInterval, moveSpeed: s.moveSpeed,

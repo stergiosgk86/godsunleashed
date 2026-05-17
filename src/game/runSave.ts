@@ -8,11 +8,16 @@ export interface RunSnapshot {
   nextBossAt: number
   warningFired: boolean
   finalBossWarningFired: boolean
+  bossAlive: boolean
+  finalBossAlive: boolean
   // player
   playerX: number
   playerY: number
   // enemies
   enemies: EnemySave[]
+  // stats
+  kills: number
+  bossKills: number
   // gameStore
   xp: number
   xpNeeded: number
