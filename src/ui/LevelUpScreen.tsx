@@ -36,6 +36,7 @@ function LevelUpOverlay({ level, choices, onChoose }: {
   choices: Upgrade[]
   onChoose: (id: UpgradeId) => void
 }) {
+  const isMobile = window.innerWidth <= 768
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -114,24 +115,27 @@ function LevelUpOverlay({ level, choices, onChoose }: {
         animation: 'lu-flash 0.5s ease-out both',
       }} />
 
-      {/* Top half: title + hint */}
+      {/* Title + hint */}
       <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center', gap: 24,
+        flex: isMobile ? 'none' : 1,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        gap: isMobile ? 8 : 24,
+        padding: isMobile ? '20px 0 12px' : undefined,
         position: 'relative', zIndex: 1,
       }}>
-        {/* Title */}
         <div style={{ textAlign: 'center' }}>
           <div style={{
             color: '#ffdd44', fontSize: 22, fontFamily: 'monospace',
-            letterSpacing: 8, marginBottom: 12,
+            letterSpacing: 8, marginBottom: isMobile ? 4 : 12,
             textShadow: '0 0 14px #ffaa00, 0 0 36px #ff7700, 0 0 70px #ff4400',
             animation: 'lu-label 0.65s cubic-bezier(0.34,1.56,0.64,1) both',
           }}>
             LEVEL UP
           </div>
           <div style={{
-            color: '#ffffff', fontSize: 130, fontFamily: 'monospace', fontWeight: 'bold', lineHeight: 1,
+            color: '#ffffff', fontSize: isMobile ? 72 : 130,
+            fontFamily: 'monospace', fontWeight: 'bold', lineHeight: 1,
             textShadow: '0 0 22px rgba(180,160,255,0.95), 0 0 60px rgba(120,80,255,0.55)',
             animation: 'lu-number 0.55s cubic-bezier(0.34,1.56,0.64,1) 80ms both',
           }}>
@@ -139,27 +143,40 @@ function LevelUpOverlay({ level, choices, onChoose }: {
           </div>
         </div>
 
-        {/* Hint */}
         <div style={{
-          color: '#7777aa', fontFamily: 'monospace', fontSize: 20, letterSpacing: 2,
+          color: '#7777aa', fontFamily: 'monospace',
+          fontSize: isMobile ? 14 : 20, letterSpacing: 2,
           animation: 'lu-hint 0.4s ease-out 360ms both',
         }}>
           choose an upgrade
         </div>
       </div>
 
-      {/* Bottom half: cards */}
+      {/* Cards */}
       <div style={{
-        flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+        flex: 1,
+        display: 'flex',
+        alignItems: isMobile ? 'center' : 'flex-start',
+        justifyContent: 'center',
         position: 'relative', zIndex: 1,
+        width: '100%',
+        overflowY: isMobile ? 'auto' : 'visible',
+        padding: isMobile ? '0 0 16px' : undefined,
+        boxSizing: 'border-box',
       }}>
-        <div style={{ display: 'flex', gap: 20, alignItems: 'stretch' }}>
+        <div style={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? 12 : 20,
+          alignItems: 'stretch',
+          width: isMobile ? '85%' : 'auto',
+        }}>
           {choices.map((u, i) => (
             <div key={u.id} style={{
               display: 'flex',
               animation: `lu-card 0.5s cubic-bezier(0.34,1.56,0.64,1) ${360 + i * 110}ms both`,
             }}>
-              <UpgradeCard label={u.label} description={u.description} onClick={() => onChoose(u.id)} />
+              <UpgradeCard label={u.label} description={u.description} mobile={isMobile} onClick={() => onChoose(u.id)} />
             </div>
           ))}
         </div>
@@ -168,14 +185,16 @@ function LevelUpOverlay({ level, choices, onChoose }: {
   )
 }
 
-function UpgradeCard({ label, description, onClick }: {
-  label: string; description: string; onClick: () => void
+function UpgradeCard({ label, description, mobile, onClick }: {
+  label: string; description: string; mobile?: boolean; onClick: () => void
 }) {
   return (
     <button
       onClick={onClick}
       style={{
-        width: 190, padding: '28px 20px', height: '100%', boxSizing: 'border-box',
+        width: mobile ? '100%' : 190,
+        padding: mobile ? '16px 20px' : '28px 20px',
+        height: '100%', boxSizing: 'border-box',
         background: '#0d0d2e', border: '2px solid #3333aa',
         borderRadius: 14, color: '#ffffff', fontFamily: 'monospace',
         cursor: 'pointer', display: 'flex', flexDirection: 'column',

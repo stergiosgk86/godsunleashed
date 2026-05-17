@@ -1,5 +1,6 @@
 import Phaser, { TintModes } from 'phaser'
 import { type Direction, getDirection, playDir } from './spriteUtils'
+import { difficultyScale } from './difficultyScale'
 
 export type EnemyType = 'basic' | 'speeder' | 'tank'
 
@@ -43,6 +44,7 @@ const CONFIGS: Record<EnemyType, EnemyConfig> = {
 export class Enemy implements AnyEnemy {
   private scene: Phaser.Scene
   private graphic: Phaser.GameObjects.Sprite
+  readonly type: EnemyType
   x: number
   y: number
   hp: number
@@ -52,15 +54,16 @@ export class Enemy implements AnyEnemy {
   private speed: number
   private baseScale: number
   private textureKey: string
-  private hitFlashTimer = 0
   private lastDir: Direction = 'down'
+  private hitFlashTimer = 0
 
   constructor(scene: Phaser.Scene, x: number, y: number, type: EnemyType = 'basic') {
     const cfg = CONFIGS[type]
+    this.type = type
     this.scene = scene
     this.x = x
     this.y = y
-    this.hp = cfg.maxHp
+    this.hp = Math.round(cfg.maxHp * difficultyScale.hp)
     this.speed = cfg.speed
     this.contactDamage = cfg.contactDamage
     this.xpValue = cfg.xpValue
@@ -75,7 +78,7 @@ export class Enemy implements AnyEnemy {
   takeDamage(amount: number) {
     this.hp -= amount
     this.hitFlashTimer = 80
-    this.graphic.setTint(0xffffff).setTintMode(TintModes.FILL)
+    this.graphic.setTint(0xff4444)
   }
 
   update(targetX: number, targetY: number, delta: number) {
@@ -90,8 +93,8 @@ export class Enemy implements AnyEnemy {
     const dist = Math.sqrt(dx * dx + dy * dy)
 
     if (dist > 1) {
-      this.x += (dx / dist) * this.speed * dt
-      this.y += (dy / dist) * this.speed * dt
+      this.x += (dx / dist) * this.speed * difficultyScale.speed * dt
+      this.y += (dy / dist) * this.speed * difficultyScale.speed * dt
       this.graphic.setPosition(this.x, this.y)
       const dir = getDirection(dx, dy)
       this.lastDir = playDir(this.graphic, this.textureKey, dir, this.lastDir, true)

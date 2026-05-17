@@ -9,13 +9,16 @@ export function BossHPBar() {
   const pct = Math.max(0, bossHp / bossMaxHp) * 100
   const isPhase2 = bossHp < bossMaxHp * 0.5
 
+  const isMobile = window.innerWidth <= 768
+
   return (
     <div style={{
       position: 'absolute',
-      top: 20,
+      top: isMobile ? 54 : 56,
       left: '50%',
       transform: 'translateX(-50%)',
-      width: 400,
+      width: isMobile ? 260 : 400,
+      zIndex: 5,
       pointerEvents: 'none',
     }}>
       <div style={{

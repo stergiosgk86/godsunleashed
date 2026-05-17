@@ -2,6 +2,7 @@ import Phaser, { TintModes } from 'phaser'
 import type { AnyEnemy } from './Enemy'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 import { useGameStore } from '../store/gameStore'
+import { difficultyScale } from './difficultyScale'
 
 const SPEED = 65
 const MAX_HP = 55
@@ -16,7 +17,7 @@ export class ExploderEnemy implements AnyEnemy {
   private graphic: Phaser.GameObjects.Sprite
   x: number
   y: number
-  hp = MAX_HP
+  hp: number
   active = true
   contactDamage = 0
   xpValue = XP_VALUE
@@ -32,6 +33,7 @@ export class ExploderEnemy implements AnyEnemy {
     this.scene = scene
     this.x = x
     this.y = y
+    this.hp = Math.round(MAX_HP * difficultyScale.hp)
     this.graphic = scene.add.sprite(x, y, 'enemy_exploder')
       .setDepth(2)
       .setScale(this.baseScale)
@@ -60,8 +62,8 @@ export class ExploderEnemy implements AnyEnemy {
       }
 
       if (dist > 1) {
-        this.x += (dx / dist) * SPEED * dt
-        this.y += (dy / dist) * SPEED * dt
+        this.x += (dx / dist) * SPEED * difficultyScale.speed * dt
+        this.y += (dy / dist) * SPEED * difficultyScale.speed * dt
         this.graphic.setPosition(this.x, this.y)
         const dir = getDirection(dx, dy)
         this.lastDir = playDir(this.graphic, 'enemy_exploder', dir, this.lastDir, true)

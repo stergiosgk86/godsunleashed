@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'attackSpeed' | 'moveSpeed' | 'maxHp' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital'
+export type UpgradeId = 'attackSpeed' | 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova'
 
 export function weaponBaseDamage(level: number): number {
   return Math.floor(3 + level * 2)
@@ -17,27 +17,31 @@ export interface Upgrade {
 
 const UPGRADE_POOL: Upgrade[] = [
   { id: 'attackSpeed', label: 'Faster Attacks',  description: '15% shorter attack cooldown' },
-  { id: 'moveSpeed',   label: 'Move Faster',     description: '15% faster movement speed' },
-  { id: 'maxHp',       label: '+25 Max HP',      description: 'Increase maximum health' },
   { id: 'dashCooldown',  label: 'Swift Dash',      description: '25% shorter dash cooldown' },
   { id: 'dashDistance',  label: 'Longer Dash',     description: '40% further dash distance' },
   { id: 'multiShot',     label: 'Multi Shot',      description: 'Fire an extra projectile per attack' },
   { id: 'piercing',      label: 'Piercing',        description: 'Shots pass through enemies' },
   { id: 'aura',          label: 'Aura',            description: 'Pulses damage to all enemies in range' },
   { id: 'orbital',      label: 'Spirit Orb',      description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 3)' },
+  { id: 'boomerang',   label: 'Boomerang',        description: 'Throws a disc that flies out then returns, hitting enemies twice' },
+  { id: 'flameTrail',  label: 'Flame Trail',      description: 'Leaves burning patches as you move that damage nearby enemies' },
+  { id: 'bloodNova',   label: 'Blood Nova',       description: 'Every 7s releases a massive red ring — costs 8% of your max HP' },
 ]
 
 function xpNeeded(level: number) {
-  return Math.floor(5 * Math.pow(1.5, level - 1))
+  return Math.floor(10 * Math.pow(1.65, level - 1))
 }
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number }): Upgrade[] {
+function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean }): Upgrade[] {
   const pool = UPGRADE_POOL.filter(u => {
-    if (u.id === 'piercing' && state.piercing) return false
-    if (u.id === 'multiShot' && state.multiShot >= 4) return false
-    if (u.id === 'orbital' && state.orbital >= 3) return false
+    if (u.id === 'piercing'   && state.piercing)       return false
+    if (u.id === 'multiShot'  && state.multiShot >= 4) return false
+    if (u.id === 'orbital'    && state.orbital >= 3)   return false
+    if (u.id === 'boomerang'  && state.boomerang)      return false
+    if (u.id === 'flameTrail' && state.flameTrail)     return false
+    if (u.id === 'bloodNova'  && state.bloodNova)      return false
     return true
   })
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
@@ -63,6 +67,7 @@ interface GameState {
   isLevelUpPending: boolean
   upgradeChoices: Upgrade[]
   invincibleUntil: number
+  damageFlashUntil: number
   bossHp: number | null
   bossMaxHp: number
   isPaused: boolean
@@ -73,11 +78,19 @@ interface GameState {
   piercing: boolean
   aura: number
   orbital: number
+  boomerang: boolean
+  flameTrail: boolean
+  bloodNova: boolean
   sessionCoins: number
   isDead: boolean
   isWon: boolean
   hpRegen: number
   lifeDrain: number
+  kills: number
+  damageDealt: number
+  bossKills: number
+  tookDamageThisRun: boolean
+  recentAchievement: { id: string; name: string } | null
 
   addXP: (amount: number) => void
   takeDamage: (amount: number) => void
@@ -88,6 +101,10 @@ interface GameState {
   togglePause: () => void
   startDash: () => boolean
   addSessionCoins: (amount: number) => void
+  addKill: () => void
+  addDamage: (amount: number) => void
+  addBossKill: () => void
+  clearRecentAchievement: () => void
   resetRun: () => void
 }
 
@@ -104,6 +121,7 @@ export const useGameStore = create<GameState>()(
     isLevelUpPending: false,
     upgradeChoices: [],
     invincibleUntil: 0,
+    damageFlashUntil: 0,
     bossHp: null,
     bossMaxHp: 300,
     isPaused: false,
@@ -114,11 +132,19 @@ export const useGameStore = create<GameState>()(
     piercing: false,
     aura: 0,
     orbital: 0,
+    boomerang: false,
+    flameTrail: false,
+    bloodNova: false,
     sessionCoins: 0,
     isDead: false,
     isWon: false,
     hpRegen: 0,
     lifeDrain: 0,
+    kills: 0,
+    damageDealt: 0,
+    bossKills: 0,
+    tookDamageThisRun: false,
+    recentAchievement: null,
 
     addXP: (amount) => {
       set(s => {
@@ -140,7 +166,8 @@ export const useGameStore = create<GameState>()(
     takeDamage: (amount) => {
       const { invincibleUntil, hp, isDead } = get()
       if (isDead || Date.now() < invincibleUntil) return
-      set({ hp: Math.max(0, hp - amount), invincibleUntil: Date.now() + 1000 })
+      const now = Date.now()
+      set({ hp: Math.max(0, hp - amount), invincibleUntil: now + 1000, damageFlashUntil: now + 1000, tookDamageThisRun: true })
     },
 
     die: () => set({ isDead: true, isPaused: false }),
@@ -165,16 +192,22 @@ export const useGameStore = create<GameState>()(
     },
 
     addSessionCoins: (amount) => set(s => ({ sessionCoins: s.sessionCoins + amount })),
+    addKill: () => set(s => ({ kills: s.kills + 1 })),
+    addDamage: (amount) => set(s => ({ damageDealt: s.damageDealt + amount })),
+    addBossKill: () => set(s => ({ bossKills: s.bossKills + 1 })),
+    clearRecentAchievement: () => set({ recentAchievement: null }),
 
     resetRun: () => set({
       xp: 0, xpNeeded: xpNeeded(1), level: 1,
       hp: 100, maxHp: 100,
       might: 1.0, attackInterval: 600, moveSpeed: 200,
       isLevelUpPending: false, upgradeChoices: [],
-      invincibleUntil: 0, bossHp: null, bossMaxHp: 300,
+      invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, orbital: 0,
+      boomerang: false, flameTrail: false, bloodNova: false,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
+      kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
     }),
 
     chooseUpgrade: (id) => {
@@ -184,8 +217,6 @@ export const useGameStore = create<GameState>()(
             return { attackInterval: Math.max(100, Math.floor(s.attackInterval * 0.85)), isLevelUpPending: false }
           case 'moveSpeed':
             return { moveSpeed: Math.floor(s.moveSpeed * 1.15), isLevelUpPending: false }
-          case 'maxHp':
-            return { maxHp: s.maxHp + 25, hp: Math.min(s.hp + 25, s.maxHp + 25), isLevelUpPending: false }
           case 'dashCooldown':
             return { dashCooldown: Math.max(400, Math.floor(s.dashCooldown * 0.75)), isLevelUpPending: false }
           case 'dashDistance':
@@ -198,6 +229,12 @@ export const useGameStore = create<GameState>()(
             return { aura: s.aura + 1, isLevelUpPending: false }
           case 'orbital':
             return { orbital: s.orbital + 1, isLevelUpPending: false }
+          case 'boomerang':
+            return { boomerang: true, isLevelUpPending: false }
+          case 'flameTrail':
+            return { flameTrail: true, isLevelUpPending: false }
+          case 'bloodNova':
+            return { bloodNova: true, isLevelUpPending: false }
         }
       })
     },

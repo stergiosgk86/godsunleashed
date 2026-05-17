@@ -5,15 +5,20 @@ import { CombatSystem } from './CombatSystem'
 import { EffectsSystem } from './EffectsSystem'
 import { ClientEnemy } from './ClientEnemy'
 import { RemotePlayer } from './RemotePlayer'
-import { generateAssets, generateTilesetTexture, generateBushTexture } from './AssetGenerator'
+import { RemoteProjectile } from './RemoteProjectile'
+import { generateAssets, generateTilesetTexture, generatePropTextures } from './AssetGenerator'
 import { useGameStore } from '../store/gameStore'
 import { useCharacterStore } from '../store/characterStore'
+import { useAuthStore } from '../store/authStore'
 import { CHARACTER_DEFS } from './characters'
 import { minimapData } from './minimapData'
 import { runData } from './runData'
 import { soundSystem } from './SoundSystem'
 import { activeNetClient } from '../net/netState'
 import type { EnemySnapshot, PlayerSnapshot } from '../net/protocol'
+import { saveRun, loadRun, clearRun } from './runSave'
+import { TouchJoystick } from './TouchJoystick'
+import { AchievementSystem } from './AchievementSystem'
 
 const WORLD_SIZE = 4000
 const SPAWN_X = WORLD_SIZE / 2
@@ -30,10 +35,16 @@ export class MainScene extends Phaser.Scene {
   private prevLevelUpPending = false
   private healPool = 0
 
+  private achievements!: AchievementSystem
+
   // Multiplayer
   private clientEnemies = new Map<number, ClientEnemy>()
   private remotePlayers = new Map<string, RemotePlayer>()
+  private remoteProjectiles: RemoteProjectile[] = []
   private netSendTimer = 0
+  private saveTimer = 0
+  private readonly SAVE_INTERVAL = 5000
+  private joystick!: TouchJoystick
 
   constructor() {
     super({ key: 'MainScene' })
@@ -64,21 +75,67 @@ export class MainScene extends Phaser.Scene {
 
     this.drawBorderWalls()
 
-    generateBushTexture(this)
-    this.spawnBushes()
+    generatePropTextures(this)
+    this.spawnProps()
 
     this.effects = new EffectsSystem(this)
     const charType = useCharacterStore.getState().selectedCharacter
     const spriteKey = CHARACTER_DEFS[charType].spriteKey
-    this.player = new Player(this, SPAWN_X, SPAWN_Y, spriteKey)
+    const username = useAuthStore.getState().username ?? ''
+    this.player = new Player(this, SPAWN_X, SPAWN_Y, spriteKey, username)
+    this.joystick = new TouchJoystick(this)
     this.spawner = new EnemySpawner(this)
     this.combat = new CombatSystem(this, this.effects)
+    this.achievements = new AchievementSystem()
+
+    // Pre-load already-unlocked achievements so we don't re-toast them
+    const { token } = useAuthStore.getState()
+    if (token) {
+      fetch('/api/achievements', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.json())
+        .then((d: { achievements: { achievement_id: string }[] }) => {
+          this.achievements.preload(d.achievements.map(a => a.achievement_id))
+        })
+        .catch(() => { /* non-fatal */ })
+    }
+
+    // Restore mid-run state after a page reload
+    const savedRun = loadRun()
+    if (savedRun && !activeNetClient) {
+      this.spawner.restore(savedRun)
+      this.spawner.restoreEnemies(savedRun.enemies)
+      this.player.respawnAt(savedRun.playerX, savedRun.playerY)
+      runData.elapsed = savedRun.elapsed
+      useGameStore.setState({
+        xp: savedRun.xp,
+        xpNeeded: savedRun.xpNeeded,
+        level: savedRun.level,
+        hp: savedRun.hp,
+        maxHp: savedRun.maxHp,
+        might: savedRun.might,
+        attackInterval: savedRun.attackInterval,
+        moveSpeed: savedRun.moveSpeed,
+        dashCooldown: savedRun.dashCooldown,
+        dashDistance: savedRun.dashDistance,
+        multiShot: savedRun.multiShot,
+        piercing: savedRun.piercing,
+        aura: savedRun.aura,
+        orbital: savedRun.orbital,
+        boomerang: savedRun.boomerang,
+        flameTrail: savedRun.flameTrail,
+        bloodNova: savedRun.bloodNova,
+        hpRegen: savedRun.hpRegen,
+        lifeDrain: savedRun.lifeDrain,
+        sessionCoins: savedRun.sessionCoins,
+      })
+    }
 
     this.cameras.main.setBounds(0, 0, WORLD_SIZE, WORLD_SIZE)
     this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
 
     this.fpsText = this.add
-      .text(110, 14, '', { fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace', alpha: 0.7 })
+      .text(110, 14, '', { fontSize: '12px', color: '#aaaaaa', fontFamily: 'monospace' })
+      .setAlpha(0.7)
       .setScrollFactor(0)
 
     // Boss warning text (hidden until triggered)
@@ -122,8 +179,16 @@ export class MainScene extends Phaser.Scene {
     const unsubLevelUp = useGameStore.subscribe(
       s => s.isLevelUpPending,
       (pending) => {
-        if (pending) soundSystem.levelUp()
-        else this.scene.resume()
+        if (pending) {
+          soundSystem.levelUp()
+          // Stay invulnerable for the entire level-up screen
+          useGameStore.setState({ invincibleUntil: Infinity })
+        } else {
+          // 2-second grace period after resuming so enemies that walked
+          // onto the player during the pause don't instantly deal damage
+          useGameStore.setState({ invincibleUntil: Date.now() + 2000 })
+          this.scene.resume()
+        }
       }
     )
     const unsubPause = useGameStore.subscribe(
@@ -131,36 +196,55 @@ export class MainScene extends Phaser.Scene {
       (paused) => { if (paused) this.scene.pause(); else this.scene.resume() }
     )
     const unsubDamage = useGameStore.subscribe(
-      s => s.invincibleUntil,
+      s => s.damageFlashUntil,
       () => {
-        if (useGameStore.getState().hp > 0) {
+        if (useGameStore.getState().hp > 0 && this.scene.isActive()) {
           this.effects.shakeCamera()
           soundSystem.playerHit()
         }
       }
     )
+    const unsubDead = useGameStore.subscribe(s => s.isDead, isDead => { if (isDead) clearRun() })
+    const unsubWon  = useGameStore.subscribe(s => s.isWon,  isWon  => { if (isWon)  clearRun() })
     this.events.once('shutdown', () => {
-      unsubLevelUp(); unsubPause(); unsubDamage()
+      unsubLevelUp(); unsubPause(); unsubDamage(); unsubDead(); unsubWon()
+      this.joystick.destroy()
       runData.elapsed = 0
       for (const r of this.remotePlayers.values()) r.destroy()
       this.remotePlayers.clear()
+      for (const rp of this.remoteProjectiles) rp.destroy()
+      this.remoteProjectiles = []
       this.clientEnemies.clear()
     })
   }
 
-  private spawnBushes() {
-    const MARGIN = 80
-    const SPAWN_CLEAR = 300
-    for (let i = 0; i < 75; i++) {
-      const x = MARGIN + Math.random() * (WORLD_SIZE - MARGIN * 2)
-      const y = MARGIN + Math.random() * (WORLD_SIZE - MARGIN * 2)
-      const dx = x - SPAWN_X, dy = y - SPAWN_Y
-      if (dx * dx + dy * dy < SPAWN_CLEAR * SPAWN_CLEAR) continue
-      this.add.image(x, y, 'bush')
-        .setDepth(0)
-        .setScale(1.8 + Math.random() * 0.8)
+  private spawnProps() {
+    const MARGIN = 100
+    const SPAWN_CLEAR = 320
+    const props: Array<{ key: string; count: number; minScale: number; maxScale: number; depth: number }> = [
+      { key: 'prop_bush_large', count: 120, minScale: 0.9, maxScale: 1.8, depth: 1 },
+      { key: 'prop_rock',       count: 80,  minScale: 0.7, maxScale: 1.6, depth: 1 },
+      { key: 'prop_tree',       count: 40,  minScale: 1.0, maxScale: 1.8, depth: 2 },
+      { key: 'prop_mushroom',   count: 60,  minScale: 0.8, maxScale: 1.4, depth: 1 },
+      { key: 'prop_bones',      count: 50,  minScale: 0.9, maxScale: 1.5, depth: 1 },
+    ]
+    for (const { key, count, minScale, maxScale, depth } of props) {
+      let placed = 0, attempts = 0
+      while (placed < count && attempts < count * 6) {
+        attempts++
+        const x = MARGIN + Math.random() * (WORLD_SIZE - MARGIN * 2)
+        const y = MARGIN + Math.random() * (WORLD_SIZE - MARGIN * 2)
+        const dx = x - SPAWN_X, dy = y - SPAWN_Y
+        if (dx * dx + dy * dy < SPAWN_CLEAR * SPAWN_CLEAR) continue
+        this.add.image(x, y, key)
+          .setDepth(depth)
+          .setScale(minScale + Math.random() * (maxScale - minScale))
+          .setAlpha(0.75 + Math.random() * 0.25)
+        placed++
+      }
     }
   }
+
 
   private drawBorderWalls() {
     const W = 64
@@ -281,9 +365,13 @@ export class MainScene extends Phaser.Scene {
 
     net.on('enemyDied', (msg) => {
       const ce = this.clientEnemies.get(msg.enemyId)
+      const isBoss = ce?.isBoss ?? false
       if (ce) { this.effects.showDeathBurst(msg.x, msg.y); ce.destroy(); this.clientEnemies.delete(msg.enemyId) }
-      useGameStore.getState().addXP(msg.xpValue)
-      soundSystem.enemyDie()
+      this.combat.spawnDropsAt(msg.x, msg.y, msg.xpValue, isBoss)
+      const gs = useGameStore.getState()
+      gs.addKill()
+      if (isBoss) { gs.addBossKill(); soundSystem.bossDie() }
+      else soundSystem.enemyDie()
     })
 
     net.on('bossWarning', (msg) => {
@@ -300,7 +388,6 @@ export class MainScene extends Phaser.Scene {
 
     net.on('bossHp', (msg) => {
       useGameStore.getState().setBossHp(msg.hp === 0 ? null : msg.hp)
-      if (msg.hp === 0) soundSystem.bossDie()
     })
 
     net.on('gameOver', (msg) => {
@@ -312,6 +399,10 @@ export class MainScene extends Phaser.Scene {
     net.on('playerLeft', () => {
       useGameStore.getState().die()
       this.scene.pause()
+    })
+
+    net.on('projectile', (msg) => {
+      this.remoteProjectiles.push(new RemoteProjectile(this, msg.x, msg.y, msg.vx, msg.vy))
     })
   }
 
@@ -346,14 +437,16 @@ export class MainScene extends Phaser.Scene {
       if (snap.id === myId) continue
       const existing = this.remotePlayers.get(snap.id)
       if (existing) {
-        existing.update(snap.x, snap.y)
+        existing.update(snap.x, snap.y, snap.aura, snap.orbital)
       } else {
-        this.remotePlayers.set(snap.id, new RemotePlayer(this, snap.x, snap.y, snap.characterType, 'P2'))
+        this.remotePlayers.set(snap.id, new RemotePlayer(this, snap.x, snap.y, snap.characterType, snap.username))
       }
     }
   }
 
   update(_time: number, delta: number) {
+    this.player.touchVx = this.joystick.vx
+    this.player.touchVy = this.joystick.vy
     this.player.update(delta, this.effects)
     this.effects.update(delta)
 
@@ -363,18 +456,49 @@ export class MainScene extends Phaser.Scene {
       this.netSendTimer += delta
       if (this.netSendTimer >= 50) {
         this.netSendTimer = 0
-        net.send({ type: 'input', x: this.player.x, y: this.player.y })
+        const { aura, orbital } = useGameStore.getState()
+        net.send({ type: 'input', x: this.player.x, y: this.player.y, aura, orbital })
       }
       const allClientEnemies = Array.from(this.clientEnemies.values())
+      for (const ce of allClientEnemies) ce.update(0, 0, delta)
       this.combat.update(this.player.x, this.player.y, allClientEnemies, delta)
+      for (const rp of this.remotePlayers.values()) rp.tick(delta)
+      for (const rp of this.remoteProjectiles) rp.update(delta)
+      this.remoteProjectiles = this.remoteProjectiles.filter(rp => rp.active)
     } else {
       // Singleplayer
       runData.elapsed += delta
       this.spawner.update(this.player.x, this.player.y, delta)
       this.combat.update(this.player.x, this.player.y, this.spawner.all, delta)
+
+      this.saveTimer += delta
+      if (this.saveTimer >= this.SAVE_INTERVAL) {
+        this.saveTimer = 0
+        const s = useGameStore.getState()
+        const sp = this.spawner.getSnapshot()
+        saveRun({
+          elapsed: runData.elapsed,
+          nextBossAt: sp.nextBossAt,
+          warningFired: sp.warningFired,
+          finalBossWarningFired: sp.finalBossWarningFired,
+          playerX: this.player.x,
+          playerY: this.player.y,
+          enemies: this.spawner.getSaveableEnemies(),
+          xp: s.xp, xpNeeded: s.xpNeeded, level: s.level,
+          hp: s.hp, maxHp: s.maxHp,
+          might: s.might, attackInterval: s.attackInterval, moveSpeed: s.moveSpeed,
+          dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
+          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura,
+          orbital: s.orbital, boomerang: s.boomerang, flameTrail: s.flameTrail,
+          bloodNova: s.bloodNova, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
+          sessionCoins: s.sessionCoins,
+        })
+      }
     }
 
     const state = useGameStore.getState()
+
+    if (!state.isDead && !state.isWon) this.achievements.update()
 
     if (state.hpRegen > 0 && state.hp < state.maxHp && !state.isDead) {
       this.healPool += state.hpRegen * (delta / 1000)
@@ -387,6 +511,7 @@ export class MainScene extends Phaser.Scene {
 
     if (state.hp <= 0 && !state.isDead) {
       state.die()
+      if (net) net.send({ type: 'died' })
       this.scene.pause()
       return
     }
@@ -405,6 +530,8 @@ export class MainScene extends Phaser.Scene {
     // Feed minimap
     minimapData.playerX = this.player.x
     minimapData.playerY = this.player.y
+    minimapData.remotePlayers = Array.from(this.remotePlayers.values())
+      .map(r => ({ x: r.x, y: r.y }))
     const allEnemies = net
       ? Array.from(this.clientEnemies.values())
       : this.spawner.all

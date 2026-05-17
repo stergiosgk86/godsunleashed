@@ -6,7 +6,7 @@ const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight:
   { key: 'player',         url: SPRITE_URLS.player,       frameWidth: 32, frameHeight: 32 },
   { key: 'char_rogue',    url: SPRITE_URLS.charRogue,    frameWidth: 32, frameHeight: 32 },
   { key: 'char_witch',    url: SPRITE_URLS.charWitch,    frameWidth: 32, frameHeight: 32 },
-  { key: 'char_vampire',  url: SPRITE_URLS.charVampire,  frameWidth: 32, frameHeight: 32 },
+  { key: 'char_shade',   url: SPRITE_URLS.charShade,   frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_basic',    url: SPRITE_URLS.enemyBasic,   frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_speeder',  url: SPRITE_URLS.enemySpeeder, frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_tank',     url: SPRITE_URLS.enemyTank,    frameWidth: 32, frameHeight: 32 },

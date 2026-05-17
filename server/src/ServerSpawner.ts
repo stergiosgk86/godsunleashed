@@ -1,7 +1,8 @@
 import { ServerEnemy } from './ServerEnemy.js'
 import type { EnemyKind } from './protocol.js'
 
-const SPAWN_INTERVAL = 480
+const SPAWN_INTERVAL_START = 700
+const SPAWN_INTERVAL_END   = 200
 const SPAWN_RADIUS   = 600
 const MAX_ENEMIES    = 300
 const BOSS_FIRST     = 90_000
@@ -36,9 +37,14 @@ export class ServerSpawner {
 
     const inFinal = this.finalBossAlive || this.elapsed >= FINAL_LOCK
 
+    // Scale difficulty by player count: √n gives 1.0× at 1p, 1.41× at 2p, 1.73× at 3p, 2.0× at 4p
+    const playerScale = Math.sqrt(Math.max(1, players.length))
+    const baseInterval = SPAWN_INTERVAL_START - (SPAWN_INTERVAL_START - SPAWN_INTERVAL_END) * Math.min(this.elapsed / RUN_DURATION, 1)
+    const spawnInterval = baseInterval / playerScale
+    const enemyCap = Math.round(MAX_ENEMIES * playerScale)
     if (!this.bossAlive && !inFinal &&
-        this.spawnTimer >= SPAWN_INTERVAL &&
-        this.enemies.length < MAX_ENEMIES) {
+        this.spawnTimer >= spawnInterval &&
+        this.enemies.length < enemyCap) {
       this.spawnTimer = 0
       this.spawnEnemy(players)
     }
@@ -69,9 +75,11 @@ export class ServerSpawner {
       this.onBossSpawn?.(e)
     }
 
-    const nearest = this.nearestPlayer(players)
+    const speedMult = 0.6 + 0.55 * Math.min(this.elapsed / RUN_DURATION, 1)
     for (const e of this.enemies) {
-      if (e.active) e.update(nearest.x, nearest.y, delta)
+      if (!e.active) continue
+      const nearest = this.nearestPlayerTo(e.x, e.y, players)
+      e.update(nearest.x, nearest.y, delta, speedMult)
     }
 
     if (this.bossAlive && !this.enemies.some(e => e.kind === 'boss' && e.active)) {
@@ -95,12 +103,21 @@ export class ServerSpawner {
   private spawnEnemy(players: { x: number; y: number }[]) {
     const target = this.randomNear(players)
     const kind = this.pickKind()
-    this.enemies.push(new ServerEnemy(kind, target.x, target.y))
+    const hpMult = 1 + 2 * Math.min(this.elapsed / RUN_DURATION, 1)
+    this.enemies.push(new ServerEnemy(kind, target.x, target.y, hpMult))
   }
 
-  private nearestPlayer(players: { x: number; y: number }[]): { x: number; y: number } {
+  private nearestPlayerTo(ex: number, ey: number, players: { x: number; y: number }[]): { x: number; y: number } {
     if (players.length === 0) return { x: 2000, y: 2000 }
-    return players[0]
+    let nearest = players[0]
+    let minDist = Infinity
+    for (const p of players) {
+      const dx = p.x - ex
+      const dy = p.y - ey
+      const d = dx * dx + dy * dy
+      if (d < minDist) { minDist = d; nearest = p }
+    }
+    return nearest
   }
 
   private randomNear(players: { x: number; y: number }[]): { x: number; y: number } {

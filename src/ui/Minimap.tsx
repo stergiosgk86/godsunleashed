@@ -1,11 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { minimapData } from '../game/minimapData'
 
-const SIZE = 180
-const PADDING = 12
 const WALL_FRAC = 64 / 4000
 
 export function Minimap() {
+  const isMobile = window.innerWidth <= 768
+  const SIZE = isMobile ? 110 : 180
+  const PADDING = isMobile ? 6 : 12
+  const topOffset = isMobile ? 128 : PADDING
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -15,7 +17,7 @@ export function Minimap() {
     let animId: number
 
     function draw() {
-      const { playerX, playerY, enemies, worldSize } = minimapData
+      const { playerX, playerY, enemies, remotePlayers, worldSize } = minimapData
       const scale = SIZE / worldSize
       const W = Math.round(WALL_FRAC * SIZE)
 
@@ -62,6 +64,24 @@ export function Minimap() {
           ctx.beginPath(); ctx.arc(ex, ey, 2, 0, Math.PI * 2); ctx.fill()
           ctx.shadowBlur = 0
         }
+      }
+
+      // Remote players (teammates)
+      for (const rp of remotePlayers) {
+        const rx = rp.x * scale
+        const ry = rp.y * scale
+        ctx.shadowColor = '#44ff88'; ctx.shadowBlur = 8
+        ctx.fillStyle = '#44ff88'
+        ctx.beginPath(); ctx.arc(rx, ry, 3, 0, Math.PI * 2); ctx.fill()
+        ctx.shadowBlur = 0
+        ctx.strokeStyle = 'rgba(68,255,136,0.7)'
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(rx - 7, ry); ctx.lineTo(rx - 3, ry)
+        ctx.moveTo(rx + 3, ry); ctx.lineTo(rx + 7, ry)
+        ctx.moveTo(rx, ry - 7); ctx.lineTo(rx, ry - 3)
+        ctx.moveTo(rx, ry + 3); ctx.lineTo(rx, ry + 7)
+        ctx.stroke()
       }
 
       // Player pulsing ring
@@ -111,7 +131,7 @@ export function Minimap() {
   }, [])
 
   return (
-    <div style={{ position: 'absolute', top: PADDING, right: PADDING, pointerEvents: 'none' }}>
+    <div style={{ position: 'absolute', top: topOffset, right: PADDING, pointerEvents: 'none' }}>
       <div style={{
         color: '#6677bb', fontSize: 9, fontFamily: 'monospace',
         letterSpacing: 3, marginBottom: 4, textAlign: 'right',

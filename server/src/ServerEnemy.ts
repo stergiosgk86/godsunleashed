@@ -43,14 +43,14 @@ export class ServerEnemy {
   // Ranged preferred distance
   private readonly RANGED_DIST = 280
 
-  constructor(kind: EnemyKind, x: number, y: number) {
+  constructor(kind: EnemyKind, x: number, y: number, hpMult = 1) {
     this.id = _nextId++
     this.kind = kind
     this.x = x
     this.y = y
     const cfg = CONFIGS[kind]
-    this.hp = cfg.maxHp
-    this.maxHp = cfg.maxHp
+    this.hp = Math.round(cfg.maxHp * hpMult)
+    this.maxHp = this.hp
     this.speed = cfg.speed
     this.xpValue = cfg.xpValue
     this.isBoss = cfg.isBoss
@@ -64,7 +64,7 @@ export class ServerEnemy {
     return false
   }
 
-  update(nearestX: number, nearestY: number, delta: number) {
+  update(nearestX: number, nearestY: number, delta: number, speedMult = 1) {
     if (!this.active) return
     const dt = delta / 1000
     const dx = nearestX - this.x
@@ -75,25 +75,25 @@ export class ServerEnemy {
       case 'basic':
       case 'speeder':
       case 'tank':
-        this.x += (dx / dist) * this.speed * dt
-        this.y += (dy / dist) * this.speed * dt
+        this.x += (dx / dist) * this.speed * speedMult * dt
+        this.y += (dy / dist) * this.speed * speedMult * dt
         break
 
       case 'ranged': {
         if (dist > this.RANGED_DIST + 30) {
-          this.x += (dx / dist) * this.speed * dt
-          this.y += (dy / dist) * this.speed * dt
+          this.x += (dx / dist) * this.speed * speedMult * dt
+          this.y += (dy / dist) * this.speed * speedMult * dt
         } else if (dist < this.RANGED_DIST - 30) {
-          this.x -= (dx / dist) * this.speed * dt
-          this.y -= (dy / dist) * this.speed * dt
+          this.x -= (dx / dist) * this.speed * speedMult * dt
+          this.y -= (dy / dist) * this.speed * speedMult * dt
         }
         break
       }
 
       case 'exploder':
         if (!this.exploderArmed) {
-          this.x += (dx / dist) * this.speed * dt
-          this.y += (dy / dist) * this.speed * dt
+          this.x += (dx / dist) * this.speed * speedMult * dt
+          this.y += (dy / dist) * this.speed * speedMult * dt
           if (dist < 110) { this.exploderArmed = true; this.exploderTimer = 1200 }
         } else {
           this.exploderTimer -= delta

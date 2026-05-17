@@ -27,6 +27,8 @@ export class Player {
     right: Phaser.Input.Keyboard.Key
     space: Phaser.Input.Keyboard.Key
   }
+  touchVx = 0
+  touchVy = 0
   private lastDir: Direction = 'down'
   private isDashing = false
   private dashTimeLeft = 0
@@ -36,13 +38,20 @@ export class Player {
 
   private bounds: Phaser.Geom.Rectangle
   private spriteKey: string
+  private nameLabel: Phaser.GameObjects.Text | null = null
 
-  constructor(scene: Phaser.Scene, x: number, y: number, spriteKey = 'player') {
+  constructor(scene: Phaser.Scene, x: number, y: number, spriteKey = 'player', username = '') {
     this.x = x
     this.y = y
     this.spriteKey = spriteKey
     this.bounds = scene.physics.world.bounds
     this.graphic = scene.add.sprite(x, y, spriteKey).setDepth(4).setScale(1.5)
+    if (username) {
+      this.nameLabel = scene.add.text(x, y - 28, username, {
+        fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
+        stroke: '#000000', strokeThickness: 3,
+      }).setOrigin(0.5).setDepth(5)
+    }
 
     const kb = scene.input.keyboard!
     this.keys = {
@@ -60,17 +69,19 @@ export class Player {
 
   update(delta: number, effects: EffectsSystem) {
     const dt = delta / 1000
-    const { moveSpeed, invincibleUntil, startDash, dashDistance } = useGameStore.getState()
+    const { moveSpeed, startDash, dashDistance } = useGameStore.getState()
 
-    let vx = 0
-    let vy = 0
+    let vx = this.touchVx
+    let vy = this.touchVy
     if (this.keys.a.isDown || this.keys.left.isDown) vx -= 1
     if (this.keys.d.isDown || this.keys.right.isDown) vx += 1
     if (this.keys.w.isDown || this.keys.up.isDown) vy -= 1
     if (this.keys.s.isDown || this.keys.down.isDown) vy += 1
+    // Clamp combined input so touch + keyboard doesn't exceed unit vector
+    const inputLen = Math.sqrt(vx * vx + vy * vy)
+    if (inputLen > 1) { vx /= inputLen; vy /= inputLen }
 
     const moving = vx !== 0 || vy !== 0
-    if (vx !== 0 && vy !== 0) { vx *= 0.707; vy *= 0.707 }
 
     if (Phaser.Input.Keyboard.JustDown(this.keys.space) && !this.isDashing) {
       if (startDash()) {
@@ -108,17 +119,20 @@ export class Player {
     this.x = Phaser.Math.Clamp(this.x, this.bounds.x + margin, this.bounds.right - margin)
     this.y = Phaser.Math.Clamp(this.y, this.bounds.y + margin, this.bounds.bottom - margin)
     this.graphic.setPosition(this.x, this.y)
+    this.nameLabel?.setPosition(this.x, this.y - 28)
 
     const dir = moving ? getDirection(vx, vy) : this.lastDir
     this.lastDir = playDir(this.graphic, this.spriteKey, dir, this.lastDir, moving)
 
-    const isInvincible = Date.now() < invincibleUntil
-    this.graphic.setAlpha(isInvincible ? (Math.floor(Date.now() / 100) % 2 === 0 ? 0.3 : 1) : 1)
+    const { damageFlashUntil } = useGameStore.getState()
+    const isFlashing = Date.now() < damageFlashUntil
+    this.graphic.setAlpha(isFlashing ? (Math.floor(Date.now() / 100) % 2 === 0 ? 0.3 : 1) : 1)
   }
 
   respawnAt(x: number, y: number) {
     this.x = x
     this.y = y
     this.graphic.setPosition(x, y)
+    this.nameLabel?.setPosition(x, y - 28)
   }
 }

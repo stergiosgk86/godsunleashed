@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
-import { runData, RUN_DURATION } from '../game/runData'
+import { RUN_DURATION } from '../game/runData'
 
 function fmt(ms: number): string {
   const s = Math.floor(ms / 1000)

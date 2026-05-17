@@ -1,6 +1,7 @@
 import Phaser, { TintModes } from 'phaser'
 import type { AnyEnemy, EnemyBullet } from './Enemy'
 import { type Direction, getDirection, playDir } from './spriteUtils'
+import { difficultyScale } from './difficultyScale'
 
 const PREFERRED_DIST = 280
 const MOVE_SPEED = 55
@@ -26,6 +27,7 @@ class EnemyProjectile implements EnemyBullet {
     this.vy = (dy / dist) * speed
     this.graphic = scene.add.image(x, y, 'enemy_bullet')
       .setRotation(Math.atan2(dy, dx))
+      .setTint(0xdd1111)
       .setDepth(3)
   }
 
@@ -48,7 +50,7 @@ export class RangedEnemy implements AnyEnemy {
   private graphic: Phaser.GameObjects.Sprite
   x: number
   y: number
-  hp = 40
+  hp: number
   active = true
   contactDamage = 10
   xpValue = 2
@@ -63,6 +65,7 @@ export class RangedEnemy implements AnyEnemy {
     this.scene = scene
     this.x = x
     this.y = y
+    this.hp = Math.round(40 * difficultyScale.hp)
     this.graphic = scene.add.sprite(x, y, 'enemy_ranged')
       .setDepth(2)
       .setScale(this.baseScale)
@@ -72,7 +75,7 @@ export class RangedEnemy implements AnyEnemy {
   takeDamage(amount: number) {
     this.hp -= amount
     this.hitFlashTimer = 80
-    this.graphic.setTint(0xffffff).setTintMode(TintModes.FILL)
+    this.graphic.setTint(0xff4444)
   }
 
   update(targetX: number, targetY: number, delta: number) {
@@ -87,11 +90,11 @@ export class RangedEnemy implements AnyEnemy {
     const dist = Math.sqrt(dx * dx + dy * dy) || 1
 
     if (dist > PREFERRED_DIST + 30) {
-      this.x += (dx / dist) * MOVE_SPEED * dt
-      this.y += (dy / dist) * MOVE_SPEED * dt
+      this.x += (dx / dist) * MOVE_SPEED * difficultyScale.speed * dt
+      this.y += (dy / dist) * MOVE_SPEED * difficultyScale.speed * dt
     } else if (dist < PREFERRED_DIST - 30) {
-      this.x -= (dx / dist) * MOVE_SPEED * dt
-      this.y -= (dy / dist) * MOVE_SPEED * dt
+      this.x -= (dx / dist) * MOVE_SPEED * difficultyScale.speed * dt
+      this.y -= (dy / dist) * MOVE_SPEED * difficultyScale.speed * dt
     }
     this.graphic.setPosition(this.x, this.y)
 

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import type { CharacterType } from '../game/characters'
 
 interface CharacterState {
@@ -6,7 +7,12 @@ interface CharacterState {
   setCharacter: (type: CharacterType) => void
 }
 
-export const useCharacterStore = create<CharacterState>()((set) => ({
-  selectedCharacter: 'knight',
-  setCharacter: (type) => set({ selectedCharacter: type }),
-}))
+export const useCharacterStore = create<CharacterState>()(
+  persist(
+    (set) => ({
+      selectedCharacter: 'knight',
+      setCharacter: (type) => set({ selectedCharacter: type }),
+    }),
+    { name: 'gods-character' }
+  )
+)

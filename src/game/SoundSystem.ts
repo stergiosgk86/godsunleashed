@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'vampires_muted'
+const STORAGE_KEY = 'gods_muted'
 
 class SoundSystem {
   private ctx: AudioContext | null = null

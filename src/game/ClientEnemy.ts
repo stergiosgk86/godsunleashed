@@ -83,21 +83,18 @@ export class ClientEnemy implements AnyEnemy {
     }
   }
 
-  flashHit() {
+  // AnyEnemy interface — server is authoritative for HP; client shows hit flash only
+  takeDamage(_amount: number) {
     this.hitFlashTimer = 80
-    this.sprite.setTint(0xffffff).setTintMode(TintModes.FILL)
+    this.sprite.setTint(0xff4444)
   }
 
-  tickFlash(delta: number) {
+  update(_tx: number, _ty: number, delta: number) {
     if (this.hitFlashTimer > 0) {
       this.hitFlashTimer -= delta
       if (this.hitFlashTimer <= 0) this.sprite.clearTint()
     }
   }
-
-  // AnyEnemy interface — no-ops in multiplayer (server is authoritative)
-  takeDamage(_amount: number) { this.flashHit() }
-  update(_tx: number, _ty: number, _delta: number) { this.tickFlash(16) }
 
   destroy() {
     this.active = false

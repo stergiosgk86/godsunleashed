@@ -3,6 +3,7 @@ import { ServerSpawner } from './ServerSpawner.js'
 import type { S2CMessage, PlayerSnapshot } from './protocol.js'
 
 const TICK_MS = 50
+const MAX_PLAYERS = 4
 
 interface Player {
   id: string
@@ -10,6 +11,11 @@ interface Player {
   x: number
   y: number
   characterType: string
+  username: string
+  dead: boolean
+  isHost: boolean
+  aura: number
+  orbital: number
 }
 
 export class GameRoom {
@@ -19,24 +25,53 @@ export class GameRoom {
   private bosses = new Map<number, number>()  // id → maxHp
   private started = false
 
-  addPlayer(id: string, ws: WebSocket, characterType: string, x: number, y: number) {
-    this.players.push({ id, ws, x, y, characterType })
-
-    if (this.players.length === 1) {
-      this.send(ws, { type: 'waiting' })
-    } else {
-      // Two players — start the game
-      const snaps = this.playerSnapshots()
-      for (const p of this.players) {
-        this.send(p.ws, { type: 'start', yourId: p.id, players: snaps })
-      }
-      this.startLoop()
+  addPlayer(id: string, ws: WebSocket, characterType: string, username: string, x: number, y: number) {
+    if (this.started) return
+    const isHost = this.players.length === 0
+    this.players.push({ id, ws, x, y, characterType, username, dead: false, isHost, aura: 0, orbital: 0 })
+    this.broadcastWaiting()
+    if (this.players.length >= MAX_PLAYERS) {
+      this.startGame()
     }
   }
 
-  updatePlayerPos(id: string, x: number, y: number) {
+  handleStartGame(requesterId: string): boolean {
+    const requester = this.players.find(p => p.id === requesterId)
+    if (!requester?.isHost || this.players.length < 2 || this.started) return false
+    this.startGame()
+    return true
+  }
+
+  private broadcastWaiting() {
+    for (const p of this.players) {
+      this.send(p.ws, { type: 'waiting', playerCount: this.players.length, isHost: p.isHost })
+    }
+  }
+
+  private startGame() {
+    if (this.started) return
+    const snaps = this.playerSnapshots()
+    for (const p of this.players) {
+      this.send(p.ws, { type: 'start', yourId: p.id, players: snaps })
+    }
+    this.startLoop()
+  }
+
+  updatePlayerPos(id: string, x: number, y: number, aura: number, orbital: number) {
     const p = this.players.find(p => p.id === id)
-    if (p) { p.x = x; p.y = y }
+    if (p && !p.dead) { p.x = x; p.y = y; p.aura = aura; p.orbital = orbital }
+  }
+
+  markPlayerDead(id: string) {
+    const p = this.players.find(p => p.id === id)
+    if (p) p.dead = true
+  }
+
+  relayProjectile(fromId: string, x: number, y: number, vx: number, vy: number) {
+    const data = JSON.stringify({ type: 'projectile', playerId: fromId, x, y, vx, vy })
+    for (const p of this.players) {
+      if (p.id !== fromId && p.ws.readyState === 1) p.ws.send(data)
+    }
   }
 
   handleHit(enemyId: number, damage: number) {
@@ -63,7 +98,7 @@ export class GameRoom {
     return false
   }
 
-  get isFull(): boolean { return this.players.length >= 2 }
+  get isFull(): boolean { return this.players.length >= MAX_PLAYERS }
   get isEmpty(): boolean { return this.players.length === 0 }
   get isStarted(): boolean { return this.started }
 
@@ -85,15 +120,21 @@ export class GameRoom {
   }
 
   private tick() {
-    const positions = this.players.map(p => ({ x: p.x, y: p.y }))
-    this.spawner.update(positions, TICK_MS)
-
-    this.broadcast({
-      type: 'tick',
-      enemies: this.spawner.all.map(e => e.snapshot()),
-      players: this.playerSnapshots(),
-      elapsed: this.spawner.runElapsed,
-    })
+    try {
+      const alivePlayers = this.players.filter(p => !p.dead)
+      const positions = alivePlayers.length > 0
+        ? alivePlayers.map(p => ({ x: p.x, y: p.y }))
+        : this.players.map(p => ({ x: p.x, y: p.y }))
+      this.spawner.update(positions, TICK_MS)
+      this.broadcast({
+        type: 'tick',
+        enemies: this.spawner.all.map(e => e.snapshot()),
+        players: this.playerSnapshots(),
+        elapsed: this.spawner.runElapsed,
+      })
+    } catch (err) {
+      console.error('Tick error:', err)
+    }
   }
 
   private stop() {
@@ -101,7 +142,9 @@ export class GameRoom {
   }
 
   private playerSnapshots(): PlayerSnapshot[] {
-    return this.players.map(p => ({ id: p.id, x: p.x, y: p.y, characterType: p.characterType }))
+    return this.players
+      .filter(p => !p.dead)
+      .map(p => ({ id: p.id, x: p.x, y: p.y, characterType: p.characterType, username: p.username, aura: p.aura, orbital: p.orbital }))
   }
 
   private broadcast(msg: S2CMessage) {

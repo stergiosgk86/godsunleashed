@@ -1,4 +1,4 @@
-export type CharacterType = 'knight' | 'rogue' | 'witch' | 'vampire'
+export type CharacterType = 'knight' | 'rogue' | 'witch' | 'shade'
 
 export interface CharacterDef {
   id: CharacterType
@@ -60,10 +60,10 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     attackIntervalMult: 0.78, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 1, lifeDrain: 0,
   },
-  vampire: {
-    id: 'vampire', name: 'Vampire', trait: 'Life Drain',
+  shade: {
+    id: 'shade', name: 'Shade', trait: 'Life Drain',
     description: 'Heals on every kill. Large HP pool. Less base damage.',
-    spriteKey: 'char_vampire', color: '#cc2222',
+    spriteKey: 'char_shade', color: '#cc2222',
     statLines: [
       { label: '+60 Max HP',           positive: true  },
       { label: '+2 HP per kill',       positive: true  },
@@ -76,4 +76,4 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   },
 }
 
-export const ALL_CHARACTERS: CharacterType[] = ['knight', 'rogue', 'witch', 'vampire']
+export const ALL_CHARACTERS: CharacterType[] = ['knight', 'rogue', 'witch', 'shade']

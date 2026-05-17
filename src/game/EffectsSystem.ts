@@ -175,7 +175,7 @@ export class EffectsSystem {
   }
 
   shakeCamera() {
-    this.scene.cameras.main.shake(180, 0.012)
+    this.scene.cameras?.main?.shake(180, 0.012)
   }
 
   update(delta: number) {

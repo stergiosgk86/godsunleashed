@@ -5,9 +5,14 @@ import { RangedEnemy } from './RangedEnemy'
 import { ExploderEnemy } from './ExploderEnemy'
 import { BossEnemy } from './BossEnemy'
 import { FinalBossEnemy } from './FinalBossEnemy'
-import { RUN_DURATION } from './runData'
 
-const SPAWN_INTERVAL = 480
+export type SavedEnemyType = EnemyType | 'ranged' | 'exploder'
+export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: number }
+import { RUN_DURATION } from './runData'
+import { difficultyScale, computeSpeedScale, computeHpScale } from './difficultyScale'
+
+const SPAWN_INTERVAL_START = 700
+const SPAWN_INTERVAL_END   = 200
 const SPAWN_RADIUS = 600
 const MAX_ENEMIES = 300
 const BOSS_FIRST_SPAWN = 90_000
@@ -42,14 +47,66 @@ export class EnemySpawner {
     return this.enemies
   }
 
+  getSnapshot() {
+    return {
+      elapsed: this.elapsed,
+      nextBossAt: this.nextBossAt,
+      warningFired: this.warningFired,
+      finalBossWarningFired: this.finalBossWarningFired,
+    }
+  }
+
+  restore(snap: { elapsed: number; nextBossAt: number; warningFired: boolean; finalBossWarningFired: boolean }) {
+    this.elapsed = snap.elapsed
+    this.nextBossAt = snap.nextBossAt
+    this.warningFired = snap.warningFired
+    this.finalBossWarningFired = snap.finalBossWarningFired
+    difficultyScale.speed = computeSpeedScale(this.elapsed)
+    difficultyScale.hp = computeHpScale(this.elapsed)
+  }
+
+  getSaveableEnemies(): EnemySave[] {
+    const result: EnemySave[] = []
+    for (const e of this.enemies) {
+      if (!e.active) continue
+      if (e instanceof BossEnemy || e instanceof FinalBossEnemy) continue
+      if (e instanceof RangedEnemy) {
+        result.push({ type: 'ranged', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof ExploderEnemy) {
+        result.push({ type: 'exploder', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof Enemy) {
+        result.push({ type: e.type, x: e.x, y: e.y, hp: e.hp })
+      }
+    }
+    return result
+  }
+
+  restoreEnemies(saves: EnemySave[]) {
+    for (const save of saves) {
+      let e: AnyEnemy
+      if (save.type === 'ranged') {
+        e = new RangedEnemy(this.scene, save.x, save.y)
+      } else if (save.type === 'exploder') {
+        e = new ExploderEnemy(this.scene, save.x, save.y)
+      } else {
+        e = new Enemy(this.scene, save.x, save.y, save.type)
+      }
+      e.hp = save.hp
+      this.enemies.push(e)
+    }
+  }
+
   update(playerX: number, playerY: number, delta: number) {
     this.elapsed += delta
     this.spawnTimer += delta
+    difficultyScale.speed = computeSpeedScale(this.elapsed)
+    difficultyScale.hp    = computeHpScale(this.elapsed)
 
     const inFinalPhase = this.finalBossAlive || this.elapsed >= FINAL_BOSS_LOCK
 
     // Regular enemy spawning (paused during any boss fight or final phase lock)
-    if (!this.bossAlive && !inFinalPhase && this.spawnTimer >= SPAWN_INTERVAL && this.enemies.length < MAX_ENEMIES) {
+    const spawnInterval = SPAWN_INTERVAL_START - (SPAWN_INTERVAL_START - SPAWN_INTERVAL_END) * Math.min(this.elapsed / RUN_DURATION, 1)
+    if (!this.bossAlive && !inFinalPhase && this.spawnTimer >= spawnInterval && this.enemies.length < MAX_ENEMIES) {
       this.spawnTimer = 0
       this.spawnEnemy(playerX, playerY)
     }

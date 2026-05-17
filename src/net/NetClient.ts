@@ -18,6 +18,9 @@ export class NetClient {
       const h = this.handlers[msg.type] as MsgHandler<any> | undefined
       h?.(msg)
     }
+    this.ws.onerror = () => {
+      console.error(`[NetClient] WebSocket error connecting to ${url}`)
+    }
   }
 
   on<K extends S2CMessage['type']>(
@@ -41,8 +44,8 @@ export class NetClient {
     return this
   }
 
-  onClose(cb: () => void): this {
-    this.ws.addEventListener('close', cb)
+  onClose(cb: (code: number, reason: string) => void): this {
+    this.ws.addEventListener('close', (e: CloseEvent) => cb(e.code, e.reason))
     return this
   }
 

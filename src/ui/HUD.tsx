@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { runData, RUN_DURATION } from '../game/runData'
 
 function fmt(ms: number): string {
@@ -27,23 +27,28 @@ function TimerDisplay() {
       transform: 'translateX(-50%)', width: 260,
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       pointerEvents: 'none',
+      background: '#05050faa',
+      border: '1px solid #1a1a33',
+      borderTop: 'none',
+      borderRadius: '0 0 8px 8px',
+      padding: '0 14px 6px',
     }}>
       <div style={{
-        color: warning ? '#ff4444' : '#aaaacc',
-        fontSize: 16, fontFamily: 'monospace', fontWeight: 'bold',
-        letterSpacing: 3, padding: '6px 0 4px',
-        textShadow: warning ? '0 0 10px #ff0000' : 'none',
-        animation: warning ? 'none' : 'none',
+        color: warning ? '#ff4444' : '#ffffff',
+        fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold',
+        letterSpacing: 4, padding: '6px 0 4px',
+        textShadow: warning ? '0 0 12px #ff0000' : '0 0 12px #4455ff',
       }}>
-        {fmt(elapsed)} <span style={{ color: '#333355', fontSize: 12 }}>/ {fmt(RUN_DURATION)}</span>
+        {fmt(elapsed)} <span style={{ color: '#666688' }}>/ {fmt(RUN_DURATION)}</span>
       </div>
-      <div style={{ width: '100%', height: 4, background: '#0a0a1a', borderRadius: 2 }}>
+      <div style={{ width: '100%', height: 7, background: '#0d0d22', borderRadius: 99, border: '1px solid #2a2a55' }}>
         <div style={{
           height: '100%', width: `${pct * 100}%`,
           background: warning
-            ? 'linear-gradient(90deg, #aa0000, #ff4444)'
-            : 'linear-gradient(90deg, #2244aa, #4488ff)',
-          borderRadius: 2, transition: 'background 0.5s',
+            ? 'linear-gradient(90deg, #cc0000, #ff5555)'
+            : 'linear-gradient(90deg, #2255cc, #55aaff)',
+          borderRadius: 99, transition: 'background 0.5s',
+          boxShadow: warning ? '0 0 8px #ff2222' : '0 0 8px #3366ff',
         }} />
       </div>
     </div>
@@ -91,27 +96,130 @@ function DashIndicator() {
   )
 }
 
-function AuraIndicator() {
-  const aura = useGameStore(s => s.aura)
-  if (aura === 0) return null
+function Divider() {
+  return <div style={{ height: 1, background: '#1a1a33', margin: '3px 0' }} />
+}
 
-  const pips = Math.min(aura, 5)
-  const extra = aura > 5 ? aura - 5 : 0
+function StatRow({ label, value, color = '#7777aa' }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+      <span style={{ color: '#ccccdd', fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 }}>{label}</span>
+      <span style={{ color, fontFamily: 'monospace', fontSize: 10, fontWeight: 'bold' }}>{value}</span>
+    </div>
+  )
+}
+
+interface WeaponChipProps { label: string; detail?: string; color: string }
+function WeaponChip({ label, detail, color }: WeaponChipProps) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+      <span style={{ color, fontSize: 8 }}>◆</span>
+      <span style={{ color, fontFamily: 'monospace', fontSize: 10, fontWeight: 'bold', letterSpacing: 0.5 }}>
+        {label}
+      </span>
+      {detail && (
+        <span style={{ color: '#555577', fontFamily: 'monospace', fontSize: 9 }}>{detail}</span>
+      )}
+    </div>
+  )
+}
+
+function LeftPanel() {
+  const level       = useGameStore(s => s.level)
+  const might       = useGameStore(s => s.might)
+  const moveSpeed   = useGameStore(s => s.moveSpeed)
+  const attackInterval = useGameStore(s => s.attackInterval)
+  const hpRegen     = useGameStore(s => s.hpRegen)
+  const sessionCoins = useGameStore(s => s.sessionCoins)
+  const multiShot   = useGameStore(s => s.multiShot)
+  const piercing    = useGameStore(s => s.piercing)
+  const aura        = useGameStore(s => s.aura)
+  const orbital     = useGameStore(s => s.orbital)
+  const boomerang   = useGameStore(s => s.boomerang)
+  const flameTrail  = useGameStore(s => s.flameTrail)
+  const bloodNova   = useGameStore(s => s.bloodNova)
+
+  const dmg = Math.floor(weaponBaseDamage(level) * might)
+  const aps = (1000 / attackInterval).toFixed(2)
+
+  const hasWeapons = multiShot > 0 || piercing || aura > 0 || orbital > 0 || boomerang || flameTrail || bloodNova
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ color: '#aa55ff', fontSize: 11, fontFamily: 'monospace', letterSpacing: 1, width: 36 }}>
-        AURA
-      </span>
-      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        {Array.from({ length: pips }).map((_, i) => (
-          <span key={i} style={{ color: '#aa55ff', fontSize: 12, textShadow: '0 0 6px #9933ff' }}>●</span>
-        ))}
-        {extra > 0 && (
-          <span style={{ color: '#aa55ff', fontSize: 10, fontFamily: 'monospace' }}>+{extra}</span>
-        )}
+    <div style={{
+      position: 'absolute', top: window.innerWidth <= 768 ? 128 : 72, left: 16,
+      background: '#05050faa',
+      border: '1px solid #1a1a33',
+      borderRadius: 6, padding: '7px 10px',
+      display: 'flex', flexDirection: 'column', gap: 4,
+      minWidth: 140,
+      pointerEvents: 'none',
+    }}>
+      {/* Level + coins */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{
+          color: '#ffffff', fontSize: 15, fontFamily: 'monospace', fontWeight: 'bold',
+          textShadow: '0 0 8px #4444ff',
+        }}>
+          LVL {level}
+        </span>
+        <span style={{
+          color: '#ccaa22', fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold',
+          textShadow: '0 0 6px #886600',
+        }}>
+          ◈ {sessionCoins}
+        </span>
       </div>
+
+      <Divider />
+
+      {/* Stats */}
+      <StatRow label="DMG"  value={`~${dmg}`}    color="#ff8888" />
+      <StatRow label="ASPD" value={`${aps}/s`}   color="#88aaff" />
+      <StatRow label="SPD"  value={`${moveSpeed}`} color="#88ffcc" />
+      {hpRegen > 0 && (
+        <StatRow label="REGEN" value={`${hpRegen.toFixed(1)}/s`} color="#44cc66" />
+      )}
+
+      {/* Weapons */}
+      {hasWeapons && (
+        <>
+          <Divider />
+          {multiShot > 0  && <WeaponChip label="MULTI SHOT"  detail={`×${multiShot + 1}`}          color="#88aaff" />}
+          {piercing        && <WeaponChip label="PIERCING"                                           color="#44ccff" />}
+          {aura > 0        && <WeaponChip label="AURA"        detail={`${'●'.repeat(Math.min(aura, 5))}${aura > 5 ? `+${aura - 5}` : ''}`} color="#aa55ff" />}
+          {orbital > 0     && <WeaponChip label="SPIRIT ORB"  detail={`×${orbital}`}                color="#cc88ff" />}
+          {boomerang        && <WeaponChip label="BOOMERANG"                                         color="#ffcc44" />}
+          {flameTrail       && <WeaponChip label="FLAME TRAIL"                                       color="#ff6633" />}
+          {bloodNova        && <WeaponChip label="BLOOD NOVA"                                        color="#ff3333" />}
+        </>
+      )}
     </div>
+  )
+}
+
+function PauseButton() {
+  const togglePause = useGameStore(s => s.togglePause)
+  if (window.innerWidth > 768) return null
+  return (
+    <button
+      onClick={togglePause}
+      style={{
+        position: 'absolute', top: 8, left: 8,
+        width: 48, height: 48,
+        background: '#05050fcc',
+        border: '1px solid #2a2a55',
+        borderRadius: 8,
+        color: '#8899cc',
+        fontSize: 20,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer',
+        pointerEvents: 'auto',
+        zIndex: 10,
+        touchAction: 'none',
+      }}
+    >
+      ⏸
+    </button>
   )
 }
 
@@ -120,75 +228,46 @@ export function HUD() {
   const maxHp = useGameStore(s => s.maxHp)
   const xp = useGameStore(s => s.xp)
   const xpNeeded = useGameStore(s => s.xpNeeded)
-  const level = useGameStore(s => s.level)
-  const sessionCoins = useGameStore(s => s.sessionCoins)
 
   const hpPct = (hp / maxHp) * 100
   const xpPct = (xp / xpNeeded) * 100
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+      <PauseButton />
       <TimerDisplay />
+      <LeftPanel />
 
       <div style={{
-        position: 'absolute', top: 16, left: 16,
-        color: '#ffffff', fontSize: 20, fontFamily: 'monospace', fontWeight: 'bold',
-        textShadow: '0 0 8px #4444ff',
-      }}>
-        LVL {level}
-      </div>
-
-      <div style={{
-        position: 'absolute', top: 44, left: 16,
-        color: '#ccaa22', fontSize: 14, fontFamily: 'monospace', fontWeight: 'bold',
-        textShadow: '0 0 6px #886600',
-      }}>
-        ◈ {sessionCoins}
-      </div>
-
-      <div style={{
-        position: 'absolute', bottom: 112, left: '50%',
+        position: 'absolute', bottom: 0, left: '50%',
         transform: 'translateX(-50%)', width: 320,
-      }}>
-        <AuraIndicator />
-      </div>
-
-      <div style={{
-        position: 'absolute', bottom: 80, left: '50%',
-        transform: 'translateX(-50%)', width: 320,
+        paddingBottom: window.innerWidth <= 768 ? 72 : 16,
+        display: 'flex', flexDirection: 'column', gap: 12,
       }}>
         <DashIndicator />
-      </div>
-
-      <div style={{
-        position: 'absolute', bottom: 48, left: '50%',
-        transform: 'translateX(-50%)', width: 320,
-      }}>
-        <div style={{ color: '#ff8888', fontSize: 13, fontFamily: 'monospace', marginBottom: 4, textAlign: 'center' }}>
-          HP {hp} / {maxHp}
+        <div>
+          <div style={{ color: '#ff8888', fontSize: 13, fontFamily: 'monospace', marginBottom: 4, textAlign: 'center' }}>
+            HP {hp} / {maxHp}
+          </div>
+          <div style={{ height: 14, background: '#220000', borderRadius: 7, overflow: 'hidden', border: '1px solid #550000' }}>
+            <div style={{
+              height: '100%', width: `${hpPct}%`,
+              background: 'linear-gradient(90deg, #cc0000, #ff4444)',
+              borderRadius: 7, transition: 'width 0.1s',
+            }} />
+          </div>
         </div>
-        <div style={{ height: 14, background: '#220000', borderRadius: 7, overflow: 'hidden', border: '1px solid #550000' }}>
-          <div style={{
-            height: '100%', width: `${hpPct}%`,
-            background: 'linear-gradient(90deg, #cc0000, #ff4444)',
-            borderRadius: 7, transition: 'width 0.1s',
-          }} />
-        </div>
-      </div>
-
-      <div style={{
-        position: 'absolute', bottom: 16, left: '50%',
-        transform: 'translateX(-50%)', width: 320,
-      }}>
-        <div style={{ color: '#00ff88', fontSize: 13, fontFamily: 'monospace', marginBottom: 4, textAlign: 'center' }}>
-          XP {xp} / {xpNeeded}
-        </div>
-        <div style={{ height: 10, background: '#002211', borderRadius: 5, overflow: 'hidden', border: '1px solid #005533' }}>
-          <div style={{
-            height: '100%', width: `${xpPct}%`,
-            background: 'linear-gradient(90deg, #00aa55, #00ff88)',
-            borderRadius: 5, transition: 'width 0.15s',
-          }} />
+        <div>
+          <div style={{ color: '#00ff88', fontSize: 13, fontFamily: 'monospace', marginBottom: 4, textAlign: 'center' }}>
+            XP {xp} / {xpNeeded}
+          </div>
+          <div style={{ height: 10, background: '#002211', borderRadius: 5, overflow: 'hidden', border: '1px solid #005533' }}>
+            <div style={{
+              height: '100%', width: `${xpPct}%`,
+              background: 'linear-gradient(90deg, #00aa55, #00ff88)',
+              borderRadius: 5, transition: 'width 0.15s',
+            }} />
+          </div>
         </div>
       </div>
     </div>

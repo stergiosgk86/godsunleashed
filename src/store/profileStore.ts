@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { useAuthStore } from './authStore'
 
 export interface MetaUpgrades {
   maxHealth: number
@@ -7,90 +7,85 @@ export interface MetaUpgrades {
   magnet: number
   might: number
   luck: number
+  growth: number
+  moveSpeed: number
 }
 
-export interface Profile {
-  id: string
-  name: string
-  coins: number
-  upgrades: MetaUpgrades
-}
-
-// Cost to advance from rank N to N+1 (index = current rank, 0-based)
 export const UPGRADE_COSTS = [10, 25, 50, 90, 150]
 export const UPGRADE_MAX_RANK = 5
 
-function makeId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2)
-}
-
 function emptyUpgrades(): MetaUpgrades {
-  return { maxHealth: 0, recovery: 0, magnet: 0, might: 0, luck: 0 }
+  return { maxHealth: 0, recovery: 0, magnet: 0, might: 0, luck: 0, growth: 0, moveSpeed: 0 }
 }
 
 interface ProfileStore {
-  profiles: Profile[]
-  activeProfileId: string | null
-  createProfile: (name: string) => void
-  selectProfile: (id: string) => void
-  deleteProfile: (id: string) => void
+  coins: number
+  upgrades: MetaUpgrades
+  loaded: boolean
+  fetchProfile: () => Promise<void>
+  syncProfile: () => Promise<void>
   depositCoins: (amount: number) => void
   purchaseUpgrade: (upgrade: keyof MetaUpgrades) => boolean
+  reset: () => void
 }
 
-export const useProfileStore = create<ProfileStore>()(
-  persist(
-    (set, get) => ({
-      profiles: [],
-      activeProfileId: null,
+export const useProfileStore = create<ProfileStore>()((set, get) => ({
+  coins: 0,
+  upgrades: emptyUpgrades(),
+  loaded: false,
 
-      createProfile: (name) => {
-        const profile: Profile = {
-          id: makeId(),
-          name: name.trim(),
-          coins: 0,
-          upgrades: emptyUpgrades(),
-        }
-        set(s => ({ profiles: [...s.profiles, profile], activeProfileId: profile.id }))
-      },
+  fetchProfile: async () => {
+    const token = useAuthStore.getState().token
+    if (!token) return
+    try {
+      const res = await fetch('/api/profile', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      set({
+        coins: data.coins ?? 0,
+        upgrades: { ...emptyUpgrades(), ...(data.upgrades ?? {}) },
+        loaded: true,
+      })
+    } catch { /* network error — keep current state */ }
+  },
 
-      selectProfile: (id) => set({ activeProfileId: id }),
+  syncProfile: async () => {
+    const token = useAuthStore.getState().token
+    if (!token) return
+    const { coins, upgrades } = get()
+    try {
+      await fetch('/api/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ coins, upgrades }),
+      })
+    } catch { /* fire and forget */ }
+  },
 
-      deleteProfile: (id) => set(s => ({
-        profiles: s.profiles.filter(p => p.id !== id),
-        activeProfileId: s.activeProfileId === id ? null : s.activeProfileId,
-      })),
+  depositCoins: (amount) => {
+    if (amount <= 0) return
+    set(s => ({ coins: s.coins + amount }))
+    get().syncProfile()
+  },
 
-      depositCoins: (amount) => {
-        if (amount <= 0) return
-        const { activeProfileId, profiles } = get()
-        if (!activeProfileId) return
-        set({
-          profiles: profiles.map(p =>
-            p.id === activeProfileId ? { ...p, coins: p.coins + amount } : p
-          ),
-        })
-      },
+  purchaseUpgrade: (upgrade) => {
+    const { upgrades, coins } = get()
+    const rank = upgrades[upgrade]
+    if (rank >= UPGRADE_MAX_RANK) return false
+    const cost = UPGRADE_COSTS[rank]
+    if (coins < cost) return false
+    set(s => ({
+      coins: s.coins - cost,
+      upgrades: { ...s.upgrades, [upgrade]: rank + 1 },
+    }))
+    get().syncProfile()
+    return true
+  },
 
-      purchaseUpgrade: (upgrade) => {
-        const { activeProfileId, profiles } = get()
-        if (!activeProfileId) return false
-        const profile = profiles.find(p => p.id === activeProfileId)
-        if (!profile) return false
-        const rank = profile.upgrades[upgrade]
-        if (rank >= UPGRADE_MAX_RANK) return false
-        const cost = UPGRADE_COSTS[rank]
-        if (profile.coins < cost) return false
-        set({
-          profiles: profiles.map(p =>
-            p.id === activeProfileId
-              ? { ...p, coins: p.coins - cost, upgrades: { ...p.upgrades, [upgrade]: rank + 1 } }
-              : p
-          ),
-        })
-        return true
-      },
-    }),
-    { name: 'vampires-profiles' }
-  )
-)
+  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), loaded: false }),
+}))
