@@ -406,7 +406,6 @@ export class MainScene extends Phaser.Scene {
     })
 
     net.on('bossProjectile', (msg) => {
-      console.log(`[bossProjectile] received enemyId=${msg.enemyId} clientEnemies has=${this.clientEnemies.has(msg.enemyId)}`)
       const ce = this.clientEnemies.get(msg.enemyId)
       if (ce) ce.addProjectile(msg.x, msg.y, msg.vx, msg.vy)
     })

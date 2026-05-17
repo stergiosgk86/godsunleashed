@@ -134,7 +134,6 @@ export class GameRoom {
 
       for (const e of this.spawner.all) {
         if (e.pendingProjectiles.length > 0) {
-          console.log(`[Boss] ${e.kind} id=${e.id} fired ${e.pendingProjectiles.length} projectiles`)
           for (const proj of e.pendingProjectiles) {
             this.broadcast({ type: 'bossProjectile', enemyId: e.id, x: proj.x, y: proj.y, vx: proj.vx, vy: proj.vy })
           }
