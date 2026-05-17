@@ -143,6 +143,26 @@ export class EnemySpawner {
       this.onFinalBossSpawn?.()
     }
 
+    // Separation: push overlapping enemies apart so they don't stack into one sprite.
+    const SEP_RADIUS = 22
+    const SEP_FORCE  = 0.6
+    const active = this.enemies.filter(e => e.active && !e.isBoss)
+    for (let i = 0; i < active.length; i++) {
+      for (let j = i + 1; j < active.length; j++) {
+        const a = active[i], b = active[j]
+        const dx = a.x - b.x
+        const dy = a.y - b.y
+        const dist2 = dx * dx + dy * dy
+        if (dist2 < SEP_RADIUS * SEP_RADIUS && dist2 > 0) {
+          const dist = Math.sqrt(dist2)
+          const push = (SEP_RADIUS - dist) * SEP_FORCE
+          const nx = dx / dist, ny = dy / dist
+          a.x += nx * push; a.y += ny * push
+          b.x -= nx * push; b.y -= ny * push
+        }
+      }
+    }
+
     for (const e of this.enemies) {
       if (e.active) e.update(playerX, playerY, delta)
     }
@@ -165,8 +185,9 @@ export class EnemySpawner {
 
   private spawnEnemy(playerX: number, playerY: number) {
     const angle = Math.random() * Math.PI * 2
-    const x = playerX + Math.cos(angle) * SPAWN_RADIUS
-    const y = playerY + Math.sin(angle) * SPAWN_RADIUS
+    const jitter = (Math.random() - 0.5) * 80
+    const x = playerX + Math.cos(angle) * SPAWN_RADIUS + Math.cos(angle + Math.PI / 2) * jitter
+    const y = playerY + Math.sin(angle) * SPAWN_RADIUS + Math.sin(angle + Math.PI / 2) * jitter
     const type = this.pickType()
     if (type === 'ranged') {
       this.enemies.push(new RangedEnemy(this.scene, x, y))
