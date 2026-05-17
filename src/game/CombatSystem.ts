@@ -32,6 +32,8 @@ interface FlamePool {
   graphic: Phaser.GameObjects.Graphics
 }
 
+export const VAMPIRIC_PERCENT = 0.0025  // 0.25% lifesteal per hit
+
 export class CombatSystem {
   private scene: Phaser.Scene
   private effects: EffectsSystem
@@ -50,6 +52,7 @@ export class CombatSystem {
   private orbCenterInit = false
   private orbGraphic: Phaser.GameObjects.Graphics
   private orbHitCooldowns = new Map<AnyEnemy, number>()
+  private vampiricPool = 0
   // Boomerang
   private boomerangs: Boomerang[] = []
   private boomerangTimer = 0
@@ -439,8 +442,12 @@ export class CombatSystem {
     this.effects.showDamageNumber(e.x, e.y, actual)
     soundSystem.enemyHit()
     if (vampiric) {
-      const heal = Math.max(1, Math.round(actual * 0.02))
-      useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + heal) }))
+      this.vampiricPool += actual * VAMPIRIC_PERCENT
+      if (this.vampiricPool >= 1) {
+        const heal = Math.floor(this.vampiricPool)
+        this.vampiricPool -= heal
+        useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + heal) }))
+      }
     }
     if (net && 'serverId' in e) {
       // Multiplayer: report hit to server, server decides outcome
