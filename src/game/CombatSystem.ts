@@ -10,6 +10,7 @@ import { EffectsSystem } from './EffectsSystem'
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
 import { soundSystem } from './SoundSystem'
+import { difficultyScale } from './difficultyScale'
 import { activeNetClient } from '../net/netState'
 import { minimapData } from './minimapData'
 
@@ -132,7 +133,7 @@ export class CombatSystem {
         xpGained += collected
       }
     }
-    if (xpGained > 0) addXP(Math.round(xpGained * (1 + growthRank * 0.03)))
+    if (xpGained > 0) addXP(Math.round(xpGained * (1 + growthRank * 0.03) * difficultyScale.xp))
 
     // Collect coins
     let coinsGained = 0
