@@ -5,6 +5,7 @@ import { RangedEnemy } from './RangedEnemy'
 import { ExploderEnemy } from './ExploderEnemy'
 import { BossEnemy } from './BossEnemy'
 import { FinalBossEnemy } from './FinalBossEnemy'
+import { SummonerBoss } from './SummonerBoss'
 
 export type SavedEnemyType = EnemyType | 'ranged' | 'exploder'
 export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: number }
@@ -70,7 +71,7 @@ export class EnemySpawner {
     const result: EnemySave[] = []
     for (const e of this.enemies) {
       if (!e.active) continue
-      if (e instanceof BossEnemy || e instanceof FinalBossEnemy) continue
+      if (e instanceof BossEnemy || e instanceof FinalBossEnemy || e instanceof SummonerBoss) continue
       if (e instanceof RangedEnemy) {
         result.push({ type: 'ranged', x: e.x, y: e.y, hp: e.hp })
       } else if (e instanceof ExploderEnemy) {
@@ -145,7 +146,7 @@ export class EnemySpawner {
     }
 
     // Detect regular boss death
-    if (this.bossAlive && !this.enemies.some(e => e instanceof BossEnemy && e.active)) {
+    if (this.bossAlive && !this.enemies.some(e => (e instanceof BossEnemy || e instanceof SummonerBoss) && e.active)) {
       this.bossAlive = false
       this.warningFired = false
       this.nextBossAt = this.elapsed + BOSS_REPEAT
@@ -179,7 +180,22 @@ export class EnemySpawner {
     const angle = Math.random() * Math.PI * 2
     const x = playerX + Math.cos(angle) * SPAWN_RADIUS
     const y = playerY + Math.sin(angle) * SPAWN_RADIUS
-    this.enemies.push(new BossEnemy(this.scene, x, y))
+    if (this.elapsed >= 5 * 60_000) {
+      const boss = new SummonerBoss(this.scene, x, y)
+      boss.onSummon = (bx, by, count, phase2) => {
+        for (let i = 0; i < count; i++) {
+          const a = (i / count) * Math.PI * 2
+          const mx = bx + Math.cos(a) * (80 + Math.random() * 60)
+          const my = by + Math.sin(a) * (80 + Math.random() * 60)
+          this.enemies.push(phase2 && i % 2 === 0
+            ? new Enemy(this.scene, mx, my, 'speeder')
+            : new Enemy(this.scene, mx, my, 'basic'))
+        }
+      }
+      this.enemies.push(boss)
+    } else {
+      this.enemies.push(new BossEnemy(this.scene, x, y))
+    }
     this.onBossSpawn?.()
   }
 
@@ -194,7 +210,7 @@ export class EnemySpawner {
 
   waveLabel(overrideElapsed?: number): string {
     if (this.finalBossAlive) return '☠ THE DEATH'
-    if (this.bossAlive) return '⚠ BOSS FIGHT'
+    if (this.bossAlive) return this.enemies.some(e => e instanceof SummonerBoss && e.active) ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
     const t = overrideElapsed ?? this.elapsed
     if (t < 20_000) return 'Wave 1 — Basic'
     if (t < 45_000) return 'Wave 2 — + Speeders'
