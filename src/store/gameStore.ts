@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'attackSpeed' | 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning'
 
 export function weaponBaseDamage(level: number): number {
   return Math.floor(5 + level * 3)
@@ -16,7 +16,6 @@ export interface Upgrade {
 }
 
 const UPGRADE_POOL: Upgrade[] = [
-  { id: 'attackSpeed', label: 'Faster Attacks',  description: '15% shorter attack cooldown' },
   { id: 'dashCooldown',  label: 'Swift Dash',      description: '25% shorter dash cooldown' },
   { id: 'dashDistance',  label: 'Longer Dash',     description: '40% further dash distance' },
   { id: 'multiShot',     label: 'Multi Shot',      description: 'Fire an extra projectile per attack' },
@@ -230,8 +229,6 @@ export const useGameStore = create<GameState>()(
     chooseUpgrade: (id) => {
       set(s => {
         switch (id) {
-          case 'attackSpeed':
-            return { attackInterval: Math.max(250, Math.floor(s.attackInterval * 0.85)), isLevelUpPending: false }
           case 'moveSpeed':
             return { moveSpeed: Math.min(300, Math.floor(s.moveSpeed * 1.15)), isLevelUpPending: false }
           case 'dashCooldown':

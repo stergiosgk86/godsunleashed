@@ -122,6 +122,7 @@ export class ExploderEnemy implements AnyEnemy {
   destroy() {
     if (!this.active) return
     this.active = false
-    this.explode()
+    this.graphic.setAlpha(0)
+    this.scene.time.delayedCall(50, () => this.graphic.destroy())
   }
 }
