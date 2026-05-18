@@ -19,10 +19,10 @@ import type { EnemySnapshot, PlayerSnapshot } from '../net/protocol'
 import { saveRun, loadRun, clearRun } from './runSave'
 import { TouchJoystick } from './TouchJoystick'
 import { AchievementSystem } from './AchievementSystem'
+import { ChunkManager } from './ChunkManager'
 
-const WORLD_SIZE = 4000
-const SPAWN_X = WORLD_SIZE / 2
-const SPAWN_Y = WORLD_SIZE / 2
+const SPAWN_X = 0
+const SPAWN_Y = 0
 
 export class MainScene extends Phaser.Scene {
   private player!: Player
@@ -45,38 +45,17 @@ export class MainScene extends Phaser.Scene {
   private saveTimer = 0
   private readonly SAVE_INTERVAL = 1000
   private joystick!: TouchJoystick
+  private chunkManager!: ChunkManager
 
   constructor() {
     super({ key: 'MainScene' })
   }
 
   create() {
-    this.physics.world.setBounds(0, 0, WORLD_SIZE, WORLD_SIZE)
     generateAssets(this)
     generateTilesetTexture(this)
-
-    const TILE_SIZE = 64
-    const MAP_TILES = Math.ceil(WORLD_SIZE / TILE_SIZE)
-    const mapData: number[][] = []
-    for (let ty = 0; ty < MAP_TILES; ty++) {
-      const row: number[] = []
-      for (let tx = 0; tx < MAP_TILES; tx++) {
-        const r = Math.random()
-        if (r < 0.60) row.push(1)
-        else if (r < 0.82) row.push(2)
-        else if (r < 0.93) row.push(3)
-        else row.push(4)
-      }
-      mapData.push(row)
-    }
-    const map = this.make.tilemap({ data: mapData, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE })
-    const tileset = map.addTilesetImage('ground_tiles', 'ground_tiles', TILE_SIZE, TILE_SIZE, 0, 0)!
-    map.createLayer(0, tileset, 0, 0)!.setDepth(-10)
-
-    this.drawBorderWalls()
-
     generatePropTextures(this)
-    this.spawnProps()
+    this.chunkManager = new ChunkManager(this)
 
     this.effects = new EffectsSystem(this)
     const charType = useCharacterStore.getState().selectedCharacter
@@ -133,8 +112,10 @@ export class MainScene extends Phaser.Scene {
       })
     }
 
-    this.cameras.main.setBounds(0, 0, WORLD_SIZE, WORLD_SIZE)
     this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
+
+    // Seed initial chunks around wherever the player actually starts
+    this.chunkManager.update(this.player.x, this.player.y)
 
     this.fpsText = this.add
       .text(110, 14, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' })
@@ -222,6 +203,7 @@ export class MainScene extends Phaser.Scene {
       sceneAlive = false
       soundSystem.stopMusic()
       unsubLevelUp(); unsubPause(); unsubDamage(); unsubDead(); unsubWon()
+      this.chunkManager.destroyAll()
       this.joystick.destroy()
       runData.elapsed = 0
       for (const r of this.remotePlayers.values()) r.destroy()
@@ -230,123 +212,6 @@ export class MainScene extends Phaser.Scene {
       this.remoteProjectiles = []
       this.clientEnemies.clear()
     })
-  }
-
-  private spawnProps() {
-    const MARGIN = 100
-    const SPAWN_CLEAR = 320
-    const props: Array<{ key: string; count: number; minScale: number; maxScale: number; depth: number }> = [
-      { key: 'prop_bush_large', count: 120, minScale: 0.9, maxScale: 1.8, depth: 1 },
-      { key: 'prop_rock',       count: 80,  minScale: 0.7, maxScale: 1.6, depth: 1 },
-      { key: 'prop_tree',       count: 40,  minScale: 1.0, maxScale: 1.8, depth: 2 },
-      { key: 'prop_mushroom',   count: 60,  minScale: 0.8, maxScale: 1.4, depth: 1 },
-      { key: 'prop_bones',      count: 50,  minScale: 0.9, maxScale: 1.5, depth: 1 },
-    ]
-    for (const { key, count, minScale, maxScale, depth } of props) {
-      let placed = 0, attempts = 0
-      while (placed < count && attempts < count * 6) {
-        attempts++
-        const x = MARGIN + Math.random() * (WORLD_SIZE - MARGIN * 2)
-        const y = MARGIN + Math.random() * (WORLD_SIZE - MARGIN * 2)
-        const dx = x - SPAWN_X, dy = y - SPAWN_Y
-        if (dx * dx + dy * dy < SPAWN_CLEAR * SPAWN_CLEAR) continue
-        this.add.image(x, y, key)
-          .setDepth(depth)
-          .setScale(minScale + Math.random() * (maxScale - minScale))
-          .setAlpha(0.75 + Math.random() * 0.25)
-        placed++
-      }
-    }
-  }
-
-
-  private drawBorderWalls() {
-    const W = 64
-    const S = WORLD_SIZE
-    const g = this.add.graphics().setDepth(1)
-
-    const bW = 28, bH = 13, m = 2
-    const numRows = 4
-    const pad = Math.floor((W - numRows * bH - (numRows - 1) * m) / 2)
-
-    // Mortar base
-    g.fillStyle(0x06060c)
-    g.fillRect(0, 0, S, W)
-    g.fillRect(0, S - W, S, W)
-    g.fillRect(0, W, W, S - W * 2)
-    g.fillRect(S - W, W, W, S - W * 2)
-
-    const hBrick = (x: number, y: number, w: number) => {
-      g.fillStyle(0x1f1f3e); g.fillRect(x, y, w, bH)
-      g.fillStyle(0x32325a); g.fillRect(x, y, w, 1); g.fillRect(x, y, 1, bH)
-      g.fillStyle(0x0c0c18); g.fillRect(x, y + bH - 1, w, 1)
-    }
-    const vBrick = (x: number, y: number, h: number) => {
-      g.fillStyle(0x1f1f3e); g.fillRect(x, y, bH, h)
-      g.fillStyle(0x32325a); g.fillRect(x, y, bH, 1); g.fillRect(x, y, 1, h)
-      g.fillStyle(0x0c0c18); g.fillRect(x + bH - 1, y, 1, h)
-    }
-
-    // Top & bottom horizontal bricks (4 rows)
-    for (let row = 0; row < numRows; row++) {
-      const ry = pad + row * (bH + m)
-      const offset = row % 2 === 0 ? 0 : (bW + m) / 2
-      for (let x = -offset; x < S; x += bW + m) {
-        const bx = Math.max(0, x)
-        const bw = Math.min(x + bW, S) - bx
-        if (bw > 0) { hBrick(bx, ry, bw); hBrick(bx, S - W + ry, bw) }
-      }
-    }
-
-    // Left & right vertical bricks (4 columns)
-    for (let col = 0; col < numRows; col++) {
-      const cx = pad + col * (bH + m)
-      const offset = col % 2 === 0 ? 0 : (bW + m) / 2
-      for (let y = W - offset; y < S - W; y += bW + m) {
-        const by = Math.max(W, y)
-        const bh = Math.min(y + bW, S - W) - by
-        if (bh > 0) { vBrick(cx, by, bh); vBrick(S - W + cx, by, bh) }
-      }
-    }
-
-    // Corner pillars (overdraws bricks in the W×W corner areas)
-    const drawCorner = (cx: number, cy: number) => {
-      // Pillar base
-      g.fillStyle(0x0d0d1e)
-      g.fillRect(cx, cy, W, W)
-
-      // Inset raised block
-      const ins = 6
-      g.fillStyle(0x1c1c38)
-      g.fillRect(cx + ins, cy + ins, W - ins * 2, W - ins * 2)
-      g.fillStyle(0x2e2e56)
-      g.fillRect(cx + ins, cy + ins, W - ins * 2, 1)
-      g.fillRect(cx + ins, cy + ins, 1, W - ins * 2)
-      g.fillStyle(0x09090f)
-      g.fillRect(cx + ins, cy + W - ins - 1, W - ins * 2, 1)
-      g.fillRect(cx + W - ins - 1, cy + ins, 1, W - ins * 2)
-
-      // Centre diamond
-      const mx = cx + W / 2, my = cy + W / 2, ds = 11
-      g.fillStyle(0x22224a)
-      g.fillTriangle(mx, my - ds, mx + ds, my, mx - ds, my)
-      g.fillTriangle(mx - ds, my, mx + ds, my, mx, my + ds)
-      g.fillStyle(0x30305e)
-      g.fillTriangle(mx, my - ds + 3, mx + ds - 3, my, mx - ds + 3, my)
-
-    }
-
-    drawCorner(0,     0)
-    drawCorner(S - W, 0)
-    drawCorner(0,     S - W)
-    drawCorner(S - W, S - W)
-
-    // Straight wall glow lines (corners handled above)
-    g.fillStyle(0x4455cc)
-    g.fillRect(W, W - 2, S - W * 2, 2)
-    g.fillRect(W, S - W, S - W * 2, 2)
-    g.fillRect(W - 2, W, 2, S - W * 2)
-    g.fillRect(S - W, W, 2, S - W * 2)
   }
 
   private showWarning() {
@@ -464,6 +329,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
+    this.chunkManager.update(this.player.x, this.player.y)
     this.player.touchVx = this.joystick.vx
     this.player.touchVy = this.joystick.vy
     this.player.update(delta, this.effects)
