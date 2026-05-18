@@ -27,7 +27,7 @@ const UPGRADE_POOL: Upgrade[] = [
   { id: 'bloodNova',   label: 'Blood Nova',       description: 'Every 7s releases a massive red ring — costs 8% of your max HP' },
   { id: 'vampiric',   label: 'Soul Drain',       description: 'Each hit restores 8% of damage dealt as HP' },
   { id: 'lightning',  label: 'Thunder Strike',   description: 'Every 4s lightning bolts strike 2 random enemies for heavy damage' },
-  { id: 'might',     label: 'Power',            description: '+50% weapon damage (stackable, up to 5×)' },
+  { id: 'might',     label: 'Power',            description: '+10% weapon damage (stackable, up to 5×)' },
 ]
 
 function xpNeeded(level: number) {
@@ -47,7 +47,7 @@ function pickChoices(state: { piercing: boolean; multiShot: number; orbital: num
     if (u.id === 'bloodNova'  && state.bloodNova)      return false
     if (u.id === 'vampiric'   && state.vampiric)       return false
     if (u.id === 'lightning'  && state.lightning)      return false
-    if (u.id === 'might'      && state.might >= 3.5)    return false
+    if (u.id === 'might'      && state.might >= 1.5)    return false
     return true
   })
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
@@ -113,6 +113,7 @@ interface GameState {
   togglePause: () => void
   startDash: () => boolean
   addSessionCoins: (amount: number) => void
+  healPlayer: (amount: number) => void
   addKill: () => void
   addDamage: (amount: number) => void
   addBossKill: () => void
@@ -219,6 +220,7 @@ export const useGameStore = create<GameState>()(
       return true
     },
 
+    healPlayer: (amount) => set(s => ({ hp: Math.min(s.maxHp, s.hp + amount) })),
     addSessionCoins: (amount) => set(s => ({ sessionCoins: s.sessionCoins + amount })),
     addKill: () => set(s => ({ kills: s.kills + 1 })),
     addDamage: (amount) => set(s => ({ damageDealt: s.damageDealt + amount })),
@@ -266,7 +268,7 @@ export const useGameStore = create<GameState>()(
           case 'lightning':
             return { lightning: true, isLevelUpPending: false }
           case 'might':
-            return { might: Math.min(3.5, s.might + 0.5), isLevelUpPending: false }
+            return { might: Math.min(1.5, s.might + 0.1), isLevelUpPending: false }
         }
       })
     },

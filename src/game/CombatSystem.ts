@@ -5,6 +5,7 @@ import { Projectile } from './Projectile'
 import { Boomerang } from './Boomerang'
 import { XPOrb } from './XPOrb'
 import { CoinOrb } from './CoinOrb'
+import { HealthPotion } from './HealthPotion'
 import { EffectsSystem } from './EffectsSystem'
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
@@ -28,6 +29,11 @@ const NOVA_RADIUS = 230
 const LIGHTNING_INTERVAL = 4000
 const LIGHTNING_TARGETS = 2
 const LIGHTNING_DAMAGE_MULT = 3.5
+const POTION_BASE_INTERVAL = 12000
+const POTION_HEAL = 25
+const POTION_MAX = 3
+const POTION_SPAWN_MIN = 180
+const POTION_SPAWN_MAX = 320
 
 interface FlamePool {
   x: number; y: number
@@ -43,6 +49,8 @@ export class CombatSystem {
   private projectiles: Projectile[] = []
   private orbs: XPOrb[] = []
   private coins: CoinOrb[] = []
+  private potions: HealthPotion[] = []
+  private potionSpawnTimer = 0
   private fireTimer = 0
   private auraTimer = 0
   private auraAngle = 0
@@ -156,6 +164,33 @@ export class CombatSystem {
       }
     }
     if (coinsGained > 0) addSessionCoins(coinsGained)
+
+    // Collect health potions
+    for (const pot of this.potions) {
+      if (!pot.active) continue
+      if (pot.update(playerX, playerY, delta)) {
+        const { healPlayer } = useGameStore.getState()
+        healPlayer(POTION_HEAL)
+        soundSystem.healCollect()
+        this.effects.showItemCollect(playerX, playerY, `+${POTION_HEAL} HP`, 0xff4466)
+      }
+    }
+    this.potions = this.potions.filter(p => p.active)
+
+    // Spawn health potions on a timer (luck rank speeds up spawns)
+    {
+      const { isDead } = useGameStore.getState()
+      if (!isDead) {
+        const potionInterval = POTION_BASE_INTERVAL / (1 + luckRank * 0.12)
+        this.potionSpawnTimer += delta
+        if (this.potionSpawnTimer >= potionInterval && this.potions.length < POTION_MAX) {
+          this.potionSpawnTimer = 0
+          const angle = Math.random() * Math.PI * 2
+          const dist = POTION_SPAWN_MIN + Math.random() * (POTION_SPAWN_MAX - POTION_SPAWN_MIN)
+          this.potions.push(new HealthPotion(this.scene, playerX + Math.cos(angle) * dist, playerY + Math.sin(angle) * dist))
+        }
+      }
+    }
 
     // Enemy contact damage — per-enemy cooldown so hordes deal proportional damage
     {
@@ -365,7 +400,7 @@ export class CombatSystem {
       for (const f of this.flamePools) {
         f.timer -= delta
         f.tickTimer -= delta
-        f.graphic.setAlpha(0.45 + 0.2 * Math.sin(this.flameTime * 0.007 + f.x * 0.05))
+        f.graphic.setAlpha(0.7 + 0.2 * Math.sin(this.flameTime * 0.007 + f.x * 0.05))
         if (f.tickTimer <= 0) {
           f.tickTimer += FLAME_TICK
           for (const e of enemies) {
@@ -416,14 +451,14 @@ export class CombatSystem {
   }
 
   private spawnFlame(x: number, y: number) {
-    const g = this.scene.add.graphics().setDepth(0.5).setPosition(x, y)
-    const vr = 26
-    g.fillStyle(0xff4400, 0.7)
+    const g = this.scene.add.graphics().setDepth(1.5).setPosition(x, y)
+    const vr = 30
+    g.fillStyle(0xff3300, 0.9)
     g.fillCircle(0, 0, vr)
-    g.fillStyle(0xff7700, 0.65)
-    g.fillCircle(0, 0, vr * 0.62)
-    g.fillStyle(0xffaa00, 0.55)
-    g.fillCircle(0, 0, vr * 0.32)
+    g.fillStyle(0xff6600, 0.85)
+    g.fillCircle(0, 0, vr * 0.65)
+    g.fillStyle(0xffaa00, 0.8)
+    g.fillCircle(0, 0, vr * 0.35)
     this.flamePools.push({ x, y, timer: FLAME_DURATION, tickTimer: 0, graphic: g })
   }
 

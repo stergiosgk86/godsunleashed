@@ -14,6 +14,7 @@ class SoundSystem {
   private xpLastPlayed = 0
   private coinLastPlayed = 0
   private hitLastPlayed = 0
+  private healLastPlayed = 0
 
   constructor() {
     this._muted = localStorage.getItem(STORAGE_KEY) === 'true'
@@ -258,6 +259,29 @@ class SoundSystem {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06)
     osc.connect(gain); gain.connect(out)
     osc.start(t); osc.stop(t + 0.06)
+  }
+
+  healCollect() {
+    const now = Date.now()
+    if (now - this.healLastPlayed < 100) return
+    this.healLastPlayed = now
+    const r = this.getCtx()
+    if (!r) return
+    const { ctx, out } = r
+    const t = ctx.currentTime
+    // Warm ascending chord — two sine tones that step up
+    for (let i = 0; i < 2; i++) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(i === 0 ? 440 : 660, t + i * 0.07)
+      osc.frequency.exponentialRampToValueAtTime(i === 0 ? 550 : 880, t + i * 0.07 + 0.18)
+      gain.gain.setValueAtTime(0, t + i * 0.07)
+      gain.gain.linearRampToValueAtTime(0.12, t + i * 0.07 + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.22)
+      osc.connect(gain); gain.connect(out)
+      osc.start(t + i * 0.07); osc.stop(t + i * 0.07 + 0.25)
+    }
   }
 
   coinCollect() {

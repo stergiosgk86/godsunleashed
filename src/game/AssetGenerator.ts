@@ -213,5 +213,23 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('item_shadow_cloak', 16, 16)
   g.clear()
 
+  // Health Potion (12x20) — red flask
+  g.fillStyle(0x5c2a00)          // cork
+  g.fillRect(4, 0, 4, 3)
+  g.fillStyle(0x660000)          // neck
+  g.fillRect(4, 3, 4, 5)
+  g.fillStyle(0x880000)          // body shadow
+  g.fillCircle(6, 14, 6)
+  g.fillStyle(0xdd1111)          // body fill
+  g.fillCircle(6, 14, 4)
+  g.fillStyle(0xff5555, 0.9)     // bright inner
+  g.fillCircle(6, 14, 2)
+  g.fillStyle(0xff9999, 0.85)    // left highlight
+  g.fillRect(2, 11, 2, 4)
+  g.fillStyle(0xffffff, 0.75)    // shine dot
+  g.fillRect(2, 11, 1, 2)
+  g.generateTexture('health_potion', 12, 20)
+  g.clear()
+
   g.destroy()
 }
