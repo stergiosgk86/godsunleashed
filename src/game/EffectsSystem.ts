@@ -108,10 +108,10 @@ class FloatLabel {
   private maxLife = 1600
   private vy = -50
 
-  constructor(scene: Phaser.Scene, x: number, y: number, label: string, color: string) {
+  constructor(scene: Phaser.Scene, x: number, y: number, label: string, color: string, fontSize = 14) {
     this.text = scene.add
       .text(x, y - 24, label, {
-        fontSize: '14px', color,
+        fontSize: `${fontSize}px`, color,
         fontFamily: 'monospace', fontStyle: 'bold',
         stroke: '#000000', strokeThickness: 4,
       })
@@ -166,9 +166,9 @@ export class EffectsSystem {
     this.ghosts.push(new DashGhost(this.scene, x, y, frame))
   }
 
-  showItemCollect(x: number, y: number, label: string, color: number) {
+  showItemCollect(x: number, y: number, label: string, color: number, fontSize = 14) {
     const hex = `#${color.toString(16).padStart(6, '0')}`
-    this.labels.push(new FloatLabel(this.scene, x, y, label, hex))
+    this.labels.push(new FloatLabel(this.scene, x, y, label, hex, fontSize))
     for (let i = 0; i < 8; i++) {
       this.particles.push(new Particle(this.scene, x, y, color))
     }

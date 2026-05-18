@@ -149,13 +149,13 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('enemy_bullet', 8, 8)
   g.clear()
 
-  // XP orb (12x12)
+  // XP orb (18x18)
   g.fillStyle(0x00dd66, 1)
-  g.fillTriangle(6, 0, 12, 6, 6, 12)
-  g.fillTriangle(6, 0, 0, 6, 6, 12)
+  g.fillTriangle(9, 0, 18, 9, 9, 18)
+  g.fillTriangle(9, 0, 0, 9, 9, 18)
   g.fillStyle(0x88ffcc, 0.7)
-  g.fillTriangle(4, 2, 8, 2, 6, 6)
-  g.generateTexture('xp_orb', 12, 12)
+  g.fillTriangle(6, 3, 12, 3, 9, 9)
+  g.generateTexture('xp_orb', 18, 18)
   g.clear()
 
   // Coin (12x12) — gold circle with shine
@@ -213,22 +213,22 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('item_shadow_cloak', 16, 16)
   g.clear()
 
-  // Health Potion (12x20) — red flask
+  // Health Potion (18x30) — red flask
   g.fillStyle(0x5c2a00)          // cork
-  g.fillRect(4, 0, 4, 3)
+  g.fillRect(6, 0, 6, 5)
   g.fillStyle(0x660000)          // neck
-  g.fillRect(4, 3, 4, 5)
+  g.fillRect(6, 5, 6, 7)
   g.fillStyle(0x880000)          // body shadow
-  g.fillCircle(6, 14, 6)
+  g.fillCircle(9, 21, 9)
   g.fillStyle(0xdd1111)          // body fill
-  g.fillCircle(6, 14, 4)
+  g.fillCircle(9, 21, 6)
   g.fillStyle(0xff5555, 0.9)     // bright inner
-  g.fillCircle(6, 14, 2)
+  g.fillCircle(9, 21, 3)
   g.fillStyle(0xff9999, 0.85)    // left highlight
-  g.fillRect(2, 11, 2, 4)
+  g.fillRect(3, 16, 3, 6)
   g.fillStyle(0xffffff, 0.75)    // shine dot
-  g.fillRect(2, 11, 1, 2)
-  g.generateTexture('health_potion', 12, 20)
+  g.fillRect(3, 16, 2, 3)
+  g.generateTexture('health_potion', 18, 30)
   g.clear()
 
   g.destroy()

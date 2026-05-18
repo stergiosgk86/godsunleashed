@@ -29,7 +29,7 @@ const NOVA_RADIUS = 230
 const LIGHTNING_INTERVAL = 4000
 const LIGHTNING_TARGETS = 2
 const LIGHTNING_DAMAGE_MULT = 3.5
-const POTION_BASE_INTERVAL = 12000
+const POTION_KILL_THRESHOLD = 50
 const POTION_HEAL = 25
 const POTION_MAX = 3
 const POTION_SPAWN_MIN = 180
@@ -50,7 +50,9 @@ export class CombatSystem {
   private orbs: XPOrb[] = []
   private coins: CoinOrb[] = []
   private potions: HealthPotion[] = []
-  private potionSpawnTimer = 0
+  private potionKillCounter = 0
+  private playerX = 0
+  private playerY = 0
   private fireTimer = 0
   private auraTimer = 0
   private auraAngle = 0
@@ -85,6 +87,8 @@ export class CombatSystem {
   }
 
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
+    this.playerX = playerX
+    this.playerY = playerY
     const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning } = useGameStore.getState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
@@ -172,25 +176,10 @@ export class CombatSystem {
         const { healPlayer } = useGameStore.getState()
         healPlayer(POTION_HEAL)
         soundSystem.healCollect()
-        this.effects.showItemCollect(playerX, playerY, `+${POTION_HEAL} HP`, 0xff4466)
+        this.effects.showItemCollect(playerX, playerY, `+${POTION_HEAL} HP`, 0x44ff66, 20)
       }
     }
     this.potions = this.potions.filter(p => p.active)
-
-    // Spawn health potions on a timer (luck rank speeds up spawns)
-    {
-      const { isDead } = useGameStore.getState()
-      if (!isDead) {
-        const potionInterval = POTION_BASE_INTERVAL / (1 + luckRank * 0.12)
-        this.potionSpawnTimer += delta
-        if (this.potionSpawnTimer >= potionInterval && this.potions.length < POTION_MAX) {
-          this.potionSpawnTimer = 0
-          const angle = Math.random() * Math.PI * 2
-          const dist = POTION_SPAWN_MIN + Math.random() * (POTION_SPAWN_MAX - POTION_SPAWN_MIN)
-          this.potions.push(new HealthPotion(this.scene, playerX + Math.cos(angle) * dist, playerY + Math.sin(angle) * dist))
-        }
-      }
-    }
 
     // Enemy contact damage — per-enemy cooldown so hordes deal proportional damage
     {
@@ -587,6 +576,18 @@ export class CombatSystem {
     else soundSystem.enemyDie()
     this.spawnDrops(e, coinDropChance)
     e.destroy()
+
+    if (!e.isBoss) {
+      const luckRank = useProfileStore.getState().upgrades.luck
+      const threshold = Math.floor(POTION_KILL_THRESHOLD / (1 + luckRank * 0.12))
+      this.potionKillCounter++
+      if (this.potionKillCounter >= threshold && this.potions.length < POTION_MAX) {
+        this.potionKillCounter = 0
+        const angle = Math.random() * Math.PI * 2
+        const dist = POTION_SPAWN_MIN + Math.random() * (POTION_SPAWN_MAX - POTION_SPAWN_MIN)
+        this.potions.push(new HealthPotion(this.scene, this.playerX + Math.cos(angle) * dist, this.playerY + Math.sin(angle) * dist))
+      }
+    }
   }
 
   private jitter(dmg: number): number {
