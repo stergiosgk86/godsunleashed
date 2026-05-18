@@ -7,11 +7,16 @@ apiRouter.use(requireAuth)
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const MAX_PROFILE_COINS = 5_000_000
-const MAX_RUN_SCORE     = 10_000_000
-const MAX_RUN_KILLS     = 10_000
-const MAX_RUN_TIME_MS   = 32 * 60 * 1000
-const MAX_SESSION_COINS = 50_000
+const MAX_PROFILE_COINS  = 5_000_000
+const MAX_RUN_SCORE      = 10_000_000
+const MAX_RUN_KILLS      = 10_000
+const MAX_RUN_TIME_MS    = 32 * 60 * 1000
+const MAX_SESSION_COINS  = 300    // ~3× observed best; real max is ~0.1 coins/sec
+const MAX_COINS_PER_SEC  = 0.5   // generous ceiling — 5× observed max rate
+const MIN_RUN_GAP_MS     = 10_000 // minimum 10 s between submissions
+
+// In-memory rate limit per user — resets on server restart which is acceptable
+const lastRunAt = new Map<number, number>()
 
 // Must match client UPGRADE_COSTS / UPGRADE_MAX_RANK
 const UPGRADE_COSTS = [10, 25, 50, 90, 150]
@@ -150,12 +155,24 @@ apiRouter.post('/runs', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'Invalid score' }); return
   }
 
-  const safeScore = clamp(Math.floor(score),         0, MAX_RUN_SCORE)
-  const safeKills = clamp(Math.floor(kills    ?? 0), 0, MAX_RUN_KILLS)
+  const safeScore = clamp(Math.floor(score),             0, MAX_RUN_SCORE)
+  const safeKills = clamp(Math.floor(kills    ?? 0),     0, MAX_RUN_KILLS)
   const safeTime  = clamp(Math.round(timeSurvived ?? 0), 0, MAX_RUN_TIME_MS)
-  const safeCoins = clamp(Math.floor(coins    ?? 0), 0, MAX_SESSION_COINS)
   const safeWon   = won === true
   const safeMulti = multiplayer === true
+
+  // Rate limit: submissions must be spaced at least as long as the claimed run
+  const now = Date.now()
+  const last = lastRunAt.get(req.userId) ?? 0
+  const requiredGap = Math.max(MIN_RUN_GAP_MS, safeTime)
+  if (now - last < requiredGap) {
+    res.status(429).json({ error: 'Too soon' }); return
+  }
+  lastRunAt.set(req.userId, now)
+
+  // Coins cannot exceed what's physically earnable in the claimed time
+  const maxEarnableCoins = Math.ceil(safeTime / 1000 * MAX_COINS_PER_SEC)
+  const safeCoins = clamp(Math.floor(coins ?? 0), 0, Math.min(MAX_SESSION_COINS, maxEarnableCoins))
 
   const user = await db.query('SELECT username FROM users WHERE id = $1', [req.userId])
 
