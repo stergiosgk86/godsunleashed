@@ -1,4 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth <= 600)
+  useEffect(() => {
+    const fn = () => setMob(window.innerWidth <= 600)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return mob
+}
 import { useProfileStore, UPGRADE_COSTS, UPGRADE_MAX_RANK, type MetaUpgrades } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { useCharacterStore } from '../store/characterStore'
@@ -466,29 +476,38 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const [view, setView] = useState<'home' | 'shop' | 'characters' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds'>('home')
   const [confirmRefundAll, setConfirmRefundAll] = useState(false)
   const [confirmRefund, setConfirmRefund] = useState<keyof MetaUpgrades | null>(null)
+  const mob = useIsMobile()
 
   return (
     <div style={{
       position: 'fixed', inset: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       background: 'radial-gradient(ellipse at center, #0d0d22 0%, #07070f 100%)',
+      overflowY: mob ? 'auto' : undefined,
+      padding: mob ? '20px 0' : undefined,
     }}>
       <MenuBackground />
       <div style={{
-        color: '#cc3333', fontSize: 56, fontFamily: 'monospace', fontWeight: 'bold',
-        letterSpacing: 10, textShadow: '0 0 30px #ff2222, 0 0 70px #880000',
-        marginBottom: 4,
+        color: '#cc3333', fontSize: mob ? 30 : 56, fontFamily: 'monospace', fontWeight: 'bold',
+        letterSpacing: mob ? 3 : 10, textShadow: '0 0 30px #ff2222, 0 0 70px #880000',
+        marginBottom: 4, textAlign: 'center',
       }}>
         GODS UNLEASHED
       </div>
       <div style={{
-        color: '#3a3a66', fontSize: 12, fontFamily: 'monospace', letterSpacing: 6,
-        marginBottom: 40,
+        color: '#3a3a66', fontSize: mob ? 10 : 12, fontFamily: 'monospace', letterSpacing: mob ? 2 : 6,
+        marginBottom: mob ? 20 : 40,
       }}>
         SURVIVE THE DIVINE
       </div>
 
-      <div style={{ ...panel, minWidth: ['shop', 'characters', 'leaderboard', 'achievements', 'admin'].includes(view) ? 520 : 400 }}>
+      <div style={{
+        ...panel,
+        padding: mob ? '20px 16px' : '32px 48px',
+        minWidth: mob ? 'calc(100vw - 24px)' : (['shop', 'characters', 'leaderboard', 'achievements', 'admin'].includes(view) ? 520 : 400),
+        maxWidth: mob ? 'calc(100vw - 24px)' : undefined,
+        boxSizing: 'border-box',
+      }}>
       {view === 'settings' ? (
         <>
           <div style={{ color: '#aaaaff', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
@@ -708,7 +727,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       ))}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', minWidth: 140 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', minWidth: mob ? undefined : 140 }}>
                       {rank > 0 && (
                         confirmRefund === upg.id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
