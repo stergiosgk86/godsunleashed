@@ -136,8 +136,8 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   function handleQuit() {
     const { sessionCoins, resetRun } = useGameStore.getState()
     depositCoins(sessionCoins)
+    onQuit()   // submitRun must read sessionCoins before resetRun clears it
     resetRun()
-    onQuit()
   }
 
   const mob = useIsMobile()
