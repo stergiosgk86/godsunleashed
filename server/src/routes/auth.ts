@@ -3,6 +3,10 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import passport from 'passport'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
+import { rateLimit } from '../middleware/rateLimit.js'
+
+// 10 login/register attempts per minute per IP
+const authRateLimit = rateLimit(10, 60_000)
 import { db } from '../db.js'
 
 export const authRouter = Router()
@@ -121,7 +125,7 @@ authRouter.get('/google/callback', (req: Request, res: Response, next) => {
 // ── Local auth ───────────────────────────────────────────────────────────────
 
 // POST /auth/register
-authRouter.post('/register', async (req: Request, res: Response) => {
+authRouter.post('/register', authRateLimit, async (req: Request, res: Response) => {
   const { username, password } = req.body ?? {}
 
   if (!USERNAME_RE.test(username ?? '')) {
@@ -164,7 +168,7 @@ authRouter.post('/register', async (req: Request, res: Response) => {
 })
 
 // POST /auth/login
-authRouter.post('/login', async (req: Request, res: Response) => {
+authRouter.post('/login', authRateLimit, async (req: Request, res: Response) => {
   const { username, password } = req.body ?? {}
 
   if (!username || !password) {

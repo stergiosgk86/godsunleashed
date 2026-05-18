@@ -11,6 +11,8 @@ import { authRouter } from './routes/auth.js'
 import { apiRouter } from './routes/api.js'
 import type { C2SMessage } from './protocol.js'
 
+const VALID_CHARACTER_TYPES = new Set(['knight', 'rogue', 'witch', 'shade'])
+
 const SECRET = process.env.JWT_SECRET!
 
 interface AuthedWS extends WebSocket {
@@ -84,6 +86,7 @@ wss.on('connection', (ws) => {
 
     if (msg.type === 'join') {
       if (joined) return
+      if (!VALID_CHARACTER_TYPES.has(msg.characterType)) return
       joined = true
       console.log(`[${label}] joined as ${msg.characterType}`)
 

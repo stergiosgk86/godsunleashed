@@ -4,6 +4,9 @@ import type { S2CMessage, PlayerSnapshot } from './protocol.js'
 
 const TICK_MS = 50
 const MAX_PLAYERS = 4
+const MAX_DAMAGE  = 5_000   // cap per-hit damage from client
+const MAX_COORD   = 600_000 // matches ±500 000 physics bounds with some margin
+const MAX_VEL     = 2_000   // max projectile velocity component
 
 interface Player {
   id: string
@@ -58,8 +61,13 @@ export class GameRoom {
   }
 
   updatePlayerPos(id: string, x: number, y: number, aura: number, orbital: number) {
+    if (!isFinite(x) || !isFinite(y) || Math.abs(x) > MAX_COORD || Math.abs(y) > MAX_COORD) return
     const p = this.players.find(p => p.id === id)
-    if (p && !p.dead) { p.x = x; p.y = y; p.aura = aura; p.orbital = orbital }
+    if (p && !p.dead) {
+      p.x = x; p.y = y
+      p.aura    = Math.max(0, Math.min(10, Math.floor(aura)))
+      p.orbital = Math.max(0, Math.min(10, Math.floor(orbital)))
+    }
   }
 
   markPlayerDead(id: string) {
@@ -68,6 +76,8 @@ export class GameRoom {
   }
 
   relayProjectile(fromId: string, x: number, y: number, vx: number, vy: number) {
+    if (!isFinite(x) || !isFinite(y) || !isFinite(vx) || !isFinite(vy)
+        || Math.abs(vx) > MAX_VEL || Math.abs(vy) > MAX_VEL) return
     const data = JSON.stringify({ type: 'projectile', playerId: fromId, x, y, vx, vy })
     for (const p of this.players) {
       if (p.id !== fromId && p.ws.readyState === 1) p.ws.send(data)
@@ -75,10 +85,12 @@ export class GameRoom {
   }
 
   handleHit(enemyId: number, damage: number) {
+    if (!Number.isInteger(enemyId) || enemyId < 0 || !isFinite(damage) || damage <= 0) return
+    const safeDamage = Math.min(Math.floor(damage), MAX_DAMAGE)
     const enemy = this.spawner.findById(enemyId)
     if (!enemy || !enemy.active) return
 
-    const died = enemy.takeDamage(damage)
+    const died = enemy.takeDamage(safeDamage)
     if (died) {
       this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue })
       // Update boss HP bar if this was a boss
