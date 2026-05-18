@@ -488,6 +488,13 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
     }}>
       <MenuBackground />
       <div style={{
+        position: 'fixed', bottom: 10, right: 14,
+        color: '#ffffff', fontFamily: 'monospace', fontSize: 16, letterSpacing: 2, fontWeight: 'bold',
+        pointerEvents: 'none', userSelect: 'none',
+      }}>
+        v{__APP_VERSION__}
+      </div>
+      <div style={{
         color: '#cc3333', fontSize: mob ? 30 : 56, fontFamily: 'monospace', fontWeight: 'bold',
         letterSpacing: mob ? 3 : 10, textShadow: '0 0 30px #ff2222, 0 0 70px #880000',
         marginBottom: 4, textAlign: 'center',
@@ -849,7 +856,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         </>
       ) : (
         <>
-          <div style={{ color: '#5555ee', fontSize: 11, fontFamily: 'monospace', letterSpacing: 4 }}>
+          <div style={{ color: '#5555ee', fontSize: 16, fontFamily: 'monospace', letterSpacing: 4, fontWeight: 'bold' }}>
             ▶ {username ?? ''}
           </div>
 
