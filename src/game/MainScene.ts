@@ -18,6 +18,7 @@ import { activeNetClient } from '../net/netState'
 import type { EnemySnapshot, PlayerSnapshot } from '../net/protocol'
 import { saveRun, loadRun, clearRun } from './runSave'
 import { TouchJoystick } from './TouchJoystick'
+import { TouchDashButton } from './TouchDashButton'
 import { ChunkManager } from './ChunkManager'
 
 const SPAWN_X = 0
@@ -42,6 +43,7 @@ export class MainScene extends Phaser.Scene {
   private saveTimer = 0
   private readonly SAVE_INTERVAL = 1000
   private joystick!: TouchJoystick
+  private dashButton: TouchDashButton | null = null
   private chunkManager!: ChunkManager
 
   constructor() {
@@ -62,6 +64,7 @@ export class MainScene extends Phaser.Scene {
     const username = useAuthStore.getState().username ?? ''
     this.player = new Player(this, SPAWN_X, SPAWN_Y, spriteKey, username)
     this.joystick = new TouchJoystick(this)
+    if (window.innerWidth <= 768) this.dashButton = new TouchDashButton(this)
     this.spawner = new EnemySpawner(this)
     this.combat = new CombatSystem(this, this.effects)
     // Restore mid-run state after a page reload
@@ -194,6 +197,7 @@ export class MainScene extends Phaser.Scene {
       unsubLevelUp(); unsubPause(); unsubDamage(); unsubDead(); unsubWon()
       this.chunkManager.destroyAll()
       this.joystick.destroy()
+      this.dashButton?.destroy()
       runData.elapsed = 0
       for (const r of this.remotePlayers.values()) r.destroy()
       this.remotePlayers.clear()
@@ -321,6 +325,10 @@ export class MainScene extends Phaser.Scene {
     this.chunkManager.update(this.player.x, this.player.y)
     this.player.touchVx = this.joystick.vx
     this.player.touchVy = this.joystick.vy
+    if (this.dashButton) {
+      this.dashButton.update()
+      if (this.dashButton.consumePress()) this.player.touchDashPressed = true
+    }
     this.player.update(delta, this.effects)
     this.effects.update(delta)
 

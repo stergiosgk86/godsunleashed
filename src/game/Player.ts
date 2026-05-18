@@ -30,6 +30,7 @@ export class Player {
   private unsubscribeBindings: () => void
   touchVx = 0
   touchVy = 0
+  touchDashPressed = false
   private lastDir: Direction = 'down'
   private isDashing = false
   private dashTimeLeft = 0
@@ -102,7 +103,9 @@ export class Player {
 
     const moving = vx !== 0 || vy !== 0
 
-    if (Phaser.Input.Keyboard.JustDown(this.boundKeys.dash) && !this.isDashing) {
+    const dashTriggered = Phaser.Input.Keyboard.JustDown(this.boundKeys.dash) || this.touchDashPressed
+    this.touchDashPressed = false
+    if (dashTriggered && !this.isDashing) {
       if (startDash()) {
         soundSystem.dash()
         this.isDashing = true

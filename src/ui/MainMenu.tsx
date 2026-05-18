@@ -473,7 +473,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
   const { selectedCharacter, setCharacter } = useCharacterStore()
-  const [view, setView] = useState<'home' | 'shop' | 'characters' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds'>('home')
+  const [view, setView] = useState<'home' | 'shop' | 'characters' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds'>('home')
   const [confirmRefundAll, setConfirmRefundAll] = useState(false)
   const [confirmRefund, setConfirmRefund] = useState<keyof MetaUpgrades | null>(null)
   const mob = useIsMobile()
@@ -539,10 +539,34 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             {'<-'} BACK
           </button>
         </>
+      ) : view === 'statistics' ? (
+        <>
+          <div style={{ color: '#ccaa44', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
+            STATISTICS
+          </div>
+          <button type="button" onClick={() => setView('leaderboard')}
+            style={{ ...btnBase, fontSize: 13, color: '#ccaa44', background: 'transparent', borderColor: '#443311', boxShadow: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#1a1108')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            LEADERBOARD
+          </button>
+          <button type="button" onClick={() => setView('achievements')}
+            style={{ ...btnBase, fontSize: 13, color: '#9944cc', background: 'transparent', borderColor: '#331144', boxShadow: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#120818')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            ACHIEVEMENTS
+          </button>
+          <button type="button" onClick={() => setView('home')}
+            style={{ ...btnBase, fontSize: 13, color: '#aaaaff', background: 'transparent', borderColor: '#2a2a50', boxShadow: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            {'<-'} BACK
+          </button>
+        </>
       ) : view === 'leaderboard' ? (
-        <LeaderboardView onBack={() => setView('home')} />
+        <LeaderboardView onBack={() => setView('statistics')} />
       ) : view === 'achievements' ? (
-        <AchievementsView onBack={() => setView('home')} />
+        <AchievementsView onBack={() => setView('statistics')} />
       ) : view === 'controls' ? (
         <ControlsView onBack={() => setView('settings')} />
       ) : view === 'sounds' ? (
@@ -864,95 +888,6 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             ◈ {coins}
           </div>
 
-          <div style={{ width: '100%', height: 1, background: '#1a1a3a' }} />
-
-          <button
-            type="button"
-            onClick={() => setView('characters')}
-            style={{
-              ...btnBase, fontSize: 13,
-              color: '#aaaaff', background: 'transparent',
-              borderColor: '#2a2a55', boxShadow: 'none',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            CHARACTER
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setView('shop')}
-            style={{
-              ...btnBase, fontSize: 13,
-              color: '#aaaaff', background: 'transparent',
-              borderColor: '#2a2a55', boxShadow: 'none',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            SHOP
-          </button>
-
-          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-            <button
-              type="button"
-              onClick={() => setView('leaderboard')}
-              style={{
-                ...btnBase, flex: 1, fontSize: 12,
-                color: '#ccaa44', background: 'transparent',
-                borderColor: '#443311', boxShadow: 'none',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#1a1108')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              LEADERBOARD
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('achievements')}
-              style={{
-                ...btnBase, flex: 1, fontSize: 12,
-                color: '#9944cc', background: 'transparent',
-                borderColor: '#331144', boxShadow: 'none',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#120818')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              ACHIEVEMENTS
-            </button>
-          </div>
-
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={() => setView('admin')}
-              style={{
-                ...btnBase, fontSize: 12,
-                color: '#ff6666', background: 'transparent',
-                borderColor: '#661111', boxShadow: 'none',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#1a0808')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            >
-              ADMIN PANEL
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={() => setView('settings')}
-            style={{
-              ...btnBase, fontSize: 13,
-              color: '#aaaaff', background: 'transparent',
-              borderColor: '#2a2a55', boxShadow: 'none',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            SETTINGS
-          </button>
-
           <button
             type="button"
             onClick={onPlay}
@@ -979,6 +914,82 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
             MULTIPLAYER
+          </button>
+
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setView('admin')}
+              style={{
+                ...btnBase, fontSize: 12,
+                color: '#ff6666', background: 'transparent',
+                borderColor: '#661111', boxShadow: 'none',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1a0808')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              ADMIN PANEL
+            </button>
+          )}
+
+          <div style={{ width: '100%', height: 1, background: '#1a1a3a' }} />
+
+          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+            <button
+              type="button"
+              onClick={() => setView('characters')}
+              style={{
+                ...btnBase, flex: 1, fontSize: 13,
+                color: '#aaaaff', background: 'transparent',
+                borderColor: '#3a3a66', boxShadow: '0 0 8px #2222aa33',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              CHARACTER
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setView('shop')}
+              style={{
+                ...btnBase, flex: 1, fontSize: 13,
+                color: '#ccaa44', background: 'transparent',
+                borderColor: '#443311', boxShadow: '0 0 8px #88660033',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1a1108')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              SHOP
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setView('statistics')}
+            style={{
+              ...btnBase, fontSize: 13,
+              color: '#ccaa44', background: 'transparent',
+              borderColor: '#443311', boxShadow: 'none',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#1a1108')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            STATISTICS
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setView('settings')}
+            style={{
+              ...btnBase, fontSize: 13,
+              color: '#aaaaff', background: 'transparent',
+              borderColor: '#2a2a55', boxShadow: 'none',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            SETTINGS
           </button>
 
           <div style={{ width: '100%', height: 1, background: '#1a1a3a' }} />
