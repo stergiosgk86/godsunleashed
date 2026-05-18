@@ -10,13 +10,14 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 CREATE TABLE IF NOT EXISTS profiles (
-  id           SERIAL PRIMARY KEY,
-  user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  coins        INTEGER NOT NULL DEFAULT 0,
-  upgrades     JSONB NOT NULL DEFAULT '{"maxHealth":0,"recovery":0,"magnet":0,"might":0,"luck":0,"growth":0,"moveSpeed":0}',
-  key_bindings JSONB NOT NULL DEFAULT '{}',
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                SERIAL PRIMARY KEY,
+  user_id           INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  coins             INTEGER NOT NULL DEFAULT 0,
+  upgrades          JSONB NOT NULL DEFAULT '{"maxHealth":0,"recovery":0,"magnet":0,"might":0,"luck":0,"growth":0,"moveSpeed":0}',
+  key_bindings      JSONB NOT NULL DEFAULT '{}',
+  active_run_token  UUID,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 -- One profile per user

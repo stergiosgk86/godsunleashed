@@ -13,6 +13,7 @@ import { MainMenu } from './ui/MainMenu'
 import { MultiplayerLobby } from './ui/MultiplayerLobby'
 import { AuthScreen } from './ui/AuthScreen'
 import { useGameStore, DASH_COOLDOWN_MS } from './store/gameStore'
+import { ACHIEVEMENT_MAP } from './game/achievements'
 import { useProfileStore } from './store/profileStore'
 import { useAuthStore } from './store/authStore'
 import { useCharacterStore } from './store/characterStore'
@@ -147,6 +148,7 @@ function App() {
         // Restore singleplayer session after page reload
         if (shouldRestoreGame) {
           startRun()
+          startRunWithToken()
           setInGame(true)
         }
       }
@@ -161,28 +163,67 @@ function App() {
   }, [inGame])
 
   const runSubmittedRef = useRef(false)
+  const runTokenRef = useRef<string | null>(null)
+
+  async function startRunWithToken() {
+    const authToken = useAuthStore.getState().token
+    if (!authToken) return
+    try {
+      const res = await fetch('/api/runs/start', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+      if (res.ok) {
+        const data = await res.json() as { token: string }
+        runTokenRef.current = data.token
+      }
+    } catch { /* non-fatal — submitRun will fail gracefully without a token */ }
+  }
 
   function submitRun() {
     if (runSubmittedRef.current) return
     const s = useGameStore.getState()
-    const token = useAuthStore.getState().token
-    if (!token || s.kills === 0) return  // skip empty runs
+    const authToken = useAuthStore.getState().token
+    if (!authToken || s.kills === 0) return  // skip empty runs
     runSubmittedRef.current = true
     const timeMs = runData.elapsed
     const score = s.kills * 10 + s.sessionCoins * 5 + Math.floor(timeMs / 1000) * 2 + (s.isWon ? 5000 : 0)
+    const weaponCount = 1 +
+      (s.aura > 0 ? 1 : 0) +
+      (s.orbital > 0 ? 1 : 0) +
+      (s.boomerang ? 1 : 0) +
+      (s.flameTrail ? 1 : 0) +
+      (s.bloodNova ? 1 : 0)
     fetch('/api/runs', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
       body: JSON.stringify({
+        runToken: runTokenRef.current,
         score,
         kills: s.kills,
         timeSurvived: timeMs,
         coins: s.sessionCoins,
         won: s.isWon,
         multiplayer: !!activeNetClient,
+        bossKills: s.bossKills,
+        level: s.level,
+        damageDealt: s.damageDealt,
+        weaponCount,
+        tookDamage: s.tookDamageThisRun,
+        finalHp: s.hp,
+        maxHp: s.maxHp,
       }),
     })
-      .then(() => useProfileStore.getState().fetchProfile())
+      .then(r => r.json())
+      .then((data: { newAchievements?: string[] }) => {
+        if (data.newAchievements?.length) {
+          for (const id of data.newAchievements) {
+            const a = ACHIEVEMENT_MAP[id]
+            if (a) useGameStore.setState({ recentAchievement: { id, name: a.name } })
+          }
+        }
+        useProfileStore.getState().fetchProfile()
+      })
       .catch(() => { /* non-fatal */ })
   }
 
@@ -201,6 +242,7 @@ function App() {
     setNetClient(null)
     clearRun()
     startRun()
+    startRunWithToken()
     setInGame(true)
   }
 
@@ -211,6 +253,7 @@ function App() {
   function handleLobbyReady(net: NetClient, _players: PlayerSnapshot[]) {
     setNetClient(net)
     startRun()
+    startRunWithToken()
     setInLobby(false)
     setInGame(true)
   }

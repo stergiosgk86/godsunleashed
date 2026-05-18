@@ -18,7 +18,6 @@ import { activeNetClient } from '../net/netState'
 import type { EnemySnapshot, PlayerSnapshot } from '../net/protocol'
 import { saveRun, loadRun, clearRun } from './runSave'
 import { TouchJoystick } from './TouchJoystick'
-import { AchievementSystem } from './AchievementSystem'
 import { ChunkManager } from './ChunkManager'
 
 const SPAWN_X = 0
@@ -34,8 +33,6 @@ export class MainScene extends Phaser.Scene {
   private finalWarningText!: Phaser.GameObjects.Text
   private prevLevelUpPending = false
   private healPool = 0
-
-  private achievements!: AchievementSystem
 
   // Multiplayer
   private clientEnemies = new Map<number, ClientEnemy>()
@@ -67,19 +64,6 @@ export class MainScene extends Phaser.Scene {
     this.joystick = new TouchJoystick(this)
     this.spawner = new EnemySpawner(this)
     this.combat = new CombatSystem(this, this.effects)
-    this.achievements = new AchievementSystem()
-
-    // Pre-load already-unlocked achievements so we don't re-toast them
-    const { token } = useAuthStore.getState()
-    if (token) {
-      fetch('/api/achievements', { headers: { Authorization: `Bearer ${token}` } })
-        .then(r => r.json())
-        .then((d: { achievements: { achievement_id: string }[] }) => {
-          this.achievements.preload(d.achievements.map(a => a.achievement_id))
-        })
-        .catch(() => { /* non-fatal */ })
-    }
-
     // Restore mid-run state after a page reload
     const savedRun = loadRun()
     if (savedRun && !activeNetClient) {
@@ -397,8 +381,6 @@ export class MainScene extends Phaser.Scene {
     }
 
     const state = useGameStore.getState()
-
-    if (!state.isDead && !state.isWon) this.achievements.update()
 
     if (state.hpRegen > 0 && state.hp < state.maxHp && !state.isDead) {
       this.healPool += state.hpRegen * (delta / 1000)
