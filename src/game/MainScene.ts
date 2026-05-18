@@ -52,6 +52,8 @@ export class MainScene extends Phaser.Scene {
   }
 
   create() {
+    // Effectively infinite physics bounds for the chunk-streamed world
+    this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
     generateAssets(this)
     generateTilesetTexture(this)
     generatePropTextures(this)
