@@ -29,7 +29,7 @@ const NOVA_RADIUS = 230
 const LIGHTNING_INTERVAL = 4000
 const LIGHTNING_TARGETS = 2
 const LIGHTNING_DAMAGE_MULT = 3.5
-const POTION_KILL_THRESHOLD = 50
+const POTION_KILL_THRESHOLD = 100
 const POTION_HEAL = 25
 const POTION_MAX = 3
 const POTION_SPAWN_MIN = 180
@@ -605,7 +605,10 @@ export class CombatSystem {
         this.coins.push(new CoinOrb(this.scene, x + (Math.random() - 0.5) * 80, y + (Math.random() - 0.5) * 80))
       }
     } else {
-      if (Math.random() < coinDropChance) this.coins.push(new CoinOrb(this.scene, x, y))
+      if (Math.random() < coinDropChance) {
+        const a = Math.random() * Math.PI * 2
+        this.coins.push(new CoinOrb(this.scene, x + Math.cos(a) * 20, y + Math.sin(a) * 20))
+      }
     }
   }
 

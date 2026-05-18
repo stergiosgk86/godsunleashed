@@ -149,16 +149,44 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('enemy_bullet', 8, 8)
   g.clear()
 
-  // XP orb (18x18)
-  g.fillStyle(0x00dd66, 1)
-  g.fillTriangle(9, 0, 18, 9, 9, 18)
-  g.fillTriangle(9, 0, 0, 9, 9, 18)
-  g.fillStyle(0x88ffcc, 0.7)
-  g.fillTriangle(6, 3, 12, 3, 9, 9)
-  g.generateTexture('xp_orb', 18, 18)
+  // XP orb glow halo (36x36) — additive-blend soft green circles
+  g.fillStyle(0x00ff88, 0.05)
+  g.fillCircle(18, 18, 17)
+  g.fillStyle(0x00ff88, 0.1)
+  g.fillCircle(18, 18, 13)
+  g.fillStyle(0x00ff88, 0.22)
+  g.fillCircle(18, 18, 9)
+  g.generateTexture('xp_orb_glow', 36, 36)
+  g.clear()
+
+  // XP orb gem (20x20) — dark border, green facets, white sparkle
+  g.fillStyle(0x005522, 1)
+  g.fillTriangle(10, 0, 20, 10, 10, 20)
+  g.fillTriangle(10, 0, 0, 10, 10, 20)
+  g.fillStyle(0x00cc55, 1)
+  g.fillTriangle(10, 2, 18, 10, 10, 18)
+  g.fillTriangle(10, 2, 2, 10, 10, 18)
+  g.fillStyle(0x33ff88, 0.85)
+  g.fillTriangle(10, 2, 16, 8, 10, 10)
+  g.fillTriangle(10, 2, 4, 8, 10, 10)
+  g.fillStyle(0xaaffdd, 0.65)
+  g.fillTriangle(8, 4, 12, 4, 10, 7)
+  g.fillStyle(0xffffff, 0.9)
+  g.fillCircle(8, 5, 1.5)
+  g.generateTexture('xp_orb', 20, 20)
   g.clear()
 
   // Coin (12x12) — gold circle with shine
+  // Coin glow halo (32x32) — additive-blend soft gold circles
+  g.fillStyle(0xffcc00, 0.05)
+  g.fillCircle(16, 16, 15)
+  g.fillStyle(0xffcc00, 0.11)
+  g.fillCircle(16, 16, 11)
+  g.fillStyle(0xffdd44, 0.22)
+  g.fillCircle(16, 16, 7)
+  g.generateTexture('coin_glow', 32, 32)
+  g.clear()
+
   g.fillStyle(0xcc9900, 1)
   g.fillCircle(6, 6, 6)
   g.fillStyle(0xffdd33, 1)
@@ -211,6 +239,16 @@ export function generateAssets(scene: Phaser.Scene) {
   g.fillStyle(0xffffff, 0.7)
   g.fillRect(7, 3, 1, 3)
   g.generateTexture('item_shadow_cloak', 16, 16)
+  g.clear()
+
+  // Health potion glow halo (40x40) — additive-blend soft red circles
+  g.fillStyle(0xff2222, 0.05)
+  g.fillCircle(20, 20, 19)
+  g.fillStyle(0xff2222, 0.1)
+  g.fillCircle(20, 20, 14)
+  g.fillStyle(0xff4444, 0.22)
+  g.fillCircle(20, 20, 9)
+  g.generateTexture('health_potion_glow', 40, 40)
   g.clear()
 
   // Health Potion (18x30) — red flask
