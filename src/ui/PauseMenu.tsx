@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
-import { CONTROLS } from '../game/controls'
 import { soundSystem } from '../game/SoundSystem'
+import { AdminPlayersView } from './AdminPlayersView'
+import { ControlsView } from './ControlsView'
 
 const btnBase: React.CSSProperties = {
   width: '100%',
@@ -11,23 +12,6 @@ const btnBase: React.CSSProperties = {
   fontSize: 15, fontFamily: 'monospace', fontWeight: 'bold',
   border: '2px solid #4444cc', borderRadius: 8,
   cursor: 'pointer', letterSpacing: 2,
-}
-
-function Key({ label }: { label: string }) {
-  return (
-    <span style={{
-      display: 'inline-block',
-      padding: '2px 8px',
-      background: '#1a1a3a',
-      border: '1px solid #4444aa',
-      borderRadius: 4,
-      color: '#ccccff',
-      fontSize: 12,
-      fontFamily: 'monospace',
-    }}>
-      {label}
-    </span>
-  )
 }
 
 function StatRow({ label, value }: { label: string; value: string | number }) {
@@ -77,12 +61,17 @@ function StatsView() {
 function AdminPanel({ onBack }: { onBack: () => void }) {
   const adminInvincible = useGameStore(s => s.adminInvincible)
   const setAdminInvincible = useGameStore(s => s.setAdminInvincible)
+  const [subView, setSubView] = useState<'main' | 'players'>('main')
 
   const toggleStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     width: '100%', padding: '10px 14px',
     background: '#0a0a1a', border: '1px solid #333366',
     borderRadius: 6, cursor: 'pointer',
+  }
+
+  if (subView === 'players') {
+    return <AdminPlayersView onBack={() => setSubView('main')} />
   }
 
   return (
@@ -105,6 +94,12 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
           }}>
             {adminInvincible ? 'ON' : 'OFF'}
           </span>
+        </div>
+        <div style={toggleStyle} onClick={() => setSubView('players')}>
+          <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>
+            PLAYERS
+          </span>
+          <span style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>→</span>
         </div>
       </div>
 
@@ -300,38 +295,7 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
           </button>
         </>
       ) : (
-        <>
-          <div style={{
-            color: '#aaaaff', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold',
-            letterSpacing: 3, textShadow: '0 0 10px #4444ff',
-          }}>
-            CONTROLS
-          </div>
-
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {CONTROLS.map(({ keys, label }) => (
-              <div key={label} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-              }}>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {keys.map(k => <Key key={k} label={k} />)}
-                </div>
-                <span style={{ color: '#8888aa', fontSize: 13, fontFamily: 'monospace' }}>
-                  {label}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={() => setView('main')}
-            style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none', marginTop: 8 }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            ← BACK
-          </button>
-        </>
+        <ControlsView onBack={() => setView('main')} />
       )}
     </div>
   )

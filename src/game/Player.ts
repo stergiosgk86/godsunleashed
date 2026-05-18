@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { useGameStore } from '../store/gameStore'
+import { useKeyBindingsStore, type BindableAction } from '../store/keyBindingsStore'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 import { type EffectsSystem } from './EffectsSystem'
 import { soundSystem } from './SoundSystem'
@@ -16,17 +17,17 @@ export class Player {
   graphic: Phaser.GameObjects.Sprite
   x: number
   y: number
-  private keys: {
-    w: Phaser.Input.Keyboard.Key
-    a: Phaser.Input.Keyboard.Key
-    s: Phaser.Input.Keyboard.Key
-    d: Phaser.Input.Keyboard.Key
+  private keyboard: Phaser.Input.Keyboard.KeyboardPlugin
+  // Fixed secondary bindings (arrow keys, never rebindable)
+  private arrowKeys: {
     up: Phaser.Input.Keyboard.Key
     left: Phaser.Input.Keyboard.Key
     down: Phaser.Input.Keyboard.Key
     right: Phaser.Input.Keyboard.Key
-    space: Phaser.Input.Keyboard.Key
   }
+  // Rebindable primary keys — keyed by action
+  private boundKeys: Record<BindableAction, Phaser.Input.Keyboard.Key>
+  private unsubscribeBindings: () => void
   touchVx = 0
   touchVy = 0
   private lastDir: Direction = 'down'
@@ -53,18 +54,36 @@ export class Player {
       }).setOrigin(0.5).setDepth(5)
     }
 
-    const kb = scene.input.keyboard!
-    this.keys = {
-      w: kb.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      a: kb.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      s: kb.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      d: kb.addKey(Phaser.Input.Keyboard.KeyCodes.D),
-      up: kb.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
-      left: kb.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
-      down: kb.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
-      right: kb.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
-      space: kb.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE),
+    this.keyboard = scene.input.keyboard!
+    this.arrowKeys = {
+      up: this.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
+      left: this.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
+      down: this.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
+      right: this.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
     }
+
+    const b = useKeyBindingsStore.getState()
+    this.boundKeys = {
+      up: this.keyboard.addKey(b.up),
+      down: this.keyboard.addKey(b.down),
+      left: this.keyboard.addKey(b.left),
+      right: this.keyboard.addKey(b.right),
+      dash: this.keyboard.addKey(b.dash),
+    }
+
+    this.unsubscribeBindings = useKeyBindingsStore.subscribe((next, prev) => {
+      const actions: BindableAction[] = ['up', 'down', 'left', 'right', 'dash']
+      for (const action of actions) {
+        if (next[action] !== prev[action]) {
+          this.keyboard.removeKey(this.boundKeys[action])
+          this.boundKeys[action] = this.keyboard.addKey(next[action])
+        }
+      }
+    })
+  }
+
+  destroy() {
+    this.unsubscribeBindings()
   }
 
   update(delta: number, effects: EffectsSystem) {
@@ -73,17 +92,17 @@ export class Player {
 
     let vx = this.touchVx
     let vy = this.touchVy
-    if (this.keys.a.isDown || this.keys.left.isDown) vx -= 1
-    if (this.keys.d.isDown || this.keys.right.isDown) vx += 1
-    if (this.keys.w.isDown || this.keys.up.isDown) vy -= 1
-    if (this.keys.s.isDown || this.keys.down.isDown) vy += 1
+    if (this.boundKeys.left.isDown || this.arrowKeys.left.isDown) vx -= 1
+    if (this.boundKeys.right.isDown || this.arrowKeys.right.isDown) vx += 1
+    if (this.boundKeys.up.isDown || this.arrowKeys.up.isDown) vy -= 1
+    if (this.boundKeys.down.isDown || this.arrowKeys.down.isDown) vy += 1
     // Clamp combined input so touch + keyboard doesn't exceed unit vector
     const inputLen = Math.sqrt(vx * vx + vy * vy)
     if (inputLen > 1) { vx /= inputLen; vy /= inputLen }
 
     const moving = vx !== 0 || vy !== 0
 
-    if (Phaser.Input.Keyboard.JustDown(this.keys.space) && !this.isDashing) {
+    if (Phaser.Input.Keyboard.JustDown(this.boundKeys.dash) && !this.isDashing) {
       if (startDash()) {
         soundSystem.dash()
         this.isDashing = true

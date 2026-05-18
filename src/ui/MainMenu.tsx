@@ -5,6 +5,8 @@ import { useCharacterStore } from '../store/characterStore'
 import { ALL_CHARACTERS, CHARACTER_DEFS } from '../game/characters'
 import { SPRITE_URLS } from '../game/assets'
 import { ACHIEVEMENTS } from '../game/achievements'
+import { AdminPlayersView } from './AdminPlayersView'
+import { ControlsView } from './ControlsView'
 
 const CHAR_SPRITE_URL: Record<string, string> = {
   player:       SPRITE_URLS.player,
@@ -453,8 +455,10 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
 }) {
   const { coins, upgrades, purchaseUpgrade } = useProfileStore()
   const username = useAuthStore(s => s.username)
+  const role = useAuthStore(s => s.role)
+  const isSuperAdmin = role === 'super_admin'
   const { selectedCharacter, setCharacter } = useCharacterStore()
-  const [view, setView] = useState<'home' | 'shop' | 'characters' | 'leaderboard' | 'achievements'>('home')
+  const [view, setView] = useState<'home' | 'shop' | 'characters' | 'leaderboard' | 'achievements' | 'admin' | 'controls'>('home')
 
   return (
     <div style={{
@@ -477,11 +481,15 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         SURVIVE THE DIVINE
       </div>
 
-      <div style={{ ...panel, minWidth: ['shop', 'characters', 'leaderboard', 'achievements'].includes(view) ? 520 : 400 }}>
+      <div style={{ ...panel, minWidth: ['shop', 'characters', 'leaderboard', 'achievements', 'admin'].includes(view) ? 520 : 400 }}>
       {view === 'leaderboard' ? (
         <LeaderboardView onBack={() => setView('home')} />
       ) : view === 'achievements' ? (
         <AchievementsView onBack={() => setView('home')} />
+      ) : view === 'controls' ? (
+        <ControlsView onBack={() => setView('home')} />
+      ) : view === 'admin' ? (
+        <AdminPlayersView onBack={() => setView('home')} />
       ) : view === 'characters' ? (
         <>
           <div style={{ color: '#aaaaff', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
@@ -744,6 +752,36 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               ACHIEVEMENTS
             </button>
           </div>
+
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={() => setView('admin')}
+              style={{
+                ...btnBase, fontSize: 12,
+                color: '#ff6666', background: 'transparent',
+                borderColor: '#661111', boxShadow: 'none',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1a0808')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              ADMIN PANEL
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => setView('controls')}
+            style={{
+              ...btnBase, fontSize: 13,
+              color: '#aaaaff', background: 'transparent',
+              borderColor: '#2a2a55', boxShadow: 'none',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            CONTROLS
+          </button>
 
           <button
             type="button"
