@@ -456,7 +456,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   onMultiplayer: () => void
   onLogout: () => void
 }) {
-  const { coins, upgrades, purchaseUpgrade } = useProfileStore()
+  const { coins, upgrades, purchaseUpgrade, refundUpgrade } = useProfileStore()
   const username = useAuthStore(s => s.username)
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
@@ -598,6 +598,8 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               const cost = isMax ? null : UPGRADE_COSTS[rank]
               const canAfford = cost !== null && coins >= cost
 
+              const refundAmount = rank > 0 ? UPGRADE_COSTS[rank - 1] : 0
+
               return (
                 <div key={upg.id} style={{
                   background: '#09091c', border: '1px solid #1e1e44',
@@ -621,41 +623,63 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       ))}
                     </div>
 
-                    {isMax ? (
-                      <span style={{
-                        color: '#44aa44', fontFamily: 'monospace', fontSize: 11,
-                        fontWeight: 'bold', letterSpacing: 1, width: 90, textAlign: 'right',
-                      }}>
-                        MAX
-                      </span>
-                    ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: 90, justifyContent: 'flex-end' }}>
-                        <span style={{
-                          color: canAfford ? '#ccaa22' : '#554422',
-                          fontFamily: 'monospace', fontSize: 12,
-                        }}>
-                          ◈ {cost}
-                        </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', minWidth: 140 }}>
+                      {rank > 0 && (
                         <button
                           type="button"
-                          onClick={() => purchaseUpgrade(upg.id)}
-                          disabled={!canAfford}
+                          onClick={() => refundUpgrade(upg.id)}
+                          title={`Refund ◈ ${refundAmount}`}
                           style={{
-                            padding: '3px 10px',
-                            background: canAfford ? '#1a1a66' : '#0a0a1a',
-                            border: `1px solid ${canAfford ? '#4444cc' : '#1a1a33'}`,
+                            padding: '3px 8px',
+                            background: 'transparent',
+                            border: '1px solid #442222',
                             borderRadius: 4,
-                            color: canAfford ? '#aaaaff' : '#333355',
+                            color: '#aa4444',
                             fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
-                            cursor: canAfford ? 'pointer' : 'not-allowed',
+                            cursor: 'pointer',
                           }}
-                          onMouseEnter={e => { if (canAfford) e.currentTarget.style.background = '#2828aa' }}
-                          onMouseLeave={e => { if (canAfford) e.currentTarget.style.background = '#1a1a66' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#1a0808'; e.currentTarget.style.borderColor = '#882222' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#442222' }}
                         >
-                          BUY
+                          ↩ ◈{refundAmount}
                         </button>
-                      </div>
-                    )}
+                      )}
+                      {isMax ? (
+                        <span style={{
+                          color: '#44aa44', fontFamily: 'monospace', fontSize: 11,
+                          fontWeight: 'bold', letterSpacing: 1,
+                        }}>
+                          MAX
+                        </span>
+                      ) : (
+                        <>
+                          <span style={{
+                            color: canAfford ? '#ccaa22' : '#554422',
+                            fontFamily: 'monospace', fontSize: 12,
+                          }}>
+                            ◈ {cost}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => purchaseUpgrade(upg.id)}
+                            disabled={!canAfford}
+                            style={{
+                              padding: '3px 10px',
+                              background: canAfford ? '#1a1a66' : '#0a0a1a',
+                              border: `1px solid ${canAfford ? '#4444cc' : '#1a1a33'}`,
+                              borderRadius: 4,
+                              color: canAfford ? '#aaaaff' : '#333355',
+                              fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                              cursor: canAfford ? 'pointer' : 'not-allowed',
+                            }}
+                            onMouseEnter={e => { if (canAfford) e.currentTarget.style.background = '#2828aa' }}
+                            onMouseLeave={e => { if (canAfford) e.currentTarget.style.background = '#1a1a66' }}
+                          >
+                            BUY
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontFamily: 'monospace', fontSize: 11 }}>

@@ -13,7 +13,7 @@ export interface MetaUpgrades {
   armor: number
 }
 
-export const UPGRADE_COSTS = [10, 25, 50, 90, 150]
+export const UPGRADE_COSTS = [50, 125, 250, 450, 750]
 export const UPGRADE_MAX_RANK = 5
 
 function emptyUpgrades(): MetaUpgrades {
@@ -29,6 +29,7 @@ interface ProfileStore {
   depositCoins: (amount: number) => void
   // Server-authoritative purchase — returns false if server rejects
   purchaseUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
+  refundUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
   reset: () => void
 }
 
@@ -68,6 +69,22 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
     if (!token) return false
     try {
       const res = await fetch('/api/upgrades/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ upgrade }),
+      })
+      if (!res.ok) return false
+      const data = await res.json() as { coins: number; upgrades: MetaUpgrades }
+      set({ coins: data.coins, upgrades: { ...emptyUpgrades(), ...data.upgrades } })
+      return true
+    } catch { return false }
+  },
+
+  refundUpgrade: async (upgrade) => {
+    const token = useAuthStore.getState().token
+    if (!token) return false
+    try {
+      const res = await fetch('/api/upgrades/refund', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ upgrade }),

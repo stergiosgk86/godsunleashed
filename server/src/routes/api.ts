@@ -20,7 +20,7 @@ const MIN_RUN_GAP_MS     = 10_000 // minimum 10 s between submissions
 const lastRunAt = new Map<number, number>()
 
 // Must match client UPGRADE_COSTS / UPGRADE_MAX_RANK
-const UPGRADE_COSTS = [10, 25, 50, 90, 150]
+const UPGRADE_COSTS = [50, 125, 250, 450, 750]
 const MAX_UPGRADE_RANK = 5
 const VALID_UPGRADE_KEYS = new Set(['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed', 'armor'])
 
@@ -111,6 +111,49 @@ apiRouter.post('/upgrades/purchase', async (req: Request, res: Response) => {
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('Purchase error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  } finally {
+    client.release()
+  }
+})
+
+// ── Upgrade refunds (lose one rank, get coins back) ───────────────────────────
+
+apiRouter.post('/upgrades/refund', async (req: Request, res: Response) => {
+  const { upgrade } = req.body ?? {}
+  if (typeof upgrade !== 'string' || !VALID_UPGRADE_KEYS.has(upgrade)) {
+    res.status(400).json({ error: 'Invalid upgrade' }); return
+  }
+
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+
+    const profileRes = await client.query(
+      'SELECT coins, upgrades FROM profiles WHERE user_id = $1 FOR UPDATE',
+      [req.userId],
+    )
+    if (!profileRes.rows[0]) { await client.query('ROLLBACK'); res.status(404).json({ error: 'Profile not found' }); return }
+
+    const { coins, upgrades } = profileRes.rows[0] as { coins: number; upgrades: Record<string, number> }
+    const rank = upgrades[upgrade] ?? 0
+
+    if (rank <= 0) {
+      await client.query('ROLLBACK'); res.status(400).json({ error: 'Nothing to refund' }); return
+    }
+
+    const refund = UPGRADE_COSTS[rank - 1]
+    const newUpgrades = { ...upgrades, [upgrade]: rank - 1 }
+    const newCoins = Math.min(MAX_PROFILE_COINS, coins + refund)
+    await client.query(
+      'UPDATE profiles SET coins = $1, upgrades = $2::jsonb, updated_at = NOW() WHERE user_id = $3',
+      [newCoins, JSON.stringify(newUpgrades), req.userId],
+    )
+    await client.query('COMMIT')
+    res.json({ ok: true, coins: newCoins, upgrades: newUpgrades })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    console.error('Refund error:', err)
     res.status(500).json({ error: 'Internal server error' })
   } finally {
     client.release()
