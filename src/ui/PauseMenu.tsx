@@ -122,7 +122,7 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   const depositCoins = useProfileStore(s => s.depositCoins)
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
-  const [view, setView] = useState<'main' | 'controls' | 'stats' | 'sounds' | 'admin'>('main')
+  const [view, setView] = useState<'main' | 'settings' | 'controls' | 'stats' | 'sounds' | 'admin'>('main')
   function handleQuit() {
     const { sessionCoins, resetRun } = useGameStore.getState()
     depositCoins(sessionCoins)
@@ -172,21 +172,12 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
           </button>
 
           <button
-            onClick={() => setView('controls')}
+            onClick={() => setView('settings')}
             style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none' }}
             onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           >
-            CONTROLS
-          </button>
-
-          <button
-            onClick={() => setView('sounds')}
-            style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            SOUNDS
+            SETTINGS
           </button>
 
           {isSuperAdmin && (
@@ -231,10 +222,43 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
             ← BACK
           </button>
         </>
+      ) : view === 'settings' ? (
+        <>
+          <div style={{
+            color: '#aaaaff', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold',
+            letterSpacing: 3, textShadow: '0 0 10px #4444ff',
+          }}>
+            SETTINGS
+          </div>
+          <button
+            onClick={() => setView('controls')}
+            style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            CONTROLS
+          </button>
+          <button
+            onClick={() => setView('sounds')}
+            style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none' }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            SOUNDS
+          </button>
+          <button
+            onClick={() => setView('main')}
+            style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none', marginTop: 8 }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            ← BACK
+          </button>
+        </>
       ) : view === 'sounds' ? (
-        <SoundsView onBack={() => setView('main')} />
+        <SoundsView onBack={() => setView('settings')} />
       ) : (
-        <ControlsView onBack={() => setView('main')} />
+        <ControlsView onBack={() => setView('settings')} />
       )}
     </div>
   )
