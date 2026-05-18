@@ -49,6 +49,7 @@ function StatsView() {
         <StatRow label="Move Speed" value={s.moveSpeed} />
         <StatRow label="Dash Cooldown" value={`${dashCooldownSec}s`} />
         <StatRow label="Dash Distance" value={`${dashDistMult}x`} />
+        <StatRow label="Armor" value={s.armor > 0 ? `-${s.armor} dmg` : '—'} />
         <StatRow label="Multi Shot" value={s.multiShot > 0 ? `+${s.multiShot}` : '—'} />
         <StatRow label="Piercing" value={s.piercing ? 'Yes' : '—'} />
         <StatRow label="Aura" value={s.aura > 0 ? `Lv ${s.aura}` : '—'} />
