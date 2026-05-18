@@ -31,7 +31,8 @@ const UPGRADE_POOL: Upgrade[] = [
 ]
 
 function xpNeeded(level: number) {
-  return Math.floor(25 + level * 20)
+  // L1=10, L2=24, L3=42, L4=64, L5=90, L10=280, L15=570
+  return Math.floor(level * (level + 4) * 2)
 }
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
