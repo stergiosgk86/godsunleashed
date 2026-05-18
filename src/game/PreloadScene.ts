@@ -10,9 +10,12 @@ const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight:
   { key: 'enemy_basic',    url: SPRITE_URLS.enemyBasic,   frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_speeder',  url: SPRITE_URLS.enemySpeeder, frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_tank',     url: SPRITE_URLS.enemyTank,    frameWidth: 32, frameHeight: 32 },
-  { key: 'enemy_ranged',    url: SPRITE_URLS.enemyRanged,    frameWidth: 32, frameHeight: 32 },
-  { key: 'enemy_exploder',  url: SPRITE_URLS.enemyExploder,  frameWidth: 32, frameHeight: 32 },
-  { key: 'boss',            url: SPRITE_URLS.boss,           frameWidth: 96, frameHeight: 96, frameRate: 6 },
+  { key: 'enemy_ranged',      url: SPRITE_URLS.enemyRanged,      frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_exploder',    url: SPRITE_URLS.enemyExploder,    frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_ghost',       url: SPRITE_URLS.enemyGhost,       frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_charger',     url: SPRITE_URLS.enemyCharger,     frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_necromancer', url: SPRITE_URLS.enemyNecromancer, frameWidth: 32, frameHeight: 32 },
+  { key: 'boss',              url: SPRITE_URLS.boss,             frameWidth: 96, frameHeight: 96, frameRate: 6 },
 ]
 
 export class PreloadScene extends Phaser.Scene {

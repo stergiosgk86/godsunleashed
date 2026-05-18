@@ -1,4 +1,4 @@
-export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'boss' | 'finalBoss'
+export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'boss' | 'finalBoss'
 
 export interface EnemySnapshot {
   id: number

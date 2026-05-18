@@ -7,6 +7,9 @@ import enemySpeeder from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enem
 import enemyTank from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 06-1.png'
 import enemyRanged from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 09-1.png'
 import enemyExploder from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 05-1.png'
+import enemyGhost from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 02-1.png'
+import enemyCharger from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 07-1.png'
+import enemyNecromancer from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 04-1.png'
 import boss from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Boss/Boss 01.png'
 
 export const SPRITE_URLS = {
@@ -16,5 +19,8 @@ export const SPRITE_URLS = {
   enemyTank,
   enemyRanged,
   enemyExploder,
+  enemyGhost,
+  enemyCharger,
+  enemyNecromancer,
   boss,
 }

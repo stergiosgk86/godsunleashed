@@ -3,11 +3,14 @@ import { Enemy } from './Enemy'
 import type { AnyEnemy, EnemyType } from './Enemy'
 import { RangedEnemy } from './RangedEnemy'
 import { ExploderEnemy } from './ExploderEnemy'
+import { GhostEnemy } from './GhostEnemy'
+import { ChargerEnemy } from './ChargerEnemy'
+import { NecromancerEnemy } from './NecromancerEnemy'
 import { BossEnemy } from './BossEnemy'
 import { FinalBossEnemy } from './FinalBossEnemy'
 import { SummonerBoss } from './SummonerBoss'
 
-export type SavedEnemyType = EnemyType | 'ranged' | 'exploder' | 'boss' | 'summoner' | 'finalBoss'
+export type SavedEnemyType = EnemyType | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'boss' | 'summoner' | 'finalBoss'
 export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: number }
 import { RUN_DURATION } from './runData'
 import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
@@ -21,7 +24,7 @@ const BOSS_REPEAT = 120_000
 const BOSS_WARNING = 5_000
 const FINAL_BOSS_LOCK = RUN_DURATION - 30_000  // stop regular boss cycle 30s before end
 
-type SpawnType = EnemyType | 'ranged' | 'exploder'
+type SpawnType = EnemyType | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
 
 export class EnemySpawner {
   private scene: Phaser.Scene
@@ -86,6 +89,12 @@ export class EnemySpawner {
         result.push({ type: 'ranged', x: e.x, y: e.y, hp: e.hp })
       } else if (e instanceof ExploderEnemy) {
         result.push({ type: 'exploder', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof GhostEnemy) {
+        result.push({ type: 'ghost', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof ChargerEnemy) {
+        result.push({ type: 'charger', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof NecromancerEnemy) {
+        result.push({ type: 'necromancer', x: e.x, y: e.y, hp: e.hp })
       } else if (e instanceof Enemy) {
         result.push({ type: e.type, x: e.x, y: e.y, hp: e.hp })
       }
@@ -124,6 +133,19 @@ export class EnemySpawner {
         this.enemies.push(e)
       } else if (save.type === 'exploder') {
         e = new ExploderEnemy(this.scene, save.x, save.y)
+        e.hp = save.hp
+        this.enemies.push(e)
+      } else if (save.type === 'ghost') {
+        // Restore ghost heading toward screen centre — direction is approximate after refresh
+        e = new GhostEnemy(this.scene, save.x, save.y, save.x, save.y - 400)
+        e.hp = save.hp
+        this.enemies.push(e)
+      } else if (save.type === 'charger') {
+        e = new ChargerEnemy(this.scene, save.x, save.y)
+        e.hp = save.hp
+        this.enemies.push(e)
+      } else if (save.type === 'necromancer') {
+        e = new NecromancerEnemy(this.scene, save.x, save.y)
         e.hp = save.hp
         this.enemies.push(e)
       } else {
@@ -232,6 +254,12 @@ export class EnemySpawner {
       this.enemies.push(new RangedEnemy(this.scene, x, y))
     } else if (type === 'exploder') {
       this.enemies.push(new ExploderEnemy(this.scene, x, y))
+    } else if (type === 'ghost') {
+      this.enemies.push(new GhostEnemy(this.scene, x, y, playerX, playerY))
+    } else if (type === 'charger') {
+      this.enemies.push(new ChargerEnemy(this.scene, x, y))
+    } else if (type === 'necromancer') {
+      this.enemies.push(new NecromancerEnemy(this.scene, x, y))
     } else {
       this.enemies.push(new Enemy(this.scene, x, y, type))
     }
@@ -263,10 +291,13 @@ export class EnemySpawner {
 
   private pickType(): SpawnType {
     const pool: SpawnType[] = ['basic', 'basic', 'basic']
-    if (this.elapsed > 20_000) pool.push('speeder', 'speeder')
-    if (this.elapsed > 45_000) pool.push('tank')
-    if (this.elapsed > 60_000) pool.push('exploder')
-    if (this.elapsed > 70_000) pool.push('ranged', 'ranged', 'exploder')
+    if (this.elapsed > 20_000)  pool.push('speeder', 'speeder')
+    if (this.elapsed > 45_000)  pool.push('tank')
+    if (this.elapsed > 60_000)  pool.push('exploder')
+    if (this.elapsed > 70_000)  pool.push('ranged', 'ranged', 'exploder')
+    if (this.elapsed > 120_000) pool.push('ghost', 'ghost')
+    if (this.elapsed > 300_000) pool.push('charger')
+    if (this.elapsed > 480_000) pool.push('necromancer', 'necromancer')
     return pool[Math.floor(Math.random() * pool.length)]
   }
 
@@ -274,10 +305,13 @@ export class EnemySpawner {
     if (this.finalBossAlive) return '☠ THE DEATH'
     if (this.bossAlive) return this.enemies.some(e => e instanceof SummonerBoss && e.active) ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
     const t = overrideElapsed ?? this.elapsed
-    if (t < 20_000) return 'Wave 1 — Basic'
-    if (t < 45_000) return 'Wave 2 — + Speeders'
-    if (t < 60_000) return 'Wave 3 — + Tanks'
-    if (t < 70_000) return 'Wave 4 — + Exploders'
-    return 'Wave 5 — + Ranged'
+    if (t < 20_000)  return 'Wave 1 — Basic'
+    if (t < 45_000)  return 'Wave 2 — + Speeders'
+    if (t < 60_000)  return 'Wave 3 — + Tanks'
+    if (t < 70_000)  return 'Wave 4 — + Exploders'
+    if (t < 120_000) return 'Wave 5 — + Ranged'
+    if (t < 300_000) return 'Wave 6 — + Ghosts'
+    if (t < 480_000) return 'Wave 7 — + Chargers'
+    return 'Wave 8 — + Necromancers'
   }
 }

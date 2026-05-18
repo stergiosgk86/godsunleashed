@@ -40,28 +40,34 @@ class BossProjectile implements EnemyBullet {
 }
 
 const KIND_TO_SPRITE: Record<EnemyKind, string> = {
-  basic:     'enemy_basic',
-  speeder:   'enemy_speeder',
-  tank:      'enemy_tank',
-  ranged:    'enemy_ranged',
-  exploder:  'enemy_exploder',
-  boss:      'boss',
-  finalBoss: 'boss',
+  basic:       'enemy_basic',
+  speeder:     'enemy_speeder',
+  tank:        'enemy_tank',
+  ranged:      'enemy_ranged',
+  exploder:    'enemy_exploder',
+  ghost:       'enemy_ghost',
+  charger:     'enemy_charger',
+  necromancer: 'enemy_necromancer',
+  boss:        'boss',
+  finalBoss:   'boss',
 }
 
 const KIND_SCALE: Record<EnemyKind, number> = {
   basic: 1.2, speeder: 0.9, tank: 1.8, ranged: 1.2,
-  exploder: 1.1, boss: 1.5, finalBoss: 1.8,
+  exploder: 1.1, ghost: 0.9, charger: 1.3, necromancer: 1.1,
+  boss: 1.5, finalBoss: 1.8,
 }
 
 const KIND_CONTACT_DAMAGE: Record<EnemyKind, number> = {
-  basic: 15, speeder: 10, tank: 30, ranged: 10,
-  exploder: 0, boss: 40, finalBoss: 60,
+  basic: 10, speeder: 8, tank: 20, ranged: 10,
+  exploder: 0, ghost: 12, charger: 12, necromancer: 10,
+  boss: 40, finalBoss: 60,
 }
 
 const KIND_XP: Record<EnemyKind, number> = {
-  basic: 1, speeder: 1, tank: 3, ranged: 2,
-  exploder: 2, boss: 80, finalBoss: 200,
+  basic: 2, speeder: 1, tank: 6, ranged: 4,
+  exploder: 4, ghost: 2, charger: 5, necromancer: 5,
+  boss: 80, finalBoss: 200,
 }
 
 export class ClientEnemy implements AnyEnemy {
