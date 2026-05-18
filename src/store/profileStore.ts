@@ -10,13 +10,14 @@ export interface MetaUpgrades {
   luck: number
   growth: number
   moveSpeed: number
+  armor: number
 }
 
 export const UPGRADE_COSTS = [10, 25, 50, 90, 150]
 export const UPGRADE_MAX_RANK = 5
 
 function emptyUpgrades(): MetaUpgrades {
-  return { maxHealth: 0, recovery: 0, magnet: 0, might: 0, luck: 0, growth: 0, moveSpeed: 0 }
+  return { maxHealth: 0, recovery: 0, magnet: 0, might: 0, luck: 0, growth: 0, moveSpeed: 0, armor: 0 }
 }
 
 interface ProfileStore {

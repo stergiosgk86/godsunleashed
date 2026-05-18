@@ -10,6 +10,7 @@ export interface CharacterDef {
   statLines: Array<{ label: string; positive: boolean }>
   // Applied in startRun() on top of meta upgrades
   bonusMaxHp: number
+  baseArmor: number
   mightMult: number
   bonusMoveSpeed: number
   attackIntervalMult: number
@@ -25,8 +26,11 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     id: 'knight', name: 'Knight', trait: 'Steadfast',
     description: 'Balanced in all aspects. A solid choice for any run.',
     spriteKey: 'player', color: '#4488ff',
-    statLines: [{ label: 'No bonuses or penalties', positive: true }],
-    bonusMaxHp: 0, mightMult: 1.0, bonusMoveSpeed: 0,
+    statLines: [
+      { label: '1 Armor',                positive: true },
+      { label: 'No other bonuses',        positive: true },
+    ],
+    bonusMaxHp: 0, baseArmor: 1, mightMult: 1.0, bonusMoveSpeed: 0,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0,
   },
@@ -41,7 +45,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
       { label: '-20 Max HP',           positive: false },
       { label: '-10% Might',           positive: false },
     ],
-    bonusMaxHp: -20, mightMult: 0.9, bonusMoveSpeed: 50,
+    bonusMaxHp: -20, baseArmor: 0, mightMult: 0.9, bonusMoveSpeed: 50,
     attackIntervalMult: 1.0, dashCooldownMult: 0.55, bonusDashDistance: 0.5,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0,
   },
@@ -56,7 +60,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
       { label: '-30 Move Speed',       positive: false },
       { label: '-15 Max HP',           positive: false },
     ],
-    bonusMaxHp: -15, mightMult: 1.1, bonusMoveSpeed: -30,
+    bonusMaxHp: -15, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: -30,
     attackIntervalMult: 0.78, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 1, lifeDrain: 0,
   },
@@ -66,11 +70,12 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     spriteKey: 'char_shade', color: '#cc2222',
     statLines: [
       { label: '+60 Max HP',           positive: true  },
+      { label: '2 Armor',              positive: true  },
       { label: '+2 HP per kill',       positive: true  },
       { label: '+0.2 HP/sec regen',    positive: true  },
       { label: '-15% Might',           positive: false },
     ],
-    bonusMaxHp: 60, mightMult: 0.85, bonusMoveSpeed: 0,
+    bonusMaxHp: 60, baseArmor: 2, mightMult: 0.85, bonusMoveSpeed: 0,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.2, startAura: 0, lifeDrain: 2,
   },

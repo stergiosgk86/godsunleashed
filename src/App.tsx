@@ -120,6 +120,7 @@ function App() {
       dashDistance:   1 + char.bonusDashDistance,
       aura:           char.startAura,
       lifeDrain:      char.lifeDrain,
+      armor:          char.baseArmor + (upgrades.armor ?? 0),
     })
   }
 

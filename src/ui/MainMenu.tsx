@@ -62,6 +62,7 @@ const SHOP_UPGRADES: Array<{ id: keyof MetaUpgrades; label: string }> = [
   { id: 'luck',      label: 'Luck'       },
   { id: 'growth',    label: 'Growth'     },
   { id: 'moveSpeed', label: 'Move Speed' },
+  { id: 'armor',     label: 'Armor'      },
 ]
 
 const RAINDROPS = Array.from({ length: 90 }, (_, i) => ({
@@ -429,6 +430,7 @@ function upgradeStat(id: keyof MetaUpgrades, rank: number): string {
     case 'luck':      return `${5 + rank}% coin drop chance`
     case 'growth':    return `+${rank * 3}% experience gained`
     case 'moveSpeed': return `+${rank * 2}% move speed`
+    case 'armor':     return `+${rank} armor`
   }
 }
 
