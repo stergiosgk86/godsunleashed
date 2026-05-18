@@ -160,6 +160,47 @@ apiRouter.post('/upgrades/refund', async (req: Request, res: Response) => {
   }
 })
 
+// ── Refund all upgrades ───────────────────────────────────────────────────────
+
+apiRouter.post('/upgrades/refund-all', async (req: Request, res: Response) => {
+  const client = await db.connect()
+  try {
+    await client.query('BEGIN')
+
+    const profileRes = await client.query(
+      'SELECT coins, upgrades FROM profiles WHERE user_id = $1 FOR UPDATE',
+      [req.userId],
+    )
+    if (!profileRes.rows[0]) { await client.query('ROLLBACK'); res.status(404).json({ error: 'Profile not found' }); return }
+
+    const { coins, upgrades } = profileRes.rows[0] as { coins: number; upgrades: Record<string, number> }
+
+    let refund = 0
+    for (const rank of Object.values(upgrades)) {
+      for (let r = 0; r < rank; r++) refund += UPGRADE_COSTS[r]
+    }
+
+    if (refund === 0) { await client.query('ROLLBACK'); res.status(400).json({ error: 'Nothing to refund' }); return }
+
+    const emptyUpgrades: Record<string, number> = {}
+    for (const key of Object.keys(upgrades)) emptyUpgrades[key] = 0
+
+    const newCoins = Math.min(MAX_PROFILE_COINS, coins + refund)
+    await client.query(
+      'UPDATE profiles SET coins = $1, upgrades = $2::jsonb, updated_at = NOW() WHERE user_id = $3',
+      [newCoins, JSON.stringify(emptyUpgrades), req.userId],
+    )
+    await client.query('COMMIT')
+    res.json({ ok: true, coins: newCoins, upgrades: emptyUpgrades })
+  } catch (err) {
+    await client.query('ROLLBACK')
+    console.error('Refund-all error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  } finally {
+    client.release()
+  }
+})
+
 // ── Admin ─────────────────────────────────────────────────────────────────────
 
 apiRouter.get('/admin/players', async (req: Request, res: Response) => {

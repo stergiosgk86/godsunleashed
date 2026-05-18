@@ -456,7 +456,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   onMultiplayer: () => void
   onLogout: () => void
 }) {
-  const { coins, upgrades, purchaseUpgrade, refundUpgrade } = useProfileStore()
+  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades } = useProfileStore()
   const username = useAuthStore(s => s.username)
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
@@ -587,8 +587,34 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             SHOP
           </div>
 
-          <div style={{ color: '#ccaa22', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold', textShadow: '0 0 8px #886600' }}>
-            ◈ {coins}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{ color: '#ccaa22', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold', textShadow: '0 0 8px #886600' }}>
+              ◈ {coins}
+            </div>
+            {(() => {
+              const totalRefund = SHOP_UPGRADES.reduce((sum, upg) => {
+                const rank = upgrades[upg.id] ?? 0
+                for (let r = 0; r < rank; r++) sum += UPGRADE_COSTS[r]
+                return sum
+              }, 0)
+              return totalRefund > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => refundAllUpgrades()}
+                  style={{
+                    padding: '5px 12px',
+                    background: 'transparent', border: '1px solid #442222',
+                    borderRadius: 6, color: '#aa4444',
+                    fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold',
+                    cursor: 'pointer', letterSpacing: 1,
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#1a0808'; e.currentTarget.style.borderColor = '#882222' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#442222' }}
+                >
+                  ↩ REFUND ALL ◈{totalRefund}
+                </button>
+              ) : null
+            })()}
           </div>
 
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>

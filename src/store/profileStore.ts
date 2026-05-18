@@ -30,6 +30,7 @@ interface ProfileStore {
   // Server-authoritative purchase — returns false if server rejects
   purchaseUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
   refundUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
+  refundAllUpgrades: () => Promise<boolean>
   reset: () => void
 }
 
@@ -88,6 +89,21 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ upgrade }),
+      })
+      if (!res.ok) return false
+      const data = await res.json() as { coins: number; upgrades: MetaUpgrades }
+      set({ coins: data.coins, upgrades: { ...emptyUpgrades(), ...data.upgrades } })
+      return true
+    } catch { return false }
+  },
+
+  refundAllUpgrades: async () => {
+    const token = useAuthStore.getState().token
+    if (!token) return false
+    try {
+      const res = await fetch('/api/upgrades/refund-all', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) return false
       const data = await res.json() as { coins: number; upgrades: MetaUpgrades }
