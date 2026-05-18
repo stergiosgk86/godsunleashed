@@ -102,8 +102,20 @@ function App() {
   const fetchProfile = useProfileStore(s => s.fetchProfile)
 
   function startRun() {
-    const { upgrades } = useProfileStore.getState()
+    const rawUpgrades = useProfileStore.getState().upgrades
     const char = CHARACTER_DEFS[useCharacterStore.getState().selectedCharacter]
+    // Clamp every rank to [0, 5] — defence-in-depth against corrupted profile data
+    const clampRank = (n: number) => Math.max(0, Math.min(5, Math.floor(isFinite(n) ? n : 0)))
+    const upgrades = {
+      maxHealth: clampRank(rawUpgrades.maxHealth),
+      recovery:  clampRank(rawUpgrades.recovery),
+      magnet:    clampRank(rawUpgrades.magnet),
+      might:     clampRank(rawUpgrades.might),
+      luck:      clampRank(rawUpgrades.luck),
+      growth:    clampRank(rawUpgrades.growth),
+      moveSpeed: clampRank(rawUpgrades.moveSpeed),
+      armor:     clampRank(rawUpgrades.armor),
+    }
 
     useGameStore.getState().resetRun()
 

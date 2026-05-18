@@ -44,7 +44,16 @@ apiRouter.get('/profile', async (req: Request, res: Response) => {
   )
   const row = result.rows[0]
   if (!row) { res.status(404).json({ error: 'Profile not found' }); return }
-  res.json(row)
+
+  // Sanitize upgrades: clamp every rank to [0, MAX_UPGRADE_RANK] regardless of DB contents
+  const rawUpgrades = (row.upgrades ?? {}) as Record<string, unknown>
+  const sanitizedUpgrades: Record<string, number> = {}
+  for (const key of VALID_UPGRADE_KEYS) {
+    const rank = Number(rawUpgrades[key] ?? 0)
+    sanitizedUpgrades[key] = Math.max(0, Math.min(MAX_UPGRADE_RANK, isFinite(rank) ? Math.floor(rank) : 0))
+  }
+
+  res.json({ ...row, upgrades: sanitizedUpgrades })
 })
 
 // ── Key bindings ──────────────────────────────────────────────────────────────
