@@ -5,12 +5,12 @@ import { useGameStore } from '../store/gameStore'
 import { difficultyScale } from './difficultyScale'
 
 const SPEED = 65
-const MAX_HP = 100
-const XP_VALUE = 2
+const MAX_HP = 40
+const XP_VALUE = 4
 const TRIGGER_RADIUS = 110   // arms the bomb when player is this close
 const COUNTDOWN_MS = 1200    // ms from trigger to detonation
 const EXPLODE_RADIUS = 120   // AoE radius
-const EXPLODE_DAMAGE = 45
+const EXPLODE_DAMAGE = 30
 
 export class ExploderEnemy implements AnyEnemy {
   private scene: Phaser.Scene

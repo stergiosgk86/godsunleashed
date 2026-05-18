@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
+import { useAuthStore } from '../store/authStore'
 import { CONTROLS } from '../game/controls'
 import { soundSystem } from '../game/SoundSystem'
 
@@ -73,11 +74,59 @@ function StatsView() {
   )
 }
 
+function AdminPanel({ onBack }: { onBack: () => void }) {
+  const adminInvincible = useGameStore(s => s.adminInvincible)
+  const setAdminInvincible = useGameStore(s => s.setAdminInvincible)
+
+  const toggleStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    width: '100%', padding: '10px 14px',
+    background: '#0a0a1a', border: '1px solid #333366',
+    borderRadius: 6, cursor: 'pointer',
+  }
+
+  return (
+    <>
+      <div style={{
+        color: '#ff4444', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold',
+        letterSpacing: 3, textShadow: '0 0 10px #ff2222',
+      }}>
+        ADMIN PANEL
+      </div>
+
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={toggleStyle} onClick={() => setAdminInvincible(!adminInvincible)}>
+          <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>
+            INVINCIBLE
+          </span>
+          <span style={{
+            color: adminInvincible ? '#44ff44' : '#666688',
+            fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold',
+          }}>
+            {adminInvincible ? 'ON' : 'OFF'}
+          </span>
+        </div>
+      </div>
+
+      <button
+        onClick={onBack}
+        style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none', marginTop: 8 }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      >
+        ← BACK
+      </button>
+    </>
+  )
+}
+
 export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   const isPaused = useGameStore(s => s.isPaused)
   const togglePause = useGameStore(s => s.togglePause)
   const depositCoins = useProfileStore(s => s.depositCoins)
-  const [view, setView] = useState<'main' | 'controls' | 'stats' | 'sounds'>('main')
+  const role = useAuthStore(s => s.role)
+  const isSuperAdmin = role === 'super_admin'
+  const [view, setView] = useState<'main' | 'controls' | 'stats' | 'sounds' | 'admin'>('main')
   const [muted, setMuted] = useState(() => soundSystem.muted)
   const [musicVol, setMusicVol] = useState(() => soundSystem.musicVolume)
 
@@ -158,6 +207,17 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
             SOUNDS
           </button>
 
+          {isSuperAdmin && (
+            <button
+              onClick={() => setView('admin')}
+              style={{ ...btnBase, color: '#ff6666', background: 'transparent', boxShadow: 'none', borderColor: '#661111' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#1a0808')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              ADMIN PANEL
+            </button>
+          )}
+
           <div style={{ width: '100%', height: 1, background: '#1a1a3a' }} />
 
           <button
@@ -175,6 +235,8 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
             QUIT TO MENU
           </button>
         </>
+      ) : view === 'admin' ? (
+        <AdminPanel onBack={() => setView('main')} />
       ) : view === 'stats' ? (
         <>
           <StatsView />

@@ -6,7 +6,7 @@ export const DASH_COOLDOWN_MS = 5000
 export type UpgradeId = 'attackSpeed' | 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric'
 
 export function weaponBaseDamage(level: number): number {
-  return Math.floor(3 + level * 2)
+  return Math.floor(5 + level * 3)
 }
 
 export interface Upgrade {
@@ -30,7 +30,7 @@ const UPGRADE_POOL: Upgrade[] = [
 ]
 
 function xpNeeded(level: number) {
-  return Math.floor(10 * Math.pow(1.65, level - 1))
+  return Math.floor(25 + level * 20)
 }
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
@@ -94,8 +94,10 @@ interface GameState {
   bossKills: number
   tookDamageThisRun: boolean
   recentAchievement: { id: string; name: string } | null
+  adminInvincible: boolean
 
   addXP: (amount: number) => void
+  setAdminInvincible: (value: boolean) => void
   takeDamage: (amount: number) => void
   die: () => void
   win: () => void
@@ -119,7 +121,7 @@ export const useGameStore = create<GameState>()(
     hp: 100,
     maxHp: 100,
     might: 1.0,
-    attackInterval: 600,
+    attackInterval: 500,
     moveSpeed: 200,
     isLevelUpPending: false,
     upgradeChoices: [],
@@ -149,6 +151,7 @@ export const useGameStore = create<GameState>()(
     bossKills: 0,
     tookDamageThisRun: false,
     recentAchievement: null,
+    adminInvincible: false,
 
     addXP: (amount) => {
       set(s => {
@@ -167,9 +170,11 @@ export const useGameStore = create<GameState>()(
       })
     },
 
+    setAdminInvincible: (value) => set({ adminInvincible: value }),
+
     takeDamage: (amount) => {
-      const { invincibleUntil, hp, isDead } = get()
-      if (isDead || Date.now() < invincibleUntil) return
+      const { invincibleUntil, hp, isDead, adminInvincible } = get()
+      if (isDead || adminInvincible || Date.now() < invincibleUntil) return
       const now = Date.now()
       set({ hp: Math.max(0, hp - amount), invincibleUntil: now + 1000, damageFlashUntil: now + 1000, tookDamageThisRun: true })
     },
@@ -204,7 +209,7 @@ export const useGameStore = create<GameState>()(
     resetRun: () => set({
       xp: 0, xpNeeded: xpNeeded(1), level: 1,
       hp: 100, maxHp: 100,
-      might: 1.0, attackInterval: 600, moveSpeed: 200,
+      might: 1.0, attackInterval: 500, moveSpeed: 200,
       isLevelUpPending: false, upgradeChoices: [],
       invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,

@@ -5,7 +5,9 @@ interface AuthStore {
   token: string | null
   userId: number | null
   username: string | null
+  role: string | null
   setAuth: (token: string, userId: number, username: string) => void
+  setRole: (role: string) => void
   clearAuth: () => void
 }
 
@@ -15,8 +17,10 @@ export const useAuthStore = create<AuthStore>()(
       token: null,
       userId: null,
       username: null,
-      setAuth: (token, userId, username) => set({ token, userId, username }),
-      clearAuth: () => set({ token: null, userId: null, username: null }),
+      role: null,
+      setAuth: (token, userId, username) => set({ token, userId, username, role: null }),
+      setRole: (role) => set({ role }),
+      clearAuth: () => set({ token: null, userId: null, username: null, role: null }),
     }),
     { name: 'gods-auth' },
   ),

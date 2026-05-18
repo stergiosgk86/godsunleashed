@@ -43,6 +43,7 @@ export const useProfileStore = create<ProfileStore>()((set, get) => ({
       })
       if (!res.ok) return
       const data = await res.json()
+      if (data.role) useAuthStore.getState().setRole(data.role)
       set({
         coins: data.coins ?? 0,
         upgrades: { ...emptyUpgrades(), ...(data.upgrades ?? {}) },

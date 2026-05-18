@@ -3,7 +3,7 @@ import type { AnyEnemy } from './Enemy'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 import { useGameStore } from '../store/gameStore'
 
-const MAX_HP           = 4000
+const MAX_HP           = 2500
 const SPEED            = 45
 const INVULN_INTERVAL  = 10_000  // 10s vulnerable before next shield
 const INVULN_DURATION  =  5_000  // 5s invulnerable

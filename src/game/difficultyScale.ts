@@ -8,10 +8,10 @@ export function computeSpeedScale(elapsedMs: number): number {
   return 0.6 + 0.55 * Math.min(elapsedMs / RUN_DURATION, 1)
 }
 
-// 1× HP at t=0, 10× HP at t=RUN_DURATION (30 min), quadratic curve (slow start, steep end).
+// 1× HP at t=0, 6× HP at t=RUN_DURATION (30 min), quadratic curve (slow start, steep end).
 export function computeHpScale(elapsedMs: number): number {
   const t = Math.min(elapsedMs / RUN_DURATION, 1)
-  return 1 + 9 * t * t
+  return 1 + 5 * t * t
 }
 
 // 1× damage at t=0, 2.5× damage at t=RUN_DURATION (30 min), linear ramp.

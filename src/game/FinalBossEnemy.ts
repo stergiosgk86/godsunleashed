@@ -3,7 +3,7 @@ import type { AnyEnemy, EnemyBullet } from './Enemy'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 import { useGameStore } from '../store/gameStore'
 
-const FINAL_HP        = 8000
+const FINAL_HP        = 5000
 const BOSS_SPEED      = 72
 const CHARGE_SPEED    = 520
 const CHARGE_WINDUP   = 500

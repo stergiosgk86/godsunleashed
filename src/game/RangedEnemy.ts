@@ -53,7 +53,7 @@ export class RangedEnemy implements AnyEnemy {
   hp: number
   active = true
   contactDamage: number
-  xpValue = 2
+  xpValue = 4
   private scene: Phaser.Scene
   private projectiles: EnemyProjectile[] = []
   private fireTimer = 800
@@ -65,7 +65,7 @@ export class RangedEnemy implements AnyEnemy {
     this.scene = scene
     this.x = x
     this.y = y
-    this.hp = Math.round(80 * difficultyScale.hp)
+    this.hp = Math.round(30 * difficultyScale.hp)
     this.contactDamage = Math.round(10 * difficultyScale.damage)
     this.graphic = scene.add.sprite(x, y, 'enemy_ranged')
       .setDepth(2)

@@ -7,7 +7,9 @@ apiRouter.use(requireAuth)
 
 apiRouter.get('/profile', async (req: Request, res: Response) => {
   const result = await db.query(
-    'SELECT coins, upgrades FROM profiles WHERE user_id = $1',
+    `SELECT p.coins, p.upgrades, u.role
+     FROM profiles p JOIN users u ON u.id = p.user_id
+     WHERE p.user_id = $1`,
     [req.userId],
   )
   const row = result.rows[0]
