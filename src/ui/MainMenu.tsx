@@ -7,6 +7,7 @@ import { SPRITE_URLS } from '../game/assets'
 import { ACHIEVEMENTS } from '../game/achievements'
 import { AdminPlayersView } from './AdminPlayersView'
 import { ControlsView } from './ControlsView'
+import { SoundsView } from './SoundsView'
 
 const CHAR_SPRITE_URL: Record<string, string> = {
   player:       SPRITE_URLS.player,
@@ -458,7 +459,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
   const { selectedCharacter, setCharacter } = useCharacterStore()
-  const [view, setView] = useState<'home' | 'shop' | 'characters' | 'leaderboard' | 'achievements' | 'admin' | 'controls'>('home')
+  const [view, setView] = useState<'home' | 'shop' | 'characters' | 'leaderboard' | 'achievements' | 'admin' | 'controls' | 'sounds'>('home')
 
   return (
     <div style={{
@@ -488,6 +489,8 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         <AchievementsView onBack={() => setView('home')} />
       ) : view === 'controls' ? (
         <ControlsView onBack={() => setView('home')} />
+      ) : view === 'sounds' ? (
+        <SoundsView onBack={() => setView('home')} />
       ) : view === 'admin' ? (
         <AdminPlayersView onBack={() => setView('home')} />
       ) : view === 'characters' ? (
@@ -769,19 +772,34 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             </button>
           )}
 
-          <button
-            type="button"
-            onClick={() => setView('controls')}
-            style={{
-              ...btnBase, fontSize: 13,
-              color: '#aaaaff', background: 'transparent',
-              borderColor: '#2a2a55', boxShadow: 'none',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            CONTROLS
-          </button>
+          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+            <button
+              type="button"
+              onClick={() => setView('controls')}
+              style={{
+                ...btnBase, flex: 1, fontSize: 13,
+                color: '#aaaaff', background: 'transparent',
+                borderColor: '#2a2a55', boxShadow: 'none',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              CONTROLS
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('sounds')}
+              style={{
+                ...btnBase, flex: 1, fontSize: 13,
+                color: '#aaaaff', background: 'transparent',
+                borderColor: '#2a2a55', boxShadow: 'none',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            >
+              SOUNDS
+            </button>
+          </div>
 
           <button
             type="button"
