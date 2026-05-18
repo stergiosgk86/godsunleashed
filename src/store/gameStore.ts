@@ -3,10 +3,10 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might'
 
-export function weaponBaseDamage(level: number): number {
-  return Math.floor(5 + level * 3)
+export function weaponBaseDamage(_level: number): number {
+  return 15
 }
 
 export interface Upgrade {
@@ -27,6 +27,7 @@ const UPGRADE_POOL: Upgrade[] = [
   { id: 'bloodNova',   label: 'Blood Nova',       description: 'Every 7s releases a massive red ring — costs 8% of your max HP' },
   { id: 'vampiric',   label: 'Soul Drain',       description: 'Each hit restores 8% of damage dealt as HP' },
   { id: 'lightning',  label: 'Thunder Strike',   description: 'Every 4s lightning bolts strike 2 random enemies for heavy damage' },
+  { id: 'might',     label: 'Power',            description: '+50% weapon damage (stackable, up to 5×)' },
 ]
 
 function xpNeeded(level: number) {
@@ -36,7 +37,7 @@ function xpNeeded(level: number) {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean }): Upgrade[] {
+function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number }): Upgrade[] {
   const pool = UPGRADE_POOL.filter(u => {
     if (u.id === 'piercing'   && state.piercing)       return false
     if (u.id === 'multiShot'  && state.multiShot >= 4) return false
@@ -46,6 +47,7 @@ function pickChoices(state: { piercing: boolean; multiShot: number; orbital: num
     if (u.id === 'bloodNova'  && state.bloodNova)      return false
     if (u.id === 'vampiric'   && state.vampiric)       return false
     if (u.id === 'lightning'  && state.lightning)      return false
+    if (u.id === 'might'      && state.might >= 3.5)    return false
     return true
   })
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
@@ -263,6 +265,8 @@ export const useGameStore = create<GameState>()(
             return { vampiric: true, isLevelUpPending: false }
           case 'lightning':
             return { lightning: true, isLevelUpPending: false }
+          case 'might':
+            return { might: Math.min(3.5, s.might + 0.5), isLevelUpPending: false }
         }
       })
     },
