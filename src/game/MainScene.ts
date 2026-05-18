@@ -101,6 +101,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
+    if (window.innerWidth <= 768) this.cameras.main.setZoom(1.5)
 
     // Seed initial chunks around wherever the player actually starts
     this.chunkManager.update(this.player.x, this.player.y)

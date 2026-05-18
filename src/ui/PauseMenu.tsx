@@ -1,4 +1,14 @@
 import { useState, useEffect } from 'react'
+
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth <= 768)
+  useEffect(() => {
+    const fn = () => setMob(window.innerWidth <= 768)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return mob
+}
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
@@ -130,6 +140,7 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
     onQuit()
   }
 
+  const mob = useIsMobile()
   useEffect(() => { if (!isPaused) setView('main') }, [isPaused])
 
   if (!isPaused) return null
@@ -139,16 +150,21 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
       background: '#0d0d1f',
       border: '2px solid #4444aa',
       borderRadius: 12,
-      padding: '40px 60px',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
+      padding: mob ? '24px 20px' : '40px 60px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mob ? 14 : 20,
       boxShadow: '0 0 40px #2222aa88',
-      minWidth: 320,
+      minWidth: mob ? undefined : 320,
+      width: mob ? 'calc(100vw - 32px)' : undefined,
+      maxWidth: mob ? 'calc(100vw - 32px)' : undefined,
+      maxHeight: mob ? 'calc(100vh - 64px)' : undefined,
+      overflowY: mob ? 'auto' : undefined,
+      boxSizing: 'border-box',
     }}>
       {view === 'main' ? (
         <>
           <div style={{
-            color: '#aaaaff', fontSize: 32, fontFamily: 'monospace', fontWeight: 'bold',
-            letterSpacing: 4, textShadow: '0 0 12px #4444ff',
+            color: '#aaaaff', fontSize: mob ? 22 : 32, fontFamily: 'monospace', fontWeight: 'bold',
+            letterSpacing: mob ? 2 : 4, textShadow: '0 0 12px #4444ff',
           }}>
             PAUSED
           </div>

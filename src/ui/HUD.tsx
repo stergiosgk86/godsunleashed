@@ -24,7 +24,7 @@ function TimerDisplay() {
   return (
     <div style={{
       position: 'absolute', top: 0, left: '50%',
-      transform: 'translateX(-50%)', width: 260,
+      transform: 'translateX(-50%)', width: window.innerWidth <= 768 ? 200 : 260,
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       pointerEvents: 'none',
       background: '#05050faa',
@@ -35,8 +35,8 @@ function TimerDisplay() {
     }}>
       <div style={{
         color: warning ? '#ff4444' : '#ffffff',
-        fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold',
-        letterSpacing: 4, padding: '6px 0 4px',
+        fontSize: window.innerWidth <= 768 ? 17 : 22, fontFamily: 'monospace', fontWeight: 'bold',
+        letterSpacing: window.innerWidth <= 768 ? 2 : 4, padding: '6px 0 4px',
         textShadow: warning ? '0 0 12px #ff0000' : '0 0 12px #4455ff',
       }}>
         {fmt(elapsed)} <span style={{ color: '#666688' }}>/ {fmt(RUN_DURATION)}</span>
@@ -240,7 +240,7 @@ export function HUD() {
 
       <div style={{
         position: 'absolute', bottom: 0, left: '50%',
-        transform: 'translateX(-50%)', width: 320,
+        transform: 'translateX(-50%)', width: window.innerWidth <= 768 ? 240 : 320,
         paddingBottom: window.innerWidth <= 768 ? 72 : 16,
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>
