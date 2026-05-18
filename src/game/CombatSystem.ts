@@ -398,7 +398,8 @@ export class CombatSystem {
       if (this.lightningTimer >= LIGHTNING_INTERVAL) {
         this.lightningTimer = 0
         const boltDmg = Math.floor(weaponBaseDamage(level) * might * LIGHTNING_DAMAGE_MULT)
-        const active = enemies.filter(e => e.active)
+        const cam = this.scene.cameras.main.worldView
+        const active = enemies.filter(e => e.active && cam.contains(e.x, e.y))
         // Pick up to LIGHTNING_TARGETS distinct random enemies
         const targets: AnyEnemy[] = []
         const pool = [...active]
