@@ -55,14 +55,15 @@ function CharSprite({ spriteKey, color }: { spriteKey: string; color: string }) 
 }
 
 const SHOP_UPGRADES: Array<{ id: keyof MetaUpgrades; label: string }> = [
-  { id: 'maxHealth', label: 'Max Health' },
-  { id: 'recovery',  label: 'Recovery'   },
-  { id: 'magnet',    label: 'Magnet'     },
-  { id: 'might',     label: 'Might'      },
-  { id: 'luck',      label: 'Luck'       },
-  { id: 'growth',    label: 'Growth'     },
-  { id: 'moveSpeed', label: 'Move Speed' },
-  { id: 'armor',     label: 'Armor'      },
+  { id: 'maxHealth',   label: 'Max Health'   },
+  { id: 'recovery',    label: 'Recovery'     },
+  { id: 'magnet',      label: 'Magnet'       },
+  { id: 'might',       label: 'Might'        },
+  { id: 'luck',        label: 'Luck'         },
+  { id: 'growth',      label: 'Growth'       },
+  { id: 'moveSpeed',   label: 'Move Speed'   },
+  { id: 'armor',       label: 'Armor'        },
+  { id: 'attackSpeed', label: 'Attack Speed' },
 ]
 
 const RAINDROPS = Array.from({ length: 90 }, (_, i) => ({
@@ -430,7 +431,8 @@ function upgradeStat(id: keyof MetaUpgrades, rank: number): string {
     case 'luck':      return `${5 + rank}% coin drop chance`
     case 'growth':    return `+${rank * 3}% experience gained`
     case 'moveSpeed': return `+${rank * 2}% move speed`
-    case 'armor':     return `+${rank} armor`
+    case 'armor':        return `+${rank} armor`
+    case 'attackSpeed': return rank === 0 ? 'no bonus' : `-${Math.round(100 * (1 - Math.pow(0.95, rank)))}% attack cooldown`
   }
 }
 

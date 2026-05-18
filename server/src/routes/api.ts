@@ -22,7 +22,7 @@ const lastRunAt = new Map<number, number>()
 // Must match client UPGRADE_COSTS / UPGRADE_MAX_RANK
 const UPGRADE_COSTS = [50, 125, 250, 450, 750]
 const MAX_UPGRADE_RANK = 5
-const VALID_UPGRADE_KEYS = new Set(['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed', 'armor'])
+const VALID_UPGRADE_KEYS = new Set(['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed', 'armor', 'attackSpeed'])
 
 const VALID_ACHIEVEMENT_IDS = new Set([
   'survivor_5', 'veteran', 'boss_slayer', 'hunter', 'slaughterer',

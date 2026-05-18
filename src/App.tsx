@@ -107,14 +107,15 @@ function App() {
     // Clamp every rank to [0, 5] — defence-in-depth against corrupted profile data
     const clampRank = (n: number) => Math.max(0, Math.min(5, Math.floor(isFinite(n) ? n : 0)))
     const upgrades = {
-      maxHealth: clampRank(rawUpgrades.maxHealth),
-      recovery:  clampRank(rawUpgrades.recovery),
-      magnet:    clampRank(rawUpgrades.magnet),
-      might:     clampRank(rawUpgrades.might),
-      luck:      clampRank(rawUpgrades.luck),
-      growth:    clampRank(rawUpgrades.growth),
-      moveSpeed: clampRank(rawUpgrades.moveSpeed),
-      armor:     clampRank(rawUpgrades.armor),
+      maxHealth:    clampRank(rawUpgrades.maxHealth),
+      recovery:     clampRank(rawUpgrades.recovery),
+      magnet:       clampRank(rawUpgrades.magnet),
+      might:        clampRank(rawUpgrades.might),
+      luck:         clampRank(rawUpgrades.luck),
+      growth:       clampRank(rawUpgrades.growth),
+      moveSpeed:    clampRank(rawUpgrades.moveSpeed),
+      armor:        clampRank(rawUpgrades.armor),
+      attackSpeed:  clampRank(rawUpgrades.attackSpeed),
     }
 
     useGameStore.getState().resetRun()
@@ -127,7 +128,7 @@ function App() {
       hp:             startMaxHp,
       hpRegen:        (upgrades.recovery ?? 0) * 0.1 + char.bonusHpRegen,
       moveSpeed:      Math.min(300, Math.floor((200 + char.bonusMoveSpeed) * (1 + (upgrades.moveSpeed ?? 0) * 0.02))),
-      attackInterval: Math.max(250, Math.floor(600 * char.attackIntervalMult)),
+      attackInterval: Math.max(250, Math.floor(600 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
       dashCooldown:   Math.max(400, Math.floor(DASH_COOLDOWN_MS * char.dashCooldownMult)),
       dashDistance:   1 + char.bonusDashDistance,
       aura:           char.startAura,

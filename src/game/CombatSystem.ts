@@ -5,7 +5,6 @@ import { Projectile } from './Projectile'
 import { Boomerang } from './Boomerang'
 import { XPOrb } from './XPOrb'
 import { CoinOrb } from './CoinOrb'
-import { PassiveItem, ALL_ITEM_TYPES } from './PassiveItem'
 import { EffectsSystem } from './EffectsSystem'
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
@@ -43,7 +42,6 @@ export class CombatSystem {
   private projectiles: Projectile[] = []
   private orbs: XPOrb[] = []
   private coins: CoinOrb[] = []
-  private passiveItems: PassiveItem[] = []
   private fireTimer = 0
   private auraTimer = 0
   private auraAngle = 0
@@ -156,15 +154,6 @@ export class CombatSystem {
       }
     }
     if (coinsGained > 0) addSessionCoins(coinsGained)
-
-    // Collect passive items
-    for (const item of this.passiveItems) {
-      if (!item.active) continue
-      if (item.update(playerX, playerY, delta)) {
-        this.effects.showItemCollect(item.x, item.y, item.getLabel(), item.getColor())
-      }
-    }
-    this.passiveItems = this.passiveItems.filter(i => i.active)
 
     // Enemy contact damage
     for (const e of enemies) {
@@ -558,10 +547,6 @@ export class CombatSystem {
     return Math.max(1, dmg + Math.floor(Math.random() * 5) - 2)
   }
 
-  private randomItemType() {
-    return ALL_ITEM_TYPES[Math.floor(Math.random() * ALL_ITEM_TYPES.length)]
-  }
-
   spawnDropsAt(x: number, y: number, xpValue: number, isBoss: boolean) {
     const luckRank = useProfileStore.getState().upgrades.luck
     const coinDropChance = 0.05 + luckRank * 0.01
@@ -572,10 +557,8 @@ export class CombatSystem {
       for (let i = 0; i < count; i++) {
         this.coins.push(new CoinOrb(this.scene, x + (Math.random() - 0.5) * 80, y + (Math.random() - 0.5) * 80))
       }
-      this.passiveItems.push(new PassiveItem(this.scene, x, y, this.randomItemType()))
     } else {
       if (Math.random() < coinDropChance) this.coins.push(new CoinOrb(this.scene, x, y))
-      if (Math.random() < 0.03) this.passiveItems.push(new PassiveItem(this.scene, x, y, this.randomItemType()))
     }
   }
 
