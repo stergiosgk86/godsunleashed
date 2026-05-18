@@ -288,6 +288,8 @@ function App() {
     const wasMultiplayer = !!activeNetClient
     setNetClient(null)
     clearRun()
+    runSubmittedRef.current = false
+    runData.elapsed = 0
     if (wasMultiplayer) {
       useGameStore.getState().resetRun()
       setInGame(false)
