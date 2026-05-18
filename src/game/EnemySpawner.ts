@@ -52,19 +52,22 @@ interface SurgeDef {
   spawnInterval: number  // ms between each enemy during the surge
 }
 
+// All surge enemies come from ONE edge at high speed, like VS bat swarms.
+const SURGE_SPEED_MULT = 2.5
+
 // Scripted flood events fired once at specific times, on top of lane spawning.
 const SURGE_EVENTS: SurgeDef[] = [
-  { triggerTime:  2 * 60_000, type: 'basic',   count: 40,  spawnInterval: 80  },
-  { triggerTime:  5 * 60_000, type: 'speeder', count: 25,  spawnInterval: 100 },
-  { triggerTime:  7 * 60_000, type: 'basic',   count: 60,  spawnInterval: 60  },
-  { triggerTime: 11 * 60_000, type: 'basic',   count: 100, spawnInterval: 40  },
-  { triggerTime: 13 * 60_000, type: 'ghost',   count: 30,  spawnInterval: 120 },
-  { triggerTime: 15 * 60_000, type: 'speeder', count: 50,  spawnInterval: 60  },
-  { triggerTime: 18 * 60_000, type: 'basic',   count: 80,  spawnInterval: 40  },
-  { triggerTime: 20 * 60_000, type: 'tank',    count: 15,  spawnInterval: 250 },
-  { triggerTime: 23 * 60_000, type: 'basic',   count: 120, spawnInterval: 30  },
-  { triggerTime: 25 * 60_000, type: 'speeder', count: 70,  spawnInterval: 50  },
-  { triggerTime: 27 * 60_000, type: 'ghost',   count: 50,  spawnInterval: 80  },
+  { triggerTime:  2 * 60_000, type: 'basic',   count: 60,  spawnInterval: 25  },
+  { triggerTime:  5 * 60_000, type: 'speeder', count: 40,  spawnInterval: 30  },
+  { triggerTime:  7 * 60_000, type: 'basic',   count: 80,  spawnInterval: 20  },
+  { triggerTime: 11 * 60_000, type: 'basic',   count: 150, spawnInterval: 15  },
+  { triggerTime: 13 * 60_000, type: 'ghost',   count: 35,  spawnInterval: 40  },
+  { triggerTime: 15 * 60_000, type: 'speeder', count: 70,  spawnInterval: 25  },
+  { triggerTime: 18 * 60_000, type: 'basic',   count: 100, spawnInterval: 15  },
+  { triggerTime: 20 * 60_000, type: 'tank',    count: 20,  spawnInterval: 150 },
+  { triggerTime: 23 * 60_000, type: 'basic',   count: 160, spawnInterval: 12  },
+  { triggerTime: 25 * 60_000, type: 'speeder', count: 90,  spawnInterval: 20  },
+  { triggerTime: 27 * 60_000, type: 'ghost',   count: 60,  spawnInterval: 35  },
 ]
 
 interface ActiveSurge {
@@ -72,6 +75,7 @@ interface ActiveSurge {
   remaining: number
   timer: number
   spawnInterval: number
+  edge: number  // fixed spawn edge for this surge (0=top 1=bottom 2=left 3=right)
 }
 
 export class EnemySpawner {
@@ -242,16 +246,21 @@ export class EnemySpawner {
     for (const surge of SURGE_EVENTS) {
       if (!this.surgesFired.has(surge.triggerTime) && this.elapsed >= surge.triggerTime) {
         this.surgesFired.add(surge.triggerTime)
-        this.surgeQueue.push({ type: surge.type, remaining: surge.count, timer: 0, spawnInterval: surge.spawnInterval })
+        this.surgeQueue.push({
+          type: surge.type, remaining: surge.count, timer: 0,
+          spawnInterval: surge.spawnInterval,
+          edge: Math.floor(Math.random() * 4),
+        })
       }
     }
     this.surgeActive = this.surgeQueue.length > 0
     for (const surge of this.surgeQueue) {
       surge.timer -= delta
-      if (surge.timer <= 0 && surge.remaining > 0 && this.enemies.length < MAX_ENEMIES) {
+      if (surge.timer <= 0 && surge.remaining > 0 && this.enemies.length < MAX_ENEMIES + 200) {
         surge.timer += surge.spawnInterval
-        const { x, y } = this.edgeSpawnPoint(playerX, playerY)
-        this.spawnEnemy(x, y, playerX, playerY, surge.type)
+        const { x, y } = this.surgeEdgePoint(playerX, playerY, surge.edge)
+        const e = this.spawnEnemy(x, y, playerX, playerY, surge.type)
+        if (e instanceof Enemy) e.speedMultiplier = SURGE_SPEED_MULT
         surge.remaining--
       }
     }
@@ -378,19 +387,35 @@ export class EnemySpawner {
     return Math.round(lane.burstStart + (lane.burstEnd - lane.burstStart) * t)
   }
 
-  private spawnEnemy(x: number, y: number, playerX: number, playerY: number, type: SpawnType) {
+  private spawnEnemy(x: number, y: number, playerX: number, playerY: number, type: SpawnType): AnyEnemy {
+    let e: AnyEnemy
     if (type === 'ranged') {
-      this.enemies.push(new RangedEnemy(this.scene, x, y))
+      e = new RangedEnemy(this.scene, x, y)
     } else if (type === 'exploder') {
-      this.enemies.push(new ExploderEnemy(this.scene, x, y))
+      e = new ExploderEnemy(this.scene, x, y)
     } else if (type === 'ghost') {
-      this.enemies.push(new GhostEnemy(this.scene, x, y, playerX, playerY))
+      e = new GhostEnemy(this.scene, x, y, playerX, playerY)
     } else if (type === 'charger') {
-      this.enemies.push(new ChargerEnemy(this.scene, x, y))
+      e = new ChargerEnemy(this.scene, x, y)
     } else if (type === 'necromancer') {
-      this.enemies.push(new NecromancerEnemy(this.scene, x, y))
+      e = new NecromancerEnemy(this.scene, x, y)
     } else {
-      this.enemies.push(new Enemy(this.scene, x, y, type))
+      e = new Enemy(this.scene, x, y, type)
+    }
+    this.enemies.push(e)
+    return e
+  }
+
+  private surgeEdgePoint(playerX: number, playerY: number, edge: number): { x: number; y: number } {
+    const cam = this.scene.cameras.main
+    const halfW = (cam.width / 2) / cam.zoom + SPAWN_MARGIN
+    const halfH = (cam.height / 2) / cam.zoom + SPAWN_MARGIN
+    const along = (Math.random() * 2 - 1) * (edge < 2 ? halfW : halfH)
+    switch (edge) {
+      case 0: return { x: playerX + along, y: playerY - halfH }
+      case 1: return { x: playerX + along, y: playerY + halfH }
+      case 2: return { x: playerX - halfW, y: playerY + along }
+      default: return { x: playerX + halfW, y: playerY + along }
     }
   }
 

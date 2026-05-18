@@ -15,6 +15,7 @@ import { minimapData } from './minimapData'
 
 const HIT_RADIUS = 20
 const CONTACT_RADIUS = 28
+const CONTACT_ENEMY_COOLDOWN = 1000  // ms between hits from each individual enemy
 const BULLET_HIT_RADIUS = 15
 const BOOMERANG_INTERVAL = 2500
 const BOOMERANG_HIT_R = 22
@@ -53,6 +54,7 @@ export class CombatSystem {
   private orbCenterInit = false
   private orbGraphic: Phaser.GameObjects.Graphics
   private orbHitCooldowns = new Map<AnyEnemy, number>()
+  private contactCooldowns = new Map<AnyEnemy, number>()
   private vampiricPool = 0
   // Boomerang
   private boomerangs: Boomerang[] = []
@@ -75,7 +77,7 @@ export class CombatSystem {
   }
 
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
-    const { might, level, attackInterval, addXP, takeDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning } = useGameStore.getState()
+    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning } = useGameStore.getState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -155,14 +157,23 @@ export class CombatSystem {
     }
     if (coinsGained > 0) addSessionCoins(coinsGained)
 
-    // Enemy contact damage
-    for (const e of enemies) {
-      if (!e.active) continue
-      const dx = e.x - playerX
-      const dy = e.y - playerY
-      if (dx * dx + dy * dy < CONTACT_RADIUS * CONTACT_RADIUS) {
-        takeDamage(e.contactDamage)
-        break
+    // Enemy contact damage — per-enemy cooldown so hordes deal proportional damage
+    {
+      const now = Date.now()
+      for (const e of enemies) {
+        if (!e.active) continue
+        const dx = e.x - playerX
+        const dy = e.y - playerY
+        if (dx * dx + dy * dy < CONTACT_RADIUS * CONTACT_RADIUS) {
+          const last = this.contactCooldowns.get(e) ?? 0
+          if (now - last >= CONTACT_ENEMY_COOLDOWN) {
+            this.contactCooldowns.set(e, now)
+            takeContactDamage(e.contactDamage)
+          }
+        }
+      }
+      for (const [e] of this.contactCooldowns) {
+        if (!e.active) this.contactCooldowns.delete(e)
       }
     }
 

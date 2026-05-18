@@ -52,6 +52,7 @@ export class Enemy implements AnyEnemy {
   contactDamage: number
   xpValue: number
   private speed: number
+  speedMultiplier = 1.0
   private baseScale: number
   private textureKey: string
   private lastDir: Direction = 'down'
@@ -93,8 +94,8 @@ export class Enemy implements AnyEnemy {
     const dist = Math.sqrt(dx * dx + dy * dy)
 
     if (dist > 1) {
-      this.x += (dx / dist) * this.speed * difficultyScale.speed * dt
-      this.y += (dy / dist) * this.speed * difficultyScale.speed * dt
+      this.x += (dx / dist) * this.speed * difficultyScale.speed * this.speedMultiplier * dt
+      this.y += (dy / dist) * this.speed * difficultyScale.speed * this.speedMultiplier * dt
       this.graphic.setPosition(this.x, this.y)
       const dir = getDirection(dx, dy)
       this.lastDir = playDir(this.graphic, this.textureKey, dir, this.lastDir, true)

@@ -103,6 +103,7 @@ interface GameState {
   addXP: (amount: number) => void
   setAdminInvincible: (value: boolean) => void
   takeDamage: (amount: number) => void
+  takeContactDamage: (amount: number) => void
   die: () => void
   win: () => void
   chooseUpgrade: (id: UpgradeId) => void
@@ -177,6 +178,15 @@ export const useGameStore = create<GameState>()(
     },
 
     setAdminInvincible: (value) => set({ adminInvincible: value }),
+
+    // Contact damage: per-enemy cooldowns in CombatSystem — no global invincibility here.
+    takeContactDamage: (amount) => {
+      const { hp, isDead, adminInvincible, armor } = get()
+      if (isDead || adminInvincible) return
+      const reduced = Math.max(1, amount - armor)
+      set({ hp: Math.max(0, hp - reduced), damageFlashUntil: Date.now() + 200, tookDamageThisRun: true })
+      if (get().hp <= 0) get().die()
+    },
 
     takeDamage: (amount) => {
       const { invincibleUntil, hp, isDead, adminInvincible, armor } = get()
