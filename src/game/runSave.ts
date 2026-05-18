@@ -38,6 +38,7 @@ export interface RunSnapshot {
   bloodNova: boolean
   vampiric: boolean
   lightning: boolean
+  axe: boolean
   armor: number
   hpRegen: number
   lifeDrain: number

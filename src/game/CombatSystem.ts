@@ -3,6 +3,7 @@ import type { AnyEnemy } from './Enemy'
 import type { ClientEnemy } from './ClientEnemy'
 import { Projectile } from './Projectile'
 import { Boomerang } from './Boomerang'
+import { Axe } from './Axe'
 import { XPOrb } from './XPOrb'
 import { CoinOrb } from './CoinOrb'
 import { HealthPotion } from './HealthPotion'
@@ -19,6 +20,9 @@ const CONTACT_RADIUS = 28
 const CONTACT_ENEMY_COOLDOWN = 1000  // ms between hits from each individual enemy
 const BULLET_HIT_RADIUS = 15
 const BOOMERANG_INTERVAL = 2500
+const AXE_INTERVAL = 3000
+const AXE_HIT_R = 20
+const AXE_DAMAGE_MULT = 2.5
 const BOOMERANG_HIT_R = 22
 const FLAME_SPAWN_DIST = 55
 const FLAME_RADIUS = 50
@@ -69,6 +73,10 @@ export class CombatSystem {
   // Boomerang
   private boomerangs: Boomerang[] = []
   private boomerangTimer = 0
+  // Axe
+  private axes: Axe[] = []
+  private axeTimer = 0
+  private axeDir = 1
   // Flame Trail
   private flamePools: FlamePool[] = []
   private lastFlameX = -1
@@ -89,7 +97,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning } = useGameStore.getState()
+    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe } = useGameStore.getState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -414,6 +422,35 @@ export class CombatSystem {
         const novaDmg = Math.floor(weaponBaseDamage(level) * might * 5)
         this.fireBloodNova(playerX, playerY, novaDmg, enemies, coinDropChance, lifeDrain, vampiric)
       }
+    }
+
+    // === War Axe ===
+    if (axe) {
+      this.axeTimer += delta
+      if (this.axeTimer >= AXE_INTERVAL) {
+        this.axeTimer = 0
+        const target = this.findNearest(playerX, playerY, enemies)
+        const dirX = target ? Math.sign(target.x - playerX) || this.axeDir : this.axeDir
+        this.axeDir = -dirX
+        this.axes.push(new Axe(this.scene, playerX, playerY, dirX))
+        soundSystem.shoot()
+      }
+      const axeDamage = Math.floor(weaponBaseDamage(level) * might * AXE_DAMAGE_MULT)
+      for (const a of this.axes) {
+        if (!a.active) continue
+        a.update(delta)
+        if (!a.active) continue
+        for (const e of enemies) {
+          if (!e.active || a.currentHitTargets.has(e)) continue
+          const dx = a.x - e.x
+          const dy = a.y - e.y
+          if (dx * dx + dy * dy < AXE_HIT_R * AXE_HIT_R) {
+            a.currentHitTargets.add(e)
+            this.applyHit(e, axeDamage, coinDropChance, lifeDrain, vampiric)
+          }
+        }
+      }
+      this.axes = this.axes.filter(a => a.active)
     }
 
     // === Lightning Strike ===
