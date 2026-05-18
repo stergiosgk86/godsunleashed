@@ -462,6 +462,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const isSuperAdmin = role === 'super_admin'
   const { selectedCharacter, setCharacter } = useCharacterStore()
   const [view, setView] = useState<'home' | 'shop' | 'characters' | 'leaderboard' | 'achievements' | 'admin' | 'controls' | 'sounds'>('home')
+  const [confirmRefundAll, setConfirmRefundAll] = useState(false)
 
   return (
     <div style={{
@@ -597,10 +598,41 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                 for (let r = 0; r < rank; r++) sum += UPGRADE_COSTS[r]
                 return sum
               }, 0)
-              return totalRefund > 0 ? (
+              if (totalRefund === 0) return null
+              return confirmRefundAll ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: '#aa6644', fontFamily: 'monospace', fontSize: 11 }}>Sure?</span>
+                  <button
+                    type="button"
+                    onClick={() => { refundAllUpgrades(); setConfirmRefundAll(false) }}
+                    style={{
+                      padding: '3px 10px', background: '#2a0808',
+                      border: '1px solid #882222', borderRadius: 4,
+                      color: '#ff6666', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#3a0a0a' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#2a0808' }}
+                  >
+                    YES
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRefundAll(false)}
+                    style={{
+                      padding: '3px 10px', background: 'transparent',
+                      border: '1px solid #333355', borderRadius: 4,
+                      color: '#aaaaff', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#111133' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    NO
+                  </button>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => refundAllUpgrades()}
+                  onClick={() => setConfirmRefundAll(true)}
                   style={{
                     padding: '5px 12px',
                     background: 'transparent', border: '1px solid #442222',
@@ -613,7 +645,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                 >
                   ↩ REFUND ALL ◈{totalRefund}
                 </button>
-              ) : null
+              )
             })()}
           </div>
 
