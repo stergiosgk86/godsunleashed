@@ -45,6 +45,35 @@ const LANE_DEFS: LaneDef[] = [
   { type: 'necromancer', startTime: 480_000,  intervalStart: 6000,  intervalEnd: 2000, burstStart: 1, burstEnd: 1 },
 ]
 
+interface SurgeDef {
+  triggerTime: number
+  type: SpawnType
+  count: number
+  spawnInterval: number  // ms between each enemy during the surge
+}
+
+// Scripted flood events fired once at specific times, on top of lane spawning.
+const SURGE_EVENTS: SurgeDef[] = [
+  { triggerTime:  2 * 60_000, type: 'basic',   count: 40,  spawnInterval: 80  },
+  { triggerTime:  5 * 60_000, type: 'speeder', count: 25,  spawnInterval: 100 },
+  { triggerTime:  7 * 60_000, type: 'basic',   count: 60,  spawnInterval: 60  },
+  { triggerTime: 11 * 60_000, type: 'basic',   count: 100, spawnInterval: 40  },
+  { triggerTime: 13 * 60_000, type: 'ghost',   count: 30,  spawnInterval: 120 },
+  { triggerTime: 15 * 60_000, type: 'speeder', count: 50,  spawnInterval: 60  },
+  { triggerTime: 18 * 60_000, type: 'basic',   count: 80,  spawnInterval: 40  },
+  { triggerTime: 20 * 60_000, type: 'tank',    count: 15,  spawnInterval: 250 },
+  { triggerTime: 23 * 60_000, type: 'basic',   count: 120, spawnInterval: 30  },
+  { triggerTime: 25 * 60_000, type: 'speeder', count: 70,  spawnInterval: 50  },
+  { triggerTime: 27 * 60_000, type: 'ghost',   count: 50,  spawnInterval: 80  },
+]
+
+interface ActiveSurge {
+  type: SpawnType
+  remaining: number
+  timer: number
+  spawnInterval: number
+}
+
 export class EnemySpawner {
   private scene: Phaser.Scene
   private enemies: AnyEnemy[] = []
@@ -55,6 +84,9 @@ export class EnemySpawner {
   private warningFired = false
   private finalBossAlive = false
   private finalBossWarningFired = false
+  private surgesFired = new Set<number>()
+  private surgeQueue: ActiveSurge[] = []
+  private surgeActive = false
 
   onBossWarning?: () => void
   onBossSpawn?: () => void
@@ -93,6 +125,9 @@ export class EnemySpawner {
     difficultyScale.damage = computeDamageScale(this.elapsed)
     difficultyScale.xp     = computeXpScale(this.elapsed)
     this.laneTimers = LANE_DEFS.map(l => this.laneInterval(l))
+    for (const surge of SURGE_EVENTS) {
+      if (surge.triggerTime <= this.elapsed) this.surgesFired.add(surge.triggerTime)
+    }
   }
 
   getSaveableEnemies(): EnemySave[] {
@@ -202,6 +237,25 @@ export class EnemySpawner {
         }
       }
     }
+
+    // Surge events — scripted floods fired once at specific times
+    for (const surge of SURGE_EVENTS) {
+      if (!this.surgesFired.has(surge.triggerTime) && this.elapsed >= surge.triggerTime) {
+        this.surgesFired.add(surge.triggerTime)
+        this.surgeQueue.push({ type: surge.type, remaining: surge.count, timer: 0, spawnInterval: surge.spawnInterval })
+      }
+    }
+    this.surgeActive = this.surgeQueue.length > 0
+    for (const surge of this.surgeQueue) {
+      surge.timer -= delta
+      if (surge.timer <= 0 && surge.remaining > 0 && this.enemies.length < MAX_ENEMIES) {
+        surge.timer += surge.spawnInterval
+        const { x, y } = this.edgeSpawnPoint(playerX, playerY)
+        this.spawnEnemy(x, y, playerX, playerY, surge.type)
+        surge.remaining--
+      }
+    }
+    this.surgeQueue = this.surgeQueue.filter(s => s.remaining > 0)
 
     // Regular boss cycle (stops once we enter final phase lock)
     if (!inFinalPhase) {
@@ -365,6 +419,7 @@ export class EnemySpawner {
   waveLabel(overrideElapsed?: number): string {
     if (this.finalBossAlive) return '☠ THE DEATH'
     if (this.bossAlive) return this.enemies.some(e => e instanceof SummonerBoss && e.active) ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
+    if (this.surgeActive) return '⚡ SURGE!'
     const t = overrideElapsed ?? this.elapsed
     if (t < 20_000)  return 'Wave 1 — Basic'
     if (t < 45_000)  return 'Wave 2 — + Speeders'
