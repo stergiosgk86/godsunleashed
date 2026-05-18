@@ -463,6 +463,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const { selectedCharacter, setCharacter } = useCharacterStore()
   const [view, setView] = useState<'home' | 'shop' | 'characters' | 'leaderboard' | 'achievements' | 'admin' | 'controls' | 'sounds'>('home')
   const [confirmRefundAll, setConfirmRefundAll] = useState(false)
+  const [confirmRefund, setConfirmRefund] = useState<keyof MetaUpgrades | null>(null)
 
   return (
     <div style={{
@@ -683,24 +684,54 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', minWidth: 140 }}>
                       {rank > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => refundUpgrade(upg.id)}
-                          title={`Refund ◈ ${refundAmount}`}
-                          style={{
-                            padding: '3px 8px',
-                            background: 'transparent',
-                            border: '1px solid #442222',
-                            borderRadius: 4,
-                            color: '#aa4444',
-                            fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
-                            cursor: 'pointer',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = '#1a0808'; e.currentTarget.style.borderColor = '#882222' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#442222' }}
-                        >
-                          ↩ ◈{refundAmount}
-                        </button>
+                        confirmRefund === upg.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button
+                              type="button"
+                              onClick={() => { refundUpgrade(upg.id); setConfirmRefund(null) }}
+                              style={{
+                                padding: '3px 8px', background: '#2a0808',
+                                border: '1px solid #882222', borderRadius: 4,
+                                color: '#ff6666', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#3a0a0a' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#2a0808' }}
+                            >
+                              YES
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmRefund(null)}
+                              style={{
+                                padding: '3px 8px', background: 'transparent',
+                                border: '1px solid #333355', borderRadius: 4,
+                                color: '#aaaaff', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#111133' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                            >
+                              NO
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmRefund(upg.id)}
+                            style={{
+                              padding: '3px 8px',
+                              background: 'transparent',
+                              border: '1px solid #442222',
+                              borderRadius: 4,
+                              color: '#aa4444',
+                              fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                              cursor: 'pointer',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#1a0808'; e.currentTarget.style.borderColor = '#882222' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#442222' }}
+                          >
+                            ↩ ◈{refundAmount}
+                          </button>
+                        )
                       )}
                       {isMax ? (
                         <span style={{
