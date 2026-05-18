@@ -15,11 +15,7 @@ export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: num
 import { RUN_DURATION } from './runData'
 import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
 
-const SPAWN_INTERVAL_START = 300
-const SPAWN_INTERVAL_END   = 80
-const SPAWN_COUNT_START    = 1
-const SPAWN_COUNT_END      = 3
-const SPAWN_RADIUS = 600
+const SPAWN_MARGIN = 80   // world-px beyond the visible screen edge
 const MAX_ENEMIES = 400
 const BOSS_FIRST_SPAWN = 90_000
 const BOSS_REPEAT = 120_000
@@ -28,10 +24,30 @@ const FINAL_BOSS_LOCK = RUN_DURATION - 30_000  // stop regular boss cycle 30s be
 
 type SpawnType = EnemyType | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
 
+interface LaneDef {
+  type: SpawnType
+  startTime: number      // ms when this lane becomes active
+  intervalStart: number  // ms between bursts at startTime
+  intervalEnd: number    // ms between bursts at RUN_DURATION
+  burstStart: number     // enemies per burst at startTime
+  burstEnd: number       // enemies per burst at RUN_DURATION
+}
+
+const LANE_DEFS: LaneDef[] = [
+  { type: 'basic',       startTime: 0,        intervalStart: 1200,  intervalEnd: 250,  burstStart: 1, burstEnd: 3 },
+  { type: 'speeder',     startTime: 20_000,   intervalStart: 1800,  intervalEnd: 350,  burstStart: 1, burstEnd: 3 },
+  { type: 'tank',        startTime: 45_000,   intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
+  { type: 'exploder',    startTime: 60_000,   intervalStart: 3500,  intervalEnd: 900,  burstStart: 1, burstEnd: 2 },
+  { type: 'ranged',      startTime: 70_000,   intervalStart: 2500,  intervalEnd: 600,  burstStart: 1, burstEnd: 2 },
+  { type: 'ghost',       startTime: 120_000,  intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
+  { type: 'charger',     startTime: 300_000,  intervalStart: 4000,  intervalEnd: 1200, burstStart: 1, burstEnd: 2 },
+  { type: 'necromancer', startTime: 480_000,  intervalStart: 6000,  intervalEnd: 2000, burstStart: 1, burstEnd: 1 },
+]
+
 export class EnemySpawner {
   private scene: Phaser.Scene
   private enemies: AnyEnemy[] = []
-  private spawnTimer = 0
+  private laneTimers: number[] = LANE_DEFS.map(l => l.intervalStart)
   private elapsed = 0
   private nextBossAt = BOSS_FIRST_SPAWN
   private bossAlive = false
@@ -75,6 +91,7 @@ export class EnemySpawner {
     difficultyScale.hp     = computeHpScale(this.elapsed)
     difficultyScale.damage = computeDamageScale(this.elapsed)
     difficultyScale.xp     = computeXpScale(this.elapsed)
+    this.laneTimers = LANE_DEFS.map(l => this.laneInterval(l))
   }
 
   getSaveableEnemies(): EnemySave[] {
@@ -164,7 +181,6 @@ export class EnemySpawner {
 
   update(playerX: number, playerY: number, delta: number) {
     this.elapsed += delta
-    this.spawnTimer += delta
     difficultyScale.speed  = computeSpeedScale(this.elapsed)
     difficultyScale.hp     = computeHpScale(this.elapsed)
     difficultyScale.damage = computeDamageScale(this.elapsed)
@@ -172,14 +188,18 @@ export class EnemySpawner {
 
     const inFinalPhase = this.finalBossAlive || this.elapsed >= FINAL_BOSS_LOCK
 
-    // Regular enemy spawning (paused only during final phase lock)
-    const t = Math.min(this.elapsed / RUN_DURATION, 1)
-    const spawnInterval = SPAWN_INTERVAL_START + (SPAWN_INTERVAL_END - SPAWN_INTERVAL_START) * t
-    const spawnCount = Math.round(SPAWN_COUNT_START + (SPAWN_COUNT_END - SPAWN_COUNT_START) * t)
-    if (!inFinalPhase && this.spawnTimer >= spawnInterval && this.enemies.length < MAX_ENEMIES) {
-      this.spawnTimer = 0
-      const toSpawn = Math.min(spawnCount, MAX_ENEMIES - this.enemies.length)
-      for (let i = 0; i < toSpawn; i++) this.spawnEnemy(playerX, playerY)
+    // Independent per-lane spawning — runs continuously, including during boss fights
+    for (let i = 0; i < LANE_DEFS.length; i++) {
+      const lane = LANE_DEFS[i]
+      if (this.elapsed < lane.startTime) continue
+      this.laneTimers[i] -= delta
+      if (this.laneTimers[i] <= 0 && this.enemies.length < MAX_ENEMIES) {
+        this.laneTimers[i] = this.laneInterval(lane)
+        const count = Math.min(this.laneBurst(lane), MAX_ENEMIES - this.enemies.length)
+        for (const { x, y } of this.burstEdgePoints(playerX, playerY, count)) {
+          this.spawnEnemy(x, y, playerX, playerY, lane.type)
+        }
+      }
     }
 
     // Regular boss cycle (stops once we enter final phase lock)
@@ -202,9 +222,7 @@ export class EnemySpawner {
     // Final boss spawn
     if (!this.finalBossAlive && !this.finalBossWarningFired === false && this.elapsed >= RUN_DURATION) {
       this.finalBossAlive = true
-      const angle = Math.random() * Math.PI * 2
-      const x = playerX + Math.cos(angle) * SPAWN_RADIUS
-      const y = playerY + Math.sin(angle) * SPAWN_RADIUS
+      const { x, y } = this.edgeSpawnPoint(playerX, playerY)
       this.enemies.push(new FinalBossEnemy(this.scene, x, y))
       this.onFinalBossSpawn?.()
     }
@@ -249,12 +267,52 @@ export class EnemySpawner {
     this.enemies = this.enemies.filter(e => e.active)
   }
 
-  private spawnEnemy(playerX: number, playerY: number) {
-    const angle = Math.random() * Math.PI * 2
-    const jitter = (Math.random() - 0.5) * 80
-    const x = playerX + Math.cos(angle) * SPAWN_RADIUS + Math.cos(angle + Math.PI / 2) * jitter
-    const y = playerY + Math.sin(angle) * SPAWN_RADIUS + Math.sin(angle + Math.PI / 2) * jitter
-    const type = this.pickType()
+  private edgeSpawnPoint(playerX: number, playerY: number): { x: number; y: number } {
+    const cam = this.scene.cameras.main
+    const halfW = (cam.width / 2) / cam.zoom + SPAWN_MARGIN
+    const halfH = (cam.height / 2) / cam.zoom + SPAWN_MARGIN
+    const edge = Math.floor(Math.random() * 4)
+    let x: number, y: number
+    switch (edge) {
+      case 0: x = playerX + (Math.random() * 2 - 1) * halfW; y = playerY - halfH; break
+      case 1: x = playerX + (Math.random() * 2 - 1) * halfW; y = playerY + halfH; break
+      case 2: x = playerX - halfW; y = playerY + (Math.random() * 2 - 1) * halfH; break
+      default: x = playerX + halfW; y = playerY + (Math.random() * 2 - 1) * halfH; break
+    }
+    return { x, y }
+  }
+
+  private burstEdgePoints(playerX: number, playerY: number, count: number): { x: number; y: number }[] {
+    const cam = this.scene.cameras.main
+    const halfW = (cam.width / 2) / cam.zoom + SPAWN_MARGIN
+    const halfH = (cam.height / 2) / cam.zoom + SPAWN_MARGIN
+    const SPACING = 32
+    const edge = Math.floor(Math.random() * 4)
+    const anchor = Math.random() * 2 - 1  // -1..1 position along the chosen edge
+    return Array.from({ length: count }, (_, i) => {
+      const off = (i - (count - 1) / 2) * SPACING
+      switch (edge) {
+        case 0: return { x: playerX + anchor * halfW + off, y: playerY - halfH }
+        case 1: return { x: playerX + anchor * halfW + off, y: playerY + halfH }
+        case 2: return { x: playerX - halfW, y: playerY + anchor * halfH + off }
+        default: return { x: playerX + halfW, y: playerY + anchor * halfH + off }
+      }
+    })
+  }
+
+  private laneInterval(lane: LaneDef): number {
+    if (this.elapsed <= lane.startTime) return lane.intervalStart
+    const t = Math.min((this.elapsed - lane.startTime) / (RUN_DURATION - lane.startTime), 1)
+    return lane.intervalStart + (lane.intervalEnd - lane.intervalStart) * t
+  }
+
+  private laneBurst(lane: LaneDef): number {
+    if (this.elapsed <= lane.startTime) return lane.burstStart
+    const t = Math.min((this.elapsed - lane.startTime) / (RUN_DURATION - lane.startTime), 1)
+    return Math.round(lane.burstStart + (lane.burstEnd - lane.burstStart) * t)
+  }
+
+  private spawnEnemy(x: number, y: number, playerX: number, playerY: number, type: SpawnType) {
     if (type === 'ranged') {
       this.enemies.push(new RangedEnemy(this.scene, x, y))
     } else if (type === 'exploder') {
@@ -272,9 +330,7 @@ export class EnemySpawner {
 
   private spawnBoss(playerX: number, playerY: number) {
     this.bossAlive = true
-    const angle = Math.random() * Math.PI * 2
-    const x = playerX + Math.cos(angle) * SPAWN_RADIUS
-    const y = playerY + Math.sin(angle) * SPAWN_RADIUS
+    const { x, y } = this.edgeSpawnPoint(playerX, playerY)
     if (this.elapsed >= 5 * 60_000) {
       const boss = new SummonerBoss(this.scene, x, y)
       boss.onSummon = (bx, by, count, phase2) => {
@@ -292,18 +348,6 @@ export class EnemySpawner {
       this.enemies.push(new BossEnemy(this.scene, x, y))
     }
     this.onBossSpawn?.()
-  }
-
-  private pickType(): SpawnType {
-    const pool: SpawnType[] = ['basic', 'basic', 'basic']
-    if (this.elapsed > 20_000)  pool.push('speeder', 'speeder')
-    if (this.elapsed > 45_000)  pool.push('tank')
-    if (this.elapsed > 60_000)  pool.push('exploder')
-    if (this.elapsed > 70_000)  pool.push('ranged', 'ranged', 'exploder')
-    if (this.elapsed > 120_000) pool.push('ghost', 'ghost')
-    if (this.elapsed > 300_000) pool.push('charger')
-    if (this.elapsed > 480_000) pool.push('necromancer', 'necromancer')
-    return pool[Math.floor(Math.random() * pool.length)]
   }
 
   waveLabel(overrideElapsed?: number): string {
