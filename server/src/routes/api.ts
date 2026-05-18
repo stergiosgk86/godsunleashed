@@ -31,7 +31,7 @@ function isFiniteNumber(v: unknown): v is number { return typeof v === 'number' 
 
 apiRouter.get('/profile', async (req: Request, res: Response) => {
   const result = await db.query(
-    `SELECT p.coins, p.upgrades, u.role
+    `SELECT p.coins, p.upgrades, p.key_bindings, u.role
      FROM profiles p JOIN users u ON u.id = p.user_id
      WHERE p.user_id = $1`,
     [req.userId],
@@ -57,6 +57,31 @@ apiRouter.post('/profile', async (req: Request, res: Response) => {
   }
   await db.query(
     'UPDATE profiles SET upgrades = $1::jsonb, updated_at = NOW() WHERE user_id = $2',
+    [JSON.stringify(sanitized), req.userId],
+  )
+  res.json({ ok: true })
+})
+
+// ── Key bindings ──────────────────────────────────────────────────────────────
+
+const VALID_BINDING_ACTIONS = new Set(['up', 'down', 'left', 'right', 'dash'])
+
+apiRouter.post('/key-bindings', async (req: Request, res: Response) => {
+  const { bindings } = req.body ?? {}
+  if (typeof bindings !== 'object' || bindings === null || Array.isArray(bindings)) {
+    res.status(400).json({ error: 'Invalid bindings' }); return
+  }
+  const sanitized: Record<string, number> = {}
+  for (const [action, keyCode] of Object.entries(bindings as Record<string, unknown>)) {
+    if (!VALID_BINDING_ACTIONS.has(action) || !isFiniteNumber(keyCode as number)) {
+      res.status(400).json({ error: `Invalid binding: ${action}` }); return
+    }
+    const code = Math.floor(keyCode as number)
+    if (code < 1 || code > 255) { res.status(400).json({ error: `Keycode out of range: ${code}` }); return }
+    sanitized[action] = code
+  }
+  await db.query(
+    'UPDATE profiles SET key_bindings = $1::jsonb, updated_at = NOW() WHERE user_id = $2',
     [JSON.stringify(sanitized), req.userId],
   )
   res.json({ ok: true })
@@ -105,6 +130,22 @@ apiRouter.post('/upgrades/purchase', async (req: Request, res: Response) => {
   } finally {
     client.release()
   }
+})
+
+// ── Admin ─────────────────────────────────────────────────────────────────────
+
+apiRouter.get('/admin/players', async (req: Request, res: Response) => {
+  const userRes = await db.query('SELECT role FROM users WHERE id = $1', [req.userId])
+  if (userRes.rows[0]?.role !== 'super_admin') {
+    res.status(403).json({ error: 'Forbidden' }); return
+  }
+  const result = await db.query(
+    `SELECT u.id, u.username, u.created_at,
+            p.coins, p.upgrades, p.updated_at AS last_active
+     FROM users u LEFT JOIN profiles p ON p.user_id = u.id
+     ORDER BY u.id`,
+  )
+  res.json({ players: result.rows })
 })
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────

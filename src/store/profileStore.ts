@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useAuthStore } from './authStore'
+import { useKeyBindingsStore } from './keyBindingsStore'
 
 export interface MetaUpgrades {
   maxHealth: number
@@ -45,6 +46,7 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
       if (!res.ok) return
       const data = await res.json()
       if (data.role) useAuthStore.getState().setRole(data.role)
+      useKeyBindingsStore.getState().loadFromServer(data.key_bindings)
       set({
         coins: data.coins ?? 0,
         upgrades: { ...emptyUpgrades(), ...(data.upgrades ?? {}) },

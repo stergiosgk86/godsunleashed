@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useAuthStore } from './authStore'
 
 export type BindableAction = 'up' | 'down' | 'left' | 'right' | 'dash'
 
@@ -10,6 +11,7 @@ export interface KeyBindings {
   dash: number
   setBinding: (action: BindableAction, keyCode: number) => void
   reset: () => void
+  loadFromServer: (saved: Record<string, number> | null | undefined) => void
 }
 
 export const DEFAULT_BINDINGS: Record<BindableAction, number> = {
@@ -20,31 +22,38 @@ export const DEFAULT_BINDINGS: Record<BindableAction, number> = {
   dash: 32,  // Space
 }
 
-function load(): Record<BindableAction, number> {
-  try {
-    const raw = localStorage.getItem('key-bindings')
-    if (raw) return { ...DEFAULT_BINDINGS, ...JSON.parse(raw) }
-  } catch {}
-  return { ...DEFAULT_BINDINGS }
+async function saveToServer(bindings: Record<BindableAction, number>) {
+  const token = useAuthStore.getState().token
+  if (!token) return
+  await fetch('/api/key-bindings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ bindings }),
+  })
 }
 
-function save(b: Record<BindableAction, number>) {
-  localStorage.setItem('key-bindings', JSON.stringify(b))
-}
+export const useKeyBindingsStore = create<KeyBindings>((set, get) => ({
+  ...DEFAULT_BINDINGS,
 
-const initial = load()
+  loadFromServer: (saved) => {
+    if (!saved || Object.keys(saved).length === 0) return
+    const merged = { ...DEFAULT_BINDINGS }
+    for (const action of Object.keys(DEFAULT_BINDINGS) as BindableAction[]) {
+      if (typeof saved[action] === 'number') merged[action] = saved[action]
+    }
+    set(merged)
+  },
 
-export const useKeyBindingsStore = create<KeyBindings>((set) => ({
-  ...initial,
-  setBinding: (action, keyCode) => set((s) => {
-    const next = { up: s.up, down: s.down, left: s.left, right: s.right, dash: s.dash, [action]: keyCode }
-    save(next)
-    return { [action]: keyCode }
-  }),
-  reset: () => set(() => {
-    save({ ...DEFAULT_BINDINGS })
-    return { ...DEFAULT_BINDINGS }
-  }),
+  setBinding: (action, keyCode) => {
+    set({ [action]: keyCode })
+    const { up, down, left, right, dash } = get()
+    saveToServer({ up, down, left, right, dash })
+  },
+
+  reset: () => {
+    set({ ...DEFAULT_BINDINGS })
+    saveToServer({ ...DEFAULT_BINDINGS })
+  },
 }))
 
 // Returns a human-readable label for a keyCode
@@ -67,7 +76,6 @@ export function keyCodeLabel(code: number): string {
   return String.fromCharCode(code)
 }
 
-// Keycodes that are not safe to rebind (would break the game/menu)
 const BLOCKED = new Set([27, 38, 40, 37, 39]) // Esc, arrows
 
 export function isAllowedKeyCode(code: number): boolean {
