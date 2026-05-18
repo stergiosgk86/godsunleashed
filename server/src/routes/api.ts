@@ -41,27 +41,6 @@ apiRouter.get('/profile', async (req: Request, res: Response) => {
   res.json(row)
 })
 
-// Only upgrades are accepted here — coins are managed entirely server-side.
-apiRouter.post('/profile', async (req: Request, res: Response) => {
-  const { upgrades } = req.body ?? {}
-  if (typeof upgrades !== 'object' || upgrades === null || Array.isArray(upgrades)) {
-    res.status(400).json({ error: 'Invalid upgrades' }); return
-  }
-  // Validate keys and clamp values — belt-and-suspenders even though purchases are server-side
-  const sanitized: Record<string, number> = {}
-  for (const [key, val] of Object.entries(upgrades as Record<string, unknown>)) {
-    if (!VALID_UPGRADE_KEYS.has(key) || !isFiniteNumber(val)) {
-      res.status(400).json({ error: `Invalid upgrade key: ${key}` }); return
-    }
-    sanitized[key] = clamp(Math.floor(val as number), 0, MAX_UPGRADE_RANK)
-  }
-  await db.query(
-    'UPDATE profiles SET upgrades = $1::jsonb, updated_at = NOW() WHERE user_id = $2',
-    [JSON.stringify(sanitized), req.userId],
-  )
-  res.json({ ok: true })
-})
-
 // ── Key bindings ──────────────────────────────────────────────────────────────
 
 const VALID_BINDING_ACTIONS = new Set(['up', 'down', 'left', 'right', 'dash'])
