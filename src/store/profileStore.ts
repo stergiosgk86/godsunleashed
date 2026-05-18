@@ -23,13 +23,14 @@ interface ProfileStore {
   upgrades: MetaUpgrades
   loaded: boolean
   fetchProfile: () => Promise<void>
-  syncProfile: () => Promise<void>
+  // Optimistic local-only update — server credit happens via POST /api/runs
   depositCoins: (amount: number) => void
-  purchaseUpgrade: (upgrade: keyof MetaUpgrades) => boolean
+  // Server-authoritative purchase — returns false if server rejects
+  purchaseUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
   reset: () => void
 }
 
-export const useProfileStore = create<ProfileStore>()((set, get) => ({
+export const useProfileStore = create<ProfileStore>()((set) => ({
   coins: 0,
   upgrades: emptyUpgrades(),
   loaded: false,
@@ -52,40 +53,27 @@ export const useProfileStore = create<ProfileStore>()((set, get) => ({
     } catch { /* network error — keep current state */ }
   },
 
-  syncProfile: async () => {
-    const token = useAuthStore.getState().token
-    if (!token) return
-    const { coins, upgrades } = get()
-    try {
-      await fetch('/api/profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ coins, upgrades }),
-      })
-    } catch { /* fire and forget */ }
-  },
-
   depositCoins: (amount) => {
     if (amount <= 0) return
+    // Update local state immediately for UI feedback.
+    // The actual DB credit is done server-side when POST /api/runs is submitted.
     set(s => ({ coins: s.coins + amount }))
-    get().syncProfile()
   },
 
-  purchaseUpgrade: (upgrade) => {
-    const { upgrades, coins } = get()
-    const rank = upgrades[upgrade]
-    if (rank >= UPGRADE_MAX_RANK) return false
-    const cost = UPGRADE_COSTS[rank]
-    if (coins < cost) return false
-    set(s => ({
-      coins: s.coins - cost,
-      upgrades: { ...s.upgrades, [upgrade]: rank + 1 },
-    }))
-    get().syncProfile()
-    return true
+  purchaseUpgrade: async (upgrade) => {
+    const token = useAuthStore.getState().token
+    if (!token) return false
+    try {
+      const res = await fetch('/api/upgrades/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ upgrade }),
+      })
+      if (!res.ok) return false
+      const data = await res.json() as { coins: number; upgrades: MetaUpgrades }
+      set({ coins: data.coins, upgrades: { ...emptyUpgrades(), ...data.upgrades } })
+      return true
+    } catch { return false }
   },
 
   reset: () => set({ coins: 0, upgrades: emptyUpgrades(), loaded: false }),

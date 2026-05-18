@@ -181,7 +181,9 @@ function App() {
         won: s.isWon,
         multiplayer: !!activeNetClient,
       }),
-    }).catch(() => { /* non-fatal */ })
+    })
+      .then(() => useProfileStore.getState().fetchProfile())
+      .catch(() => { /* non-fatal */ })
   }
 
   // Submit run to leaderboard on death or win
