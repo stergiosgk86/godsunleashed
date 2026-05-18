@@ -15,10 +15,12 @@ export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: num
 import { RUN_DURATION } from './runData'
 import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
 
-const SPAWN_INTERVAL_START = 700
-const SPAWN_INTERVAL_END   = 200
+const SPAWN_INTERVAL_START = 300
+const SPAWN_INTERVAL_END   = 80
+const SPAWN_COUNT_START    = 1
+const SPAWN_COUNT_END      = 3
 const SPAWN_RADIUS = 600
-const MAX_ENEMIES = 300
+const MAX_ENEMIES = 400
 const BOSS_FIRST_SPAWN = 90_000
 const BOSS_REPEAT = 120_000
 const BOSS_WARNING = 5_000
@@ -171,10 +173,13 @@ export class EnemySpawner {
     const inFinalPhase = this.finalBossAlive || this.elapsed >= FINAL_BOSS_LOCK
 
     // Regular enemy spawning (paused only during final phase lock)
-    const spawnInterval = SPAWN_INTERVAL_START - (SPAWN_INTERVAL_START - SPAWN_INTERVAL_END) * Math.min(this.elapsed / RUN_DURATION, 1)
+    const t = Math.min(this.elapsed / RUN_DURATION, 1)
+    const spawnInterval = SPAWN_INTERVAL_START + (SPAWN_INTERVAL_END - SPAWN_INTERVAL_START) * t
+    const spawnCount = Math.round(SPAWN_COUNT_START + (SPAWN_COUNT_END - SPAWN_COUNT_START) * t)
     if (!inFinalPhase && this.spawnTimer >= spawnInterval && this.enemies.length < MAX_ENEMIES) {
       this.spawnTimer = 0
-      this.spawnEnemy(playerX, playerY)
+      const toSpawn = Math.min(spawnCount, MAX_ENEMIES - this.enemies.length)
+      for (let i = 0; i < toSpawn; i++) this.spawnEnemy(playerX, playerY)
     }
 
     // Regular boss cycle (stops once we enter final phase lock)
