@@ -104,6 +104,7 @@ export class MainScene extends Phaser.Scene {
         flameTrail: savedRun.flameTrail,
         bloodNova: savedRun.bloodNova,
         vampiric: savedRun.vampiric ?? false,
+        lightning: savedRun.lightning ?? false,
         hpRegen: savedRun.hpRegen,
         lifeDrain: savedRun.lifeDrain,
         sessionCoins: savedRun.sessionCoins,
@@ -387,7 +388,7 @@ export class MainScene extends Phaser.Scene {
           dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
           multiShot: s.multiShot, piercing: s.piercing, aura: s.aura,
           orbital: s.orbital, boomerang: s.boomerang, flameTrail: s.flameTrail,
-          bloodNova: s.bloodNova, vampiric: s.vampiric, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
+          bloodNova: s.bloodNova, vampiric: s.vampiric, lightning: s.lightning, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
           sessionCoins: s.sessionCoins,
         })
       }

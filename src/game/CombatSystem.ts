@@ -25,6 +25,9 @@ const FLAME_DURATION = 3000
 const FLAME_TICK = 600
 const NOVA_INTERVAL = 7000
 const NOVA_RADIUS = 230
+const LIGHTNING_INTERVAL = 4000
+const LIGHTNING_TARGETS = 2
+const LIGHTNING_DAMAGE_MULT = 3.5
 
 interface FlamePool {
   x: number; y: number
@@ -63,6 +66,8 @@ export class CombatSystem {
   private flameTime = 0
   // Blood Nova
   private bloodNovaTimer = 0
+  // Lightning
+  private lightningTimer = 0
 
   constructor(scene: Phaser.Scene, effects: EffectsSystem) {
     this.scene = scene
@@ -72,7 +77,7 @@ export class CombatSystem {
   }
 
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
-    const { might, level, attackInterval, addXP, takeDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric } = useGameStore.getState()
+    const { might, level, attackInterval, addXP, takeDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning } = useGameStore.getState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -386,6 +391,27 @@ export class CombatSystem {
         this.fireBloodNova(playerX, playerY, novaDmg, enemies, coinDropChance, lifeDrain, vampiric)
       }
     }
+
+    // === Lightning Strike ===
+    if (lightning) {
+      this.lightningTimer += delta
+      if (this.lightningTimer >= LIGHTNING_INTERVAL) {
+        this.lightningTimer = 0
+        const boltDmg = Math.floor(weaponBaseDamage(level) * might * LIGHTNING_DAMAGE_MULT)
+        const active = enemies.filter(e => e.active)
+        // Pick up to LIGHTNING_TARGETS distinct random enemies
+        const targets: AnyEnemy[] = []
+        const pool = [...active]
+        for (let i = 0; i < LIGHTNING_TARGETS && pool.length > 0; i++) {
+          const idx = Math.floor(Math.random() * pool.length)
+          targets.push(pool.splice(idx, 1)[0])
+        }
+        for (const t of targets) {
+          this.fireLightningBolt(t.x, t.y)
+          this.applyHit(t, boltDmg, coinDropChance, lifeDrain, vampiric)
+        }
+      }
+    }
   }
 
   private spawnFlame(x: number, y: number) {
@@ -398,6 +424,61 @@ export class CombatSystem {
     g.fillStyle(0xffaa00, 0.55)
     g.fillCircle(0, 0, vr * 0.32)
     this.flamePools.push({ x, y, timer: FLAME_DURATION, tickTimer: 0, graphic: g })
+  }
+
+  private fireLightningBolt(x: number, y: number) {
+    const top = y - 280
+
+    // Build a jagged zigzag path from above down to the target
+    const points: { x: number; y: number }[] = [{ x, y: top }]
+    const segments = 8
+    for (let i = 1; i < segments; i++) {
+      const t = i / segments
+      const jitter = (1 - t * 0.5) * 50
+      points.push({ x: x + (Math.random() - 0.5) * jitter * 2, y: top + (y - top) * t })
+    }
+    points.push({ x, y })
+
+    const g = this.scene.add.graphics().setDepth(8)
+
+    const draw = (alpha: number) => {
+      g.clear()
+      // Outer blue-white glow
+      g.lineStyle(6, 0x99ccff, alpha * 0.35)
+      g.beginPath()
+      g.moveTo(points[0].x, points[0].y)
+      for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y)
+      g.strokePath()
+      // Mid yellow-white
+      g.lineStyle(3, 0xffffaa, alpha * 0.8)
+      g.beginPath()
+      g.moveTo(points[0].x, points[0].y)
+      for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y)
+      g.strokePath()
+      // Bright white core
+      g.lineStyle(1.5, 0xffffff, alpha)
+      g.beginPath()
+      g.moveTo(points[0].x, points[0].y)
+      for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y)
+      g.strokePath()
+      // Impact flash at target
+      g.fillStyle(0xffffff, alpha * 0.7)
+      g.fillCircle(x, y, 16 * alpha)
+      g.fillStyle(0xaaddff, alpha * 0.35)
+      g.fillCircle(x, y, 28 * alpha)
+    }
+
+    draw(1)
+
+    const obj = { alpha: 1 }
+    this.scene.tweens.add({
+      targets: obj,
+      alpha: 0,
+      duration: 380,
+      ease: 'Power2In',
+      onUpdate: () => draw(obj.alpha),
+      onComplete: () => g.destroy(),
+    })
   }
 
   private fireBloodNova(playerX: number, playerY: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {

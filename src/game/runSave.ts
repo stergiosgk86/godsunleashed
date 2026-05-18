@@ -37,6 +37,7 @@ export interface RunSnapshot {
   flameTrail: boolean
   bloodNova: boolean
   vampiric: boolean
+  lightning: boolean
   hpRegen: number
   lifeDrain: number
   sessionCoins: number
