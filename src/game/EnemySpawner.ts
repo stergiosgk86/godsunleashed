@@ -15,8 +15,9 @@ export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: num
 import { RUN_DURATION } from './runData'
 import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
 
-const SPAWN_MARGIN = 80   // world-px beyond the visible screen edge
-const MAX_ENEMIES = 400
+const SPAWN_MARGIN = 80    // world-px beyond the visible screen edge
+const RECYCLE_EXTRA = 300  // additional world-px past the spawn edge before an enemy is recycled
+const MAX_ENEMIES = 600
 const BOSS_FIRST_SPAWN = 90_000
 const BOSS_REPEAT = 120_000
 const BOSS_WARNING = 5_000
@@ -225,6 +226,17 @@ export class EnemySpawner {
       const { x, y } = this.edgeSpawnPoint(playerX, playerY)
       this.enemies.push(new FinalBossEnemy(this.scene, x, y))
       this.onFinalBossSpawn?.()
+    }
+
+    // Recycle enemies that have wandered well off-screen — frees cap for fresh spawns
+    {
+      const cam = this.scene.cameras.main
+      const rHalfW = (cam.width  / 2) / cam.zoom + SPAWN_MARGIN + RECYCLE_EXTRA
+      const rHalfH = (cam.height / 2) / cam.zoom + SPAWN_MARGIN + RECYCLE_EXTRA
+      for (const e of this.enemies) {
+        if (!e.active || e.isBoss) continue
+        if (Math.abs(e.x - playerX) > rHalfW || Math.abs(e.y - playerY) > rHalfH) e.destroy()
+      }
     }
 
     // Separation: push overlapping enemies apart so they don't stack into one sprite.
