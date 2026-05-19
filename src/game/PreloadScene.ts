@@ -47,6 +47,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('health_potion', SPRITE_URLS.healthPotionSprite)
     this.load.image('coin', SPRITE_URLS.coinSprite)
     this.load.image('boomerang', SPRITE_URLS.boomerangSprite)
+    this.load.image('axe', SPRITE_URLS.axeSprite)
   }
 
   create() {

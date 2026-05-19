@@ -16,6 +16,7 @@ import enemyCharger from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enem
 import enemyNecromancer from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 04-1.png'
 import boss from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Boss/Boss 01.png'
 import boomerangSprite from '../assets/Sprites/Weapons/Boomerang.png'
+import axeSprite from '../assets/Sprites/Weapons/Axe.png'
 
 export const SPRITE_URLS = {
   player, charRogue, charWitch, charShade, charZeus,
@@ -30,4 +31,5 @@ export const SPRITE_URLS = {
   enemyNecromancer,
   boss,
   boomerangSprite,
+  axeSprite,
 }
