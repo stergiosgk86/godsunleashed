@@ -296,6 +296,7 @@ function App() {
       setInLobby(true)
     } else {
       startRun()
+      startRunWithToken()
       setRunKey(k => k + 1)
     }
   }
