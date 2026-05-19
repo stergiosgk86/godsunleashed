@@ -132,10 +132,18 @@ export class CombatSystem {
     }
 
     // Move player projectiles + check enemy hits
+    const camWV = this.scene.cameras.main.worldView
+    const PROJ_OFF_MARGIN = 200  // keep alive this many px past the screen edge so projectiles can reach enemies spawned just off-screen
     for (const p of this.projectiles) {
       if (!p.active) continue
       p.update(delta)
       if (!p.active) continue
+
+      if (p.x < camWV.left  - PROJ_OFF_MARGIN || p.x > camWV.right  + PROJ_OFF_MARGIN ||
+          p.y < camWV.top   - PROJ_OFF_MARGIN || p.y > camWV.bottom + PROJ_OFF_MARGIN) {
+        p.destroy()
+        continue
+      }
 
       for (const e of enemies) {
         if (!e.active || p.hitTargets.has(e)) continue

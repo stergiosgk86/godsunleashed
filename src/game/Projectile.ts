@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 
 const SPEED = 500
-const LIFETIME = 1500
+const LIFETIME = 5000  // safety-net; actual pruning is camera-bounds-based in CombatSystem
 
 export class Projectile {
   private graphic: Phaser.GameObjects.Image
