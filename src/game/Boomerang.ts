@@ -12,7 +12,7 @@ export class Boomerang {
   private vy: number
   private distTravelled = 0
   private spinAngle = 0
-  private graphic: Phaser.GameObjects.Graphics
+  private image: Phaser.GameObjects.Image
   hitTargetsOut = new Set<object>()
   hitTargetsBack = new Set<object>()
 
@@ -24,7 +24,7 @@ export class Boomerang {
     const dist = Math.sqrt(dx * dx + dy * dy) || 1
     this.vx = (dx / dist) * SPEED
     this.vy = (dy / dist) * SPEED
-    this.graphic = scene.add.graphics().setDepth(4)
+    this.image = scene.add.image(x, y, 'boomerang').setDepth(4).setScale(0.5)
   }
 
   update(delta: number, playerX: number, playerY: number) {
@@ -47,24 +47,12 @@ export class Boomerang {
       this.y += this.vy * dt
     }
 
-    const g = this.graphic
-    g.clear()
-    g.setPosition(this.x, this.y)
-    g.setRotation(this.spinAngle)
-    // Two wings
-    g.fillStyle(0xffaa00, 0.95)
-    g.fillEllipse(-8, 0, 22, 9)
-    g.fillStyle(0xffcc44, 0.95)
-    g.fillEllipse(8, 0, 22, 9)
-    // Centre hub
-    g.fillStyle(0xffffff, 0.9)
-    g.fillCircle(0, 0, 4)
-    g.lineStyle(1, 0xff8800, 0.6)
-    g.strokeCircle(0, 0, 4)
+    this.image.setPosition(this.x, this.y)
+    this.image.setRotation(this.spinAngle)
   }
 
   destroy() {
-    this.graphic.destroy()
+    this.image.destroy()
     this.active = false
   }
 }

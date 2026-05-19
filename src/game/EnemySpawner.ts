@@ -303,8 +303,8 @@ export class EnemySpawner {
     }
 
     // Separation: push overlapping enemies apart so they don't stack into one sprite.
-    const SEP_RADIUS = 22
-    const SEP_FORCE  = 0.6
+    const SEP_RADIUS = 32
+    const SEP_FORCE  = 0.9
     const active = this.enemies.filter(e => e.active && !e.isBoss)
     for (let i = 0; i < active.length; i++) {
       for (let j = i + 1; j < active.length; j++) {

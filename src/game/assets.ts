@@ -2,6 +2,10 @@ import player      from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/
 import charRogue   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 05-1.png'
 import charWitch   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Female/Female 03-1.png'
 import charShade from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 08-1.png'
+import charZeus  from '../assets/Sprites/Characters/zeus_sheet.png'
+import xpOrbSprite from '../assets/Sprites/Items/xp_orb_sprite.png'
+import healthPotionSprite from '../assets/Sprites/Items/health_potion_sprite.png'
+import coinSprite from '../assets/Sprites/Items/coin_sprite.png'
 import enemyBasic from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 01-1.png'
 import enemySpeeder from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 03-1.png'
 import enemyTank from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 06-1.png'
@@ -11,9 +15,11 @@ import enemyGhost from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/
 import enemyCharger from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 07-1.png'
 import enemyNecromancer from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 04-1.png'
 import boss from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Boss/Boss 01.png'
+import boomerangSprite from '../assets/Sprites/Weapons/Boomerang.png'
 
 export const SPRITE_URLS = {
-  player, charRogue, charWitch, charShade,
+  player, charRogue, charWitch, charShade, charZeus,
+  xpOrbSprite, healthPotionSprite, coinSprite,
   enemyBasic,
   enemySpeeder,
   enemyTank,
@@ -23,4 +29,5 @@ export const SPRITE_URLS = {
   enemyCharger,
   enemyNecromancer,
   boss,
+  boomerangSprite,
 }

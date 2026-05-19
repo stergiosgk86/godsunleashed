@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { AnyEnemy } from './Enemy'
 import type { ClientEnemy } from './ClientEnemy'
 import { Projectile } from './Projectile'
+import { ThunderboltProjectile } from './ThunderboltProjectile'
 import { Boomerang } from './Boomerang'
 import { Axe } from './Axe'
 import { XPOrb } from './XPOrb'
@@ -15,7 +16,6 @@ import { difficultyScale } from './difficultyScale'
 import { activeNetClient } from '../net/netState'
 import { minimapData } from './minimapData'
 
-const HIT_RADIUS = 20
 const CONTACT_RADIUS = 28
 const CONTACT_ENEMY_COOLDOWN = 1000  // ms between hits from each individual enemy
 const BULLET_HIT_RADIUS = 15
@@ -86,8 +86,10 @@ export class CombatSystem {
   private bloodNovaTimer = 0
   // Lightning
   private lightningTimer = 0
+  private useThunderbolts: boolean
 
-  constructor(scene: Phaser.Scene, effects: EffectsSystem) {
+  constructor(scene: Phaser.Scene, effects: EffectsSystem, useThunderbolts = false) {
+    this.useThunderbolts = useThunderbolts
     this.scene = scene
     this.effects = effects
     this.auraGraphic = scene.add.graphics().setDepth(2)
@@ -111,7 +113,7 @@ export class CombatSystem {
     this.fireTimer += delta
     if (this.fireTimer >= attackInterval) {
       this.fireTimer = 0
-      const target = this.findNearest(playerX, playerY, enemies)
+      const target = this.findNearest(playerX, playerY, enemies, 350)
       if (target) {
         const { multiShot, piercing: isPiercing } = useGameStore.getState()
         const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
@@ -122,7 +124,9 @@ export class CombatSystem {
           const angle = baseAngle + offset
           const tx = playerX + Math.cos(angle) * 1000
           const ty = playerY + Math.sin(angle) * 1000
-          const proj = new Projectile(this.scene, playerX, playerY, tx, ty)
+          const proj = this.useThunderbolts
+            ? new ThunderboltProjectile(this.scene, playerX, playerY, tx, ty)
+            : new Projectile(this.scene, playerX, playerY, tx, ty)
           proj.piercing = isPiercing
           this.projectiles.push(proj)
           if (net) net.send({ type: 'projectile', x: playerX, y: playerY, vx: proj.vx, vy: proj.vy })
@@ -149,7 +153,7 @@ export class CombatSystem {
         if (!e.active || p.hitTargets.has(e)) continue
         const dx = p.x - e.x
         const dy = p.y - e.y
-        if (dx * dx + dy * dy < HIT_RADIUS * HIT_RADIUS) {
+        if (dx * dx + dy * dy < p.hitRadius * p.hitRadius) {
           this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
           if (p.piercing) {
             p.hitTargets.add(e)
@@ -275,7 +279,7 @@ export class CombatSystem {
         this.auraFlashTimer = 0
         const auraDmg = damage * aura
         for (const e of enemies) {
-          if (!e.active) continue
+          if (!e.active || !this.isOnScreen(e.x, e.y)) continue
           const dx = e.x - playerX
           const dy = e.y - playerY
           if (dx * dx + dy * dy < radius * radius) {
@@ -409,7 +413,7 @@ export class CombatSystem {
         if (f.tickTimer <= 0) {
           f.tickTimer += FLAME_TICK
           for (const e of enemies) {
-            if (!e.active) continue
+            if (!e.active || !this.isOnScreen(e.x, e.y)) continue
             const dx = e.x - f.x
             const dy = e.y - f.y
             if (dx * dx + dy * dy < FLAME_RADIUS * FLAME_RADIUS) {
@@ -557,7 +561,7 @@ export class CombatSystem {
     useGameStore.setState(s => ({ hp: Math.max(1, s.hp - cost) }))
 
     for (const e of enemies) {
-      if (!e.active) continue
+      if (!e.active || !this.isOnScreen(e.x, e.y)) continue
       const dx = e.x - playerX
       const dy = e.y - playerY
       if (dx * dx + dy * dy < NOVA_RADIUS * NOVA_RADIUS) {
@@ -661,18 +665,25 @@ export class CombatSystem {
     this.spawnDropsAt(e.x, e.y, e.xpValue, e.isBoss ?? false)
   }
 
-  private findNearest(px: number, py: number, enemies: AnyEnemy[]): AnyEnemy | null {
+  private isOnScreen(x: number, y: number): boolean {
+    const wv = this.scene.cameras.main.worldView
+    return x >= wv.left && x <= wv.right && y >= wv.top && y <= wv.bottom
+  }
+
+  private findNearest(px: number, py: number, enemies: AnyEnemy[], maxRange = Infinity): AnyEnemy | null {
     const TEAMMATE_CLEAR_R = 60 * 60
+    const maxRange2 = maxRange * maxRange
     const remotes = minimapData.remotePlayers
     let nearest: AnyEnemy | null = null
     let minDist = Infinity
     let fallback: AnyEnemy | null = null
     let minFallback = Infinity
     for (const e of enemies) {
-      if (!e.active) continue
+      if (!e.active || !this.isOnScreen(e.x, e.y)) continue
       const dx = e.x - px
       const dy = e.y - py
       const dist = dx * dx + dy * dy
+      if (dist > maxRange2) continue
       // Prefer enemies not in a teammate's personal space to avoid visual confusion
       const nearTeammate = remotes.some(rp => {
         const rdx = e.x - rp.x, rdy = e.y - rp.y

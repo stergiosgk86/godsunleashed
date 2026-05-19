@@ -1,12 +1,13 @@
 import Phaser from 'phaser'
 import { SPRITE_URLS } from './assets'
-import { createWalkAnims } from './spriteUtils'
+import { createWalkAnims, createZeusAnims } from './spriteUtils'
 
 const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight: number; frameRate?: number }> = [
   { key: 'player',         url: SPRITE_URLS.player,       frameWidth: 32, frameHeight: 32 },
   { key: 'char_rogue',    url: SPRITE_URLS.charRogue,    frameWidth: 32, frameHeight: 32 },
   { key: 'char_witch',    url: SPRITE_URLS.charWitch,    frameWidth: 32, frameHeight: 32 },
   { key: 'char_shade',   url: SPRITE_URLS.charShade,   frameWidth: 32, frameHeight: 32 },
+  { key: 'char_zeus',    url: SPRITE_URLS.charZeus,    frameWidth: 96, frameHeight: 96 },
   { key: 'enemy_basic',    url: SPRITE_URLS.enemyBasic,   frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_speeder',  url: SPRITE_URLS.enemySpeeder, frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_tank',     url: SPRITE_URLS.enemyTank,    frameWidth: 32, frameHeight: 32 },
@@ -42,12 +43,17 @@ export class PreloadScene extends Phaser.Scene {
     for (const { key, url, frameWidth, frameHeight } of SHEETS) {
       this.load.spritesheet(key, url, { frameWidth, frameHeight })
     }
+    this.load.image('xp_orb', SPRITE_URLS.xpOrbSprite)
+    this.load.image('health_potion', SPRITE_URLS.healthPotionSprite)
+    this.load.image('coin', SPRITE_URLS.coinSprite)
+    this.load.image('boomerang', SPRITE_URLS.boomerangSprite)
   }
 
   create() {
     for (const { key, frameRate } of SHEETS) {
-      createWalkAnims(this.anims, key, frameRate)
+      if (key !== 'char_zeus') createWalkAnims(this.anims, key, frameRate)
     }
+    createZeusAnims(this.anims)
     this.scene.start('MainScene')
   }
 }
