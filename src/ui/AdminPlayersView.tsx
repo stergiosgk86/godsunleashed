@@ -31,11 +31,182 @@ const backBtn: React.CSSProperties = {
   marginTop: 8,
 }
 
+function formatLastActive(iso: string) {
+  const d = new Date(iso)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yy = String(d.getFullYear()).slice(-2)
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  return `${dd}/${mm}/${yy} ${time}`
+}
+
+function ConfirmResetModal({ player, onConfirm, onCancel }: {
+  player: PlayerRow
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const label = player.username ?? `#${player.id}`
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 10, borderRadius: 'inherit',
+    }}>
+      <div style={{
+        background: '#0d0d1a', border: '2px solid #442222',
+        borderRadius: 10, padding: '28px 32px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        boxShadow: '0 0 30px #ff222255',
+        minWidth: 260,
+      }}>
+        <div style={{ color: '#ff4444', fontSize: 14, fontFamily: 'monospace', letterSpacing: 2, fontWeight: 'bold' }}>
+          RESET PLAYER
+        </div>
+        <div style={{ color: '#ccccff', fontSize: 12, fontFamily: 'monospace', textAlign: 'center', lineHeight: 1.6 }}>
+          Reset coins and all upgrade ranks<br />
+          to <span style={{ color: '#ff8888', fontWeight: 'bold' }}>0</span> for{' '}
+          <span style={{ color: '#aaaaff', fontWeight: 'bold' }}>{label}</span>?
+        </div>
+        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+              color: '#ff4444', background: 'transparent',
+              border: '1px solid #442222', borderRadius: 5,
+              cursor: 'pointer', letterSpacing: 1,
+              transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#3a0000'
+              e.currentTarget.style.borderColor = '#ff4444'
+              e.currentTarget.style.color = '#ff8888'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = '#442222'
+              e.currentTarget.style.color = '#ff4444'
+            }}
+          >
+            CONFIRM
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+              color: '#aaaaff', background: 'transparent',
+              border: '1px solid #2a2a50', borderRadius: 5,
+              cursor: 'pointer', letterSpacing: 1,
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#111133'
+              e.currentTarget.style.borderColor = '#aaaaff'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = '#2a2a50'
+            }}
+          >
+            CANCEL
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ConfirmClearRunsModal({ player, onConfirm, onCancel }: {
+  player: PlayerRow
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const label = player.username ?? `#${player.id}`
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 10, borderRadius: 'inherit',
+    }}>
+      <div style={{
+        background: '#0d0d1a', border: '2px solid #224422',
+        borderRadius: 10, padding: '28px 32px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        boxShadow: '0 0 30px #22ff2255',
+        minWidth: 260,
+      }}>
+        <div style={{ color: '#44ff88', fontSize: 14, fontFamily: 'monospace', letterSpacing: 2, fontWeight: 'bold' }}>
+          CLEAR LEADERBOARD
+        </div>
+        <div style={{ color: '#ccccff', fontSize: 12, fontFamily: 'monospace', textAlign: 'center', lineHeight: 1.6 }}>
+          Delete <span style={{ color: '#ff8888', fontWeight: 'bold' }}>all runs</span> for{' '}
+          <span style={{ color: '#aaaaff', fontWeight: 'bold' }}>{label}</span>?<br />
+          This removes them from the leaderboard.
+        </div>
+        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+              color: '#44ff88', background: 'transparent',
+              border: '1px solid #224422', borderRadius: 5,
+              cursor: 'pointer', letterSpacing: 1,
+              transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#003a00'
+              e.currentTarget.style.borderColor = '#44ff88'
+              e.currentTarget.style.color = '#88ffaa'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = '#224422'
+              e.currentTarget.style.color = '#44ff88'
+            }}
+          >
+            CONFIRM
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+              color: '#aaaaff', background: 'transparent',
+              border: '1px solid #2a2a50', borderRadius: 5,
+              cursor: 'pointer', letterSpacing: 1,
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#111133'
+              e.currentTarget.style.borderColor = '#aaaaff'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = '#2a2a50'
+            }}
+          >
+            CANCEL
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const token = useAuthStore(s => s.token)
   const [players, setPlayers] = useState<PlayerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [resetting, setResetting] = useState<Set<number>>(new Set())
+  const [clearingRuns, setClearingRuns] = useState<Set<number>>(new Set())
+  const [confirmTarget, setConfirmTarget] = useState<PlayerRow | null>(null)
+  const [confirmClearRuns, setConfirmClearRuns] = useState<PlayerRow | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/players', { headers: { Authorization: `Bearer ${token}` } })
@@ -44,11 +215,63 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       .catch(() => { setFetchError('Failed to load'); setLoading(false) })
   }, [token])
 
+  async function executeClearRuns(p: PlayerRow) {
+    setConfirmClearRuns(null)
+    setClearingRuns(prev => new Set(prev).add(p.id))
+    try {
+      const res = await fetch(`/api/admin/players/${p.id}/runs`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      // silent failure — user can retry
+    } finally {
+      setClearingRuns(prev => { const next = new Set(prev); next.delete(p.id); return next })
+    }
+  }
+
+  async function executeReset(p: PlayerRow) {
+    setConfirmTarget(null)
+    setResetting(prev => new Set(prev).add(p.id))
+    try {
+      const res = await fetch(`/api/admin/players/${p.id}/reset`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error()
+      const emptyUpgrades = Object.fromEntries(UPGRADE_KEYS.map(k => [k, 0]))
+      setPlayers(prev => prev.map(row =>
+        row.id === p.id ? { ...row, coins: 0, upgrades: emptyUpgrades } : row
+      ))
+    } catch {
+      // silent failure — user can retry
+    } finally {
+      setResetting(prev => { const next = new Set(prev); next.delete(p.id); return next })
+    }
+  }
+
   return (
-    <>
+    <div style={{ position: 'relative', width: '100%' }}>
+      {confirmTarget && (
+        <ConfirmResetModal
+          player={confirmTarget}
+          onConfirm={() => executeReset(confirmTarget)}
+          onCancel={() => setConfirmTarget(null)}
+        />
+      )}
+      {confirmClearRuns && (
+        <ConfirmClearRunsModal
+          player={confirmClearRuns}
+          onConfirm={() => executeClearRuns(confirmClearRuns)}
+          onCancel={() => setConfirmClearRuns(null)}
+        />
+      )}
+
       <div style={{
         color: '#ff4444', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold',
         letterSpacing: 3, textShadow: '0 0 10px #ff2222',
+        marginBottom: 8,
       }}>
         PLAYERS
       </div>
@@ -73,12 +296,13 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                 <th style={thStyle}>Coins</th>
                 {UPGRADE_LABELS.map(l => <th key={l} style={thStyle}>{l}</th>)}
                 <th style={thStyle}>Last Active</th>
+                <th style={thStyle}></th>
               </tr>
             </thead>
             <tbody>
               {players.length === 0 ? (
                 <tr>
-                  <td colSpan={11} style={{ ...tdStyle, color: '#444466', padding: 20 }}>No players</td>
+                  <td colSpan={12} style={{ ...tdStyle, color: '#444466', padding: 20 }}>No players</td>
                 </tr>
               ) : players.map(p => (
                 <tr key={p.id}>
@@ -94,7 +318,63 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                     )
                   })}
                   <td style={{ ...tdStyle, color: '#555577', fontSize: 11 }}>
-                    {p.last_active ? new Date(p.last_active).toLocaleDateString() : '—'}
+                    {p.last_active ? formatLastActive(p.last_active) : '—'}
+                  </td>
+                  <td style={{ ...tdStyle, display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'center' }}>
+                    <button
+                      type="button"
+                      disabled={resetting.has(p.id)}
+                      onClick={() => setConfirmTarget(p)}
+                      style={{
+                        padding: '2px 8px', fontSize: 10, fontFamily: 'monospace',
+                        color: '#ff4444', background: 'transparent',
+                        border: '1px solid #442222', borderRadius: 4,
+                        cursor: resetting.has(p.id) ? 'default' : 'pointer',
+                        opacity: resetting.has(p.id) ? 0.4 : 1,
+                        letterSpacing: 1,
+                        transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        if (resetting.has(p.id)) return
+                        e.currentTarget.style.background = '#3a0000'
+                        e.currentTarget.style.borderColor = '#ff4444'
+                        e.currentTarget.style.color = '#ff8888'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.borderColor = '#442222'
+                        e.currentTarget.style.color = '#ff4444'
+                      }}
+                    >
+                      RESET
+                    </button>
+                    <button
+                      type="button"
+                      disabled={clearingRuns.has(p.id)}
+                      onClick={() => setConfirmClearRuns(p)}
+                      style={{
+                        padding: '2px 8px', fontSize: 10, fontFamily: 'monospace',
+                        color: '#44ff88', background: 'transparent',
+                        border: '1px solid #224422', borderRadius: 4,
+                        cursor: clearingRuns.has(p.id) ? 'default' : 'pointer',
+                        opacity: clearingRuns.has(p.id) ? 0.4 : 1,
+                        letterSpacing: 1,
+                        transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        if (clearingRuns.has(p.id)) return
+                        e.currentTarget.style.background = '#003a00'
+                        e.currentTarget.style.borderColor = '#44ff88'
+                        e.currentTarget.style.color = '#88ffaa'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.borderColor = '#224422'
+                        e.currentTarget.style.color = '#44ff88'
+                      }}
+                    >
+                      CLR LB
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -112,6 +392,6 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       >
         {'<-'} BACK
       </button>
-    </>
+    </div>
   )
 }

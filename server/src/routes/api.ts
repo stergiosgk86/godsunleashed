@@ -319,6 +319,24 @@ apiRouter.post('/admin/players/:id/reset', async (req: Request, res: Response) =
   }
 })
 
+apiRouter.delete('/admin/players/:id/runs', async (req: Request, res: Response) => {
+  try {
+    const userRes = await db.query('SELECT role FROM users WHERE id = $1', [req.userId])
+    if (userRes.rows[0]?.role !== 'super_admin') {
+      res.status(403).json({ error: 'Forbidden' }); return
+    }
+    const targetId = parseInt(req.params.id, 10)
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      res.status(400).json({ error: 'Invalid user id' }); return
+    }
+    const result = await db.query('DELETE FROM runs WHERE user_id = $1', [targetId])
+    res.json({ ok: true, deleted: result.rowCount })
+  } catch (err) {
+    console.error('Admin delete runs error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // ── Leaderboard ───────────────────────────────────────────────────────────────
 
 apiRouter.get('/leaderboard', async (req: Request, res: Response) => {
