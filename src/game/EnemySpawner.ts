@@ -15,7 +15,10 @@ export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: num
 import { RUN_DURATION } from './runData'
 import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
 
-const SPAWN_MARGIN = 80    // world-px beyond the visible screen edge
+const SPAWN_MARGIN = 250         // world-px beyond the visible screen edge (surges/boss)
+const EARLY_SPAWN_RADIUS = 350   // spawn radius for first 15 seconds
+const NORMAL_SPAWN_RADIUS = 550  // spawn radius after 15 seconds
+const EARLY_PHASE_MS = 15_000
 const RECYCLE_EXTRA = 300  // additional world-px past the spawn edge before an enemy is recycled
 const MAX_ENEMIES = 600
 const BOSS_FIRST_SPAWN = 90_000
@@ -236,7 +239,9 @@ export class EnemySpawner {
       if (this.laneTimers[i] <= 0 && this.enemies.length < MAX_ENEMIES) {
         this.laneTimers[i] = this.laneInterval(lane)
         const count = Math.min(this.laneBurst(lane), MAX_ENEMIES - this.enemies.length)
-        for (const { x, y } of this.burstEdgePoints(playerX, playerY, count)) {
+        const radius = this.elapsed < EARLY_PHASE_MS ? EARLY_SPAWN_RADIUS : NORMAL_SPAWN_RADIUS
+        for (let j = 0; j < count; j++) {
+          const { x, y } = this.closeSpawnPoint(playerX, playerY, radius)
           this.spawnEnemy(x, y, playerX, playerY, lane.type)
         }
       }
@@ -284,7 +289,7 @@ export class EnemySpawner {
     }
 
     // Final boss spawn
-    if (!this.finalBossAlive && !this.finalBossWarningFired === false && this.elapsed >= RUN_DURATION) {
+    if (!this.finalBossAlive && this.finalBossWarningFired && this.elapsed >= RUN_DURATION) {
       this.finalBossAlive = true
       const { x, y } = this.edgeSpawnPoint(playerX, playerY)
       this.enemies.push(new FinalBossEnemy(this.scene, x, y))
@@ -342,6 +347,11 @@ export class EnemySpawner {
     this.enemies = this.enemies.filter(e => e.active)
   }
 
+  private closeSpawnPoint(playerX: number, playerY: number, radius: number): { x: number; y: number } {
+    const angle = Math.random() * Math.PI * 2
+    return { x: playerX + Math.cos(angle) * radius, y: playerY + Math.sin(angle) * radius }
+  }
+
   private edgeSpawnPoint(playerX: number, playerY: number): { x: number; y: number } {
     const cam = this.scene.cameras.main
     const halfW = (cam.width / 2) / cam.zoom + SPAWN_MARGIN
@@ -355,24 +365,6 @@ export class EnemySpawner {
       default: x = playerX + halfW; y = playerY + (Math.random() * 2 - 1) * halfH; break
     }
     return { x, y }
-  }
-
-  private burstEdgePoints(playerX: number, playerY: number, count: number): { x: number; y: number }[] {
-    const cam = this.scene.cameras.main
-    const halfW = (cam.width / 2) / cam.zoom + SPAWN_MARGIN
-    const halfH = (cam.height / 2) / cam.zoom + SPAWN_MARGIN
-    const SPACING = 32
-    const edge = Math.floor(Math.random() * 4)
-    const anchor = Math.random() * 2 - 1  // -1..1 position along the chosen edge
-    return Array.from({ length: count }, (_, i) => {
-      const off = (i - (count - 1) / 2) * SPACING
-      switch (edge) {
-        case 0: return { x: playerX + anchor * halfW + off, y: playerY - halfH }
-        case 1: return { x: playerX + anchor * halfW + off, y: playerY + halfH }
-        case 2: return { x: playerX - halfW, y: playerY + anchor * halfH + off }
-        default: return { x: playerX + halfW, y: playerY + anchor * halfH + off }
-      }
-    })
   }
 
   private laneInterval(lane: LaneDef): number {

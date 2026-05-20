@@ -15,17 +15,18 @@ class SoundSystem {
   private coinLastPlayed = 0
   private hitLastPlayed = 0
   private healLastPlayed = 0
+  private readonly resumeCtx: () => void
 
   constructor() {
     this._muted = localStorage.getItem(STORAGE_KEY) === 'true'
     this._musicVolume = parseFloat(localStorage.getItem(MUSIC_VOL_KEY) ?? String(MUSIC_VOLUME))
     // Resume the context on every user gesture — browsers may suspend it on
     // page blur or if created before sufficient user engagement.
-    const resumeCtx = () => {
+    this.resumeCtx = () => {
       if (this.ctx?.state === 'suspended') this.ctx.resume().catch(() => {})
     }
-    window.addEventListener('keydown', resumeCtx)
-    window.addEventListener('mousedown', resumeCtx)
+    window.addEventListener('keydown', this.resumeCtx)
+    window.addEventListener('mousedown', this.resumeCtx)
     // Save playback position before the page unloads so we can resume after refresh
     window.addEventListener('beforeunload', () => {
       if (this.music) sessionStorage.setItem(MUSIC_POS_KEY, String(this.music.currentTime))
@@ -86,6 +87,29 @@ class SoundSystem {
 
   resumeMusic() {
     if (this.music && !this._muted) this.music.play().catch(() => {})
+  }
+
+  duckMusic(ratio = 0.2) {
+    if (!this.music || this._muted) return
+    this.fadeMusic(this._musicVolume * ratio, 250)
+  }
+
+  unduckMusic() {
+    if (!this.music || this._muted) return
+    this.fadeMusic(this._musicVolume, 350)
+  }
+
+  private fadeMusic(targetVol: number, durationMs: number) {
+    if (!this.music) return
+    const start = this.music.volume
+    const startTime = Date.now()
+    const tick = () => {
+      if (!this.music) return
+      const t = Math.min((Date.now() - startTime) / durationMs, 1)
+      this.music.volume = start + (targetVol - start) * t
+      if (t < 1) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
   }
 
   private getCtx(): { ctx: AudioContext; out: AudioNode } | null {
@@ -376,6 +400,11 @@ class SoundSystem {
     osc2.connect(ctx.destination)
     osc2.start(t + 0.7); osc2.stop(t + 1.3)
     console.log('[Sound] Test B (direct to destination) at t =', t + 0.7, '— should hear 880 Hz')
+  }
+
+  destroy() {
+    window.removeEventListener('keydown', this.resumeCtx)
+    window.removeEventListener('mousedown', this.resumeCtx)
   }
 }
 
