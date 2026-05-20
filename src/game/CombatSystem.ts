@@ -107,41 +107,89 @@ export class CombatSystem {
     if (mag > 0) { this.facingVx = vx / mag; this.facingVy = vy / mag }
   }
 
-  private frontArcEnemies(enemies: AnyEnemy[], px: number, py: number): AnyEnemy[] {
-    if (!this.frontArcOnly) return enemies
-    // ~140° cone (cos 70° ≈ 0.34) in the current facing direction
-    return enemies.filter(e => {
+  private static readonly SLASH_RANGE = 110
+  private static readonly SLASH_HALF_ANGLE = Math.PI * 70 / 180  // ±70° = 140° cone
+
+  private inFrontArc(ex: number, ey: number, px: number, py: number): boolean {
+    const dx = ex - px, dy = ey - py
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1
+    return (dx / dist) * this.facingVx + (dy / dist) * this.facingVy > 0.34
+  }
+
+  private fireFrontSlash(px: number, py: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
+    const r2 = CombatSystem.SLASH_RANGE * CombatSystem.SLASH_RANGE
+    let hit = false
+    for (const e of enemies) {
+      if (!e.active) continue
       const dx = e.x - px, dy = e.y - py
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1
-      return (dx / dist) * this.facingVx + (dy / dist) * this.facingVy > 0.34
+      if (dx * dx + dy * dy > r2) continue
+      if (!this.inFrontArc(e.x, e.y, px, py)) continue
+      this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
+      hit = true
+    }
+    if (hit) soundSystem.enemyHit()
+    this.showSlashEffect(px, py)
+  }
+
+  private showSlashEffect(px: number, py: number) {
+    const g = this.scene.add.graphics().setDepth(6)
+    const baseAngle = Math.atan2(this.facingVy, this.facingVx)
+    const R = CombatSystem.SLASH_RANGE
+    const HA = CombatSystem.SLASH_HALF_ANGLE
+    const steps = 20
+    const obj = { alpha: 1 }
+    this.scene.tweens.add({
+      targets: obj, alpha: 0, duration: 220, ease: 'Power2In',
+      onUpdate: () => {
+        g.clear()
+        // Filled arc
+        g.fillStyle(0xff4411, obj.alpha * 0.22)
+        g.beginPath()
+        g.moveTo(px, py)
+        for (let i = 0; i <= steps; i++) {
+          const a = baseAngle - HA + (i / steps) * HA * 2
+          g.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+        }
+        g.lineTo(px, py)
+        g.fillPath()
+        // Arc edge
+        g.lineStyle(2.5, 0xff6633, obj.alpha * 0.85)
+        g.beginPath()
+        for (let i = 0; i <= steps; i++) {
+          const a = baseAngle - HA + (i / steps) * HA * 2
+          if (i === 0) g.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+          else g.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+        }
+        g.strokePath()
+      },
+      onComplete: () => g.destroy(),
     })
   }
 
   private drawArcIndicator(px: number, py: number) {
     this.arcGraphic.clear()
     if (!this.frontArcOnly) return
-    const HALF_ANGLE = Math.PI * 70 / 180
-    const RADIUS = 600
+    const R = CombatSystem.SLASH_RANGE
+    const HA = CombatSystem.SLASH_HALF_ANGLE
     const baseAngle = Math.atan2(this.facingVy, this.facingVx)
-    this.arcGraphic.lineStyle(1, 0xdd3311, 0.18)
-    this.arcGraphic.beginPath()
-    this.arcGraphic.moveTo(px, py)
     const steps = 16
-    for (let i = 0; i <= steps; i++) {
-      const a = baseAngle - HALF_ANGLE + (i / steps) * HALF_ANGLE * 2
-      this.arcGraphic.lineTo(px + Math.cos(a) * RADIUS, py + Math.sin(a) * RADIUS)
-    }
-    this.arcGraphic.lineTo(px, py)
-    this.arcGraphic.strokePath()
-    this.arcGraphic.fillStyle(0xdd3311, 0.04)
+    this.arcGraphic.fillStyle(0xdd3311, 0.06)
     this.arcGraphic.beginPath()
     this.arcGraphic.moveTo(px, py)
     for (let i = 0; i <= steps; i++) {
-      const a = baseAngle - HALF_ANGLE + (i / steps) * HALF_ANGLE * 2
-      this.arcGraphic.lineTo(px + Math.cos(a) * RADIUS, py + Math.sin(a) * RADIUS)
+      const a = baseAngle - HA + (i / steps) * HA * 2
+      this.arcGraphic.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
     }
     this.arcGraphic.lineTo(px, py)
     this.arcGraphic.fillPath()
+    this.arcGraphic.lineStyle(1, 0xdd3311, 0.25)
+    this.arcGraphic.beginPath()
+    for (let i = 0; i <= steps; i++) {
+      const a = baseAngle - HA + (i / steps) * HA * 2
+      if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+      else this.arcGraphic.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+    }
+    this.arcGraphic.strokePath()
   }
 
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
@@ -158,30 +206,35 @@ export class CombatSystem {
 
     this.drawArcIndicator(playerX, playerY)
 
-    // Auto-fire toward nearest enemy
+    // Auto-fire / melee sweep
     const net = activeNetClient
     this.fireTimer += delta
     if (this.fireTimer >= attackInterval) {
       this.fireTimer = 0
-      const target = this.findNearest(playerX, playerY, this.frontArcEnemies(enemies, playerX, playerY), 600)
-      if (target) {
-        const { multiShot, piercing: isPiercing } = useGameStore.getState()
-        const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
-        const spreadRad = 15 * (Math.PI / 180)
-        for (let i = 0; i <= multiShot; i++) {
-          const side = i % 2 === 1 ? 1 : -1
-          const offset = i === 0 ? 0 : Math.ceil(i / 2) * side * spreadRad
-          const angle = baseAngle + offset
-          const tx = playerX + Math.cos(angle) * 1000
-          const ty = playerY + Math.sin(angle) * 1000
-          const proj = this.useThunderbolts
-            ? new ThunderboltProjectile(this.scene, playerX, playerY, tx, ty)
-            : new Projectile(this.scene, playerX, playerY, tx, ty)
-          proj.piercing = isPiercing
-          this.projectiles.push(proj)
-          if (net) net.send({ type: 'projectile', x: playerX, y: playerY, vx: proj.vx, vy: proj.vy })
+      if (this.frontArcOnly) {
+        // Ares: melee arc sweep — no projectile, direct damage in front cone
+        this.fireFrontSlash(playerX, playerY, damage, enemies, coinDropChance, lifeDrain, vampiric)
+      } else {
+        const target = this.findNearest(playerX, playerY, enemies, 600)
+        if (target) {
+          const { multiShot, piercing: isPiercing } = useGameStore.getState()
+          const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
+          const spreadRad = 15 * (Math.PI / 180)
+          for (let i = 0; i <= multiShot; i++) {
+            const side = i % 2 === 1 ? 1 : -1
+            const offset = i === 0 ? 0 : Math.ceil(i / 2) * side * spreadRad
+            const angle = baseAngle + offset
+            const tx = playerX + Math.cos(angle) * 1000
+            const ty = playerY + Math.sin(angle) * 1000
+            const proj = this.useThunderbolts
+              ? new ThunderboltProjectile(this.scene, playerX, playerY, tx, ty)
+              : new Projectile(this.scene, playerX, playerY, tx, ty)
+            proj.piercing = isPiercing
+            this.projectiles.push(proj)
+            if (net) net.send({ type: 'projectile', x: playerX, y: playerY, vx: proj.vx, vy: proj.vy })
+          }
+          soundSystem.shoot()
         }
-        soundSystem.shoot()
       }
     }
 
@@ -460,7 +513,7 @@ export class CombatSystem {
       this.boomerangTimer += delta
       if (this.boomerangTimer >= BOOMERANG_INTERVAL) {
         this.boomerangTimer = 0
-        const target = this.findNearest(playerX, playerY, this.frontArcEnemies(enemies, playerX, playerY))
+        const target = this.findNearest(playerX, playerY, enemies)
         if (target) {
           this.boomerangs.push(new Boomerang(this.scene, playerX, playerY, target.x, target.y))
           soundSystem.shoot()

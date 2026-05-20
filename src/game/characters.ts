@@ -120,7 +120,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: -10, baseArmor: 1, mightMult: 1.5, bonusMoveSpeed: 30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, frontArcOnly: true,
-    scale: 1.5,
+    scale: 0.85,
   },
 }
 

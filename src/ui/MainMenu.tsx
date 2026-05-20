@@ -530,6 +530,25 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const [confirmUnlock, setConfirmUnlock] = useState<string | null>(null)
   const mob = useIsMobile()
 
+  const VIEW_PARENT: Partial<Record<MenuView, MenuView>> = {
+    characters: 'home', shop: 'home', settings: 'home', statistics: 'home', admin: 'home',
+    leaderboard: 'statistics', achievements: 'statistics',
+    controls: 'settings', sounds: 'settings',
+  }
+
+  useEffect(() => {
+    function onEsc(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return
+      if (confirmUnlock)    { setConfirmUnlock(null);        return }
+      if (confirmRefundAll) { setConfirmRefundAll(false);    return }
+      if (confirmRefund)    { setConfirmRefund(null);        return }
+      const parent = VIEW_PARENT[view]
+      if (parent) setView(parent)
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [view, confirmUnlock, confirmRefundAll, confirmRefund])
+
   return (
     <div style={{
       position: 'fixed', inset: 0,
