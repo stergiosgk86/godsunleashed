@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuthStore } from '../store/authStore'
 
 export interface PlayerRow {
@@ -207,6 +207,14 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const [clearingRuns, setClearingRuns] = useState<Set<number>>(new Set())
   const [confirmTarget, setConfirmTarget] = useState<PlayerRow | null>(null)
   const [confirmClearRuns, setConfirmClearRuns] = useState<PlayerRow | null>(null)
+  const [toast, setToast] = useState<{ msg: string; color: string } | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function showToast(msg: string, color: string) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast({ msg, color })
+    toastTimer.current = setTimeout(() => setToast(null), 2500)
+  }
 
   useEffect(() => {
     fetch('/api/admin/players', { headers: { Authorization: `Bearer ${token}` } })
@@ -224,8 +232,9 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!res.ok) throw new Error()
+      showToast(`Leaderboard cleared for ${p.username ?? `#${p.id}`}`, '#44ff88')
     } catch {
-      // silent failure — user can retry
+      showToast('Failed to clear runs', '#ff4444')
     } finally {
       setClearingRuns(prev => { const next = new Set(prev); next.delete(p.id); return next })
     }
@@ -244,8 +253,9 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       setPlayers(prev => prev.map(row =>
         row.id === p.id ? { ...row, coins: 0, upgrades: emptyUpgrades } : row
       ))
+      showToast(`${p.username ?? `#${p.id}`} has been reset`, '#ffcc44')
     } catch {
-      // silent failure — user can retry
+      showToast('Failed to reset player', '#ff4444')
     } finally {
       setResetting(prev => { const next = new Set(prev); next.delete(p.id); return next })
     }
@@ -253,6 +263,20 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
 
   return (
     <div style={{ position: 'relative', width: '100%' }}>
+      {toast && (
+        <div style={{
+          position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 20, pointerEvents: 'none',
+          background: '#0d0d1a', border: `1.5px solid ${toast.color}`,
+          borderRadius: 8, padding: '8px 20px',
+          color: toast.color, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1,
+          boxShadow: `0 0 16px ${toast.color}55`,
+          whiteSpace: 'nowrap',
+          animation: 'fadeInDown 0.2s ease',
+        }}>
+          {toast.msg}
+        </div>
+      )}
       {confirmTarget && (
         <ConfirmResetModal
           player={confirmTarget}

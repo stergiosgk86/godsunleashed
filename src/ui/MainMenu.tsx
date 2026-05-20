@@ -9,7 +9,7 @@ function useIsMobile() {
   }, [])
   return mob
 }
-import { useProfileStore, UPGRADE_COSTS, UPGRADE_MAX_RANK, type MetaUpgrades } from '../store/profileStore'
+import { useProfileStore, UPGRADE_COSTS, UPGRADE_MAX_RANK, CHARACTER_UNLOCK_COSTS, type MetaUpgrades } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { useCharacterStore } from '../store/characterStore'
 import { ALL_CHARACTERS, CHARACTER_DEFS } from '../game/characters'
@@ -23,19 +23,28 @@ const CHAR_SPRITE_URL: Record<string, string> = {
   player:       SPRITE_URLS.player,
   char_rogue:   SPRITE_URLS.charRogue,
   char_witch:   SPRITE_URLS.charWitch,
-  char_shade: SPRITE_URLS.charShade,
+  char_shade:   SPRITE_URLS.charShade,
+  char_zeus:    SPRITE_URLS.charZeus,
+  char_ares:    SPRITE_URLS.charAres,
 }
 
-// 32×32 px frames, sheet is 3 wide × 4 tall — displayed at 2× scale = 64×64
 const SCALE = 2
 const FRAME_W = 32 * SCALE
 const FRAME_H = 32 * SCALE
 const SHEET_W = 96 * SCALE
 const SHEET_H = 128 * SCALE
 
-function CharSprite({ spriteKey, color }: { spriteKey: string; color: string }) {
+function CharSprite({ spriteKey, color, menuFrame }: {
+  spriteKey: string
+  color: string
+  menuFrame?: { fw: number; fh: number; sw: number; sh: number }
+}) {
   const [frame, setFrame] = useState(0)
   const url = CHAR_SPRITE_URL[spriteKey]
+  const fw = menuFrame?.fw ?? FRAME_W
+  const fh = menuFrame?.fh ?? FRAME_H
+  const sw = menuFrame?.sw ?? SHEET_W
+  const sh = menuFrame?.sh ?? SHEET_H
 
   useEffect(() => {
     const id = setInterval(() => setFrame(f => (f + 1) % 3), 200)
@@ -44,21 +53,21 @@ function CharSprite({ spriteKey, color }: { spriteKey: string; color: string }) 
 
   return (
     <div style={{
-      width: FRAME_W + 16, height: FRAME_H + 16,
+      width: fw + 16, height: fh + 16,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#00000033',
-      border: `1px solid ${color}33`,
-      borderRadius: 8,
+      background: 'rgba(0,0,0,0.3)',
+      border: `1px solid ${color}44`,
+      borderRadius: 10,
       flexShrink: 0,
     }}>
       <div style={{
-        width: FRAME_W, height: FRAME_H,
+        width: fw, height: fh,
         backgroundImage: `url(${url})`,
-        backgroundPosition: `-${frame * FRAME_W}px 0px`,
-        backgroundSize: `${SHEET_W}px ${SHEET_H}px`,
+        backgroundPosition: `-${frame * fw}px 0px`,
+        backgroundSize: `${sw}px ${sh}px`,
         backgroundRepeat: 'no-repeat',
         imageRendering: 'pixelated',
-        filter: `drop-shadow(0 0 5px ${color}99)`,
+        filter: `drop-shadow(0 0 6px ${color}bb)`,
       }} />
     </div>
   )
@@ -164,11 +173,8 @@ function LightningEffect() {
         >
           {bolts.map((bolt, i) => (
             <g key={i}>
-              {/* Outer glow */}
               <path d={bolt} stroke="rgba(160,190,255,0.18)" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              {/* Mid glow */}
               <path d={bolt} stroke="rgba(210,230,255,0.45)" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              {/* Bright core */}
               <path d={bolt} stroke="rgba(240,250,255,0.85)" strokeWidth="0.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
             </g>
           ))}
@@ -214,14 +220,12 @@ function MenuBackground() {
         }
       `}</style>
 
-      {/* Deep red pulsing glow */}
       <div style={{
         position: 'absolute', inset: 0,
         background: 'radial-gradient(ellipse at 50% 60%, #44000066 0%, transparent 65%)',
         animation: 'menu-glow-pulse 5s ease-in-out infinite',
       }} />
 
-      {/* Secondary purple glow, offset */}
       <div style={{
         position: 'absolute', inset: 0,
         background: 'radial-gradient(ellipse at 30% 40%, #22004433 0%, transparent 55%)',
@@ -231,7 +235,6 @@ function MenuBackground() {
       <RainEffect />
       <LightningEffect />
 
-      {/* Floating particles */}
       {PARTICLES.map(p => (
         <div key={p.id} style={{
           position: 'absolute',
@@ -248,7 +251,6 @@ function MenuBackground() {
         }} />
       ))}
 
-      {/* Subtle scanlines */}
       <div style={{
         position: 'absolute', inset: 0,
         backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 5px, rgba(0,0,0,0.07) 5px, rgba(0,0,0,0.07) 6px)',
@@ -276,6 +278,38 @@ function fmtTime(ms: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
+function ViewHeader({ children, color = '#8888ff' }: { children: React.ReactNode; color?: string }) {
+  return (
+    <div style={{ width: '100%', textAlign: 'center', paddingBottom: 2 }}>
+      <div style={{
+        color, fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4,
+        textShadow: `0 0 20px ${color}66`,
+      }}>
+        {children}
+      </div>
+      <div style={{
+        height: 1, marginTop: 8,
+        background: `linear-gradient(90deg, transparent, ${color}55, transparent)`,
+      }} />
+    </div>
+  )
+}
+
+function BackButton({ onBack }: { onBack: () => void }) {
+  return (
+    <button type="button" onClick={onBack}
+      style={{
+        width: '100%', padding: '11px 0', fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
+        border: '1px solid rgba(80,80,160,0.3)', borderRadius: 10, cursor: 'pointer', letterSpacing: 2,
+        color: '#7777cc', background: 'rgba(20,20,60,0.4)', transition: 'all 0.18s ease',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,80,0.7)'; e.currentTarget.style.color = '#aaaaff'; e.currentTarget.style.borderColor = 'rgba(100,100,200,0.5)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,60,0.4)'; e.currentTarget.style.color = '#7777cc'; e.currentTarget.style.borderColor = 'rgba(80,80,160,0.3)' }}>
+      ← BACK
+    </button>
+  )
+}
+
 function LeaderboardView({ onBack }: { onBack: () => void }) {
   const [runs, setRuns] = useState<RunEntry[]>([])
   const [personalBestId, setPersonalBestId] = useState<number | null>(null)
@@ -295,21 +329,19 @@ function LeaderboardView({ onBack }: { onBack: () => void }) {
 
   return (
     <>
-      <div style={{ color: '#aaaaff', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
-        LEADERBOARD
-      </div>
+      <ViewHeader color="#8888ff">LEADERBOARD</ViewHeader>
 
       {loading ? (
         <div style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>Loading…</div>
       ) : runs.length === 0 ? (
         <div style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>No runs yet. Be the first!</div>
       ) : (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 360, overflowY: 'auto' }}>
-          {/* Header */}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 360, overflowY: 'auto' }}>
           <div style={{
             display: 'grid', gridTemplateColumns: '28px 1fr 70px 55px 52px 52px',
-            gap: '0 8px', padding: '4px 8px',
-            color: '#555577', fontFamily: 'monospace', fontSize: 10, letterSpacing: 1,
+            gap: '0 8px', padding: '4px 10px',
+            color: '#44446a', fontFamily: 'monospace', fontSize: 10, letterSpacing: 1,
+            borderBottom: '1px solid rgba(60,60,120,0.3)', marginBottom: 2,
           }}>
             <span>#</span><span>PLAYER</span><span style={{ textAlign: 'right' }}>SCORE</span>
             <span style={{ textAlign: 'right' }}>KILLS</span><span style={{ textAlign: 'right' }}>TIME</span>
@@ -321,16 +353,19 @@ function LeaderboardView({ onBack }: { onBack: () => void }) {
             return (
               <div key={r.id} style={{
                 display: 'grid', gridTemplateColumns: '28px 1fr 70px 55px 52px 52px',
-                gap: '0 8px', padding: '7px 8px',
-                background: isMe ? 'rgba(68,68,200,0.18)' : i % 2 === 0 ? '#09091c' : 'transparent',
-                border: isMe ? '1px solid #4444aa55' : '1px solid transparent',
-                borderRadius: 6,
+                gap: '0 8px', padding: '7px 10px',
+                background: isMe
+                  ? 'rgba(60,60,180,0.18)'
+                  : i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent',
+                border: isMe ? '1px solid rgba(80,80,180,0.35)' : '1px solid transparent',
+                borderRadius: 8,
                 fontFamily: 'monospace', fontSize: 12,
+                transition: 'background 0.1s',
               }}>
-                <span style={{ color: i < 3 ? ['#ffd700','#c0c0c0','#cd7f32'][i] : '#444466' }}>
+                <span style={{ color: i < 3 ? ['#ffd700','#c0c0c0','#cd7f32'][i] : '#333355', fontWeight: i < 3 ? 'bold' : 'normal' }}>
                   {i + 1}
                 </span>
-                <span style={{ color: isMe ? '#aaaaff' : '#888899', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ color: isMe ? '#aaaaff' : '#777799', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {r.username}{r.multiplayer ? ' ◉' : ''}{r.won ? ' ★' : ''}
                 </span>
                 <span style={{ color: '#ddcc55', textAlign: 'right', fontWeight: 'bold' }}>{r.score.toLocaleString()}</span>
@@ -343,18 +378,11 @@ function LeaderboardView({ onBack }: { onBack: () => void }) {
         </div>
       )}
 
-      <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#333355', textAlign: 'center' }}>
+      <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#2a2a44', textAlign: 'center' }}>
         ◉ multiplayer &nbsp;&nbsp; ★ won
       </div>
 
-      <button type="button" onClick={onBack}
-        style={{ width: '100%', padding: '12px 0', fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
-          border: '2px solid #2a2a50', borderRadius: 8, cursor: 'pointer', letterSpacing: 2,
-          color: '#aaaaff', background: 'transparent' }}
-        onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-        {'<-'} BACK
-      </button>
+      <BackButton onBack={onBack} />
     </>
   )
 }
@@ -380,54 +408,57 @@ function AchievementsView({ onBack }: { onBack: () => void }) {
 
   return (
     <>
-      <div style={{ color: '#aaaaff', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
-        ACHIEVEMENTS
-      </div>
-      <div style={{ color: '#555577', fontFamily: 'monospace', fontSize: 11, letterSpacing: 2 }}>
+      <ViewHeader color="#8888ff">ACHIEVEMENTS</ViewHeader>
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        padding: '3px 12px', borderRadius: 20,
+        background: 'rgba(60,60,120,0.25)', border: '1px solid rgba(80,80,160,0.3)',
+        color: '#6666aa', fontFamily: 'monospace', fontSize: 11, letterSpacing: 2,
+      }}>
         {unlockedCount} / {ACHIEVEMENTS.length} UNLOCKED
       </div>
 
       {loading ? (
         <div style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>Loading…</div>
       ) : (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 360, overflowY: 'auto' }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 360, overflowY: 'auto' }}>
           {ACHIEVEMENTS.map(a => {
             const done = unlocked.has(a.id)
             return (
               <div key={a.id} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
-                padding: '8px 12px',
-                background: done ? 'rgba(68,68,160,0.15)' : '#09091c',
-                border: `1px solid ${done ? '#4444aa44' : '#1a1a33'}`,
-                borderRadius: 7,
-                opacity: done ? 1 : 0.45,
+                padding: '9px 13px',
+                background: done ? 'rgba(60,60,140,0.2)' : 'rgba(255,255,255,0.02)',
+                border: `1px solid ${done ? 'rgba(80,80,180,0.3)' : 'rgba(40,40,80,0.5)'}`,
+                borderRadius: 10,
+                opacity: done ? 1 : 0.42,
+                transition: 'all 0.15s ease',
               }}>
                 <span style={{ fontSize: 18, width: 24, textAlign: 'center', filter: done ? 'none' : 'grayscale(1)' }}>
                   {a.icon}
                 </span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ color: done ? '#ccccff' : '#555566', fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold' }}>
+                  <div style={{ color: done ? '#ccccff' : '#444455', fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold' }}>
                     {a.name}
                   </div>
-                  <div style={{ color: done ? '#7777aa' : '#333344', fontFamily: 'monospace', fontSize: 11 }}>
+                  <div style={{ color: done ? '#6677aa' : '#2a2a40', fontFamily: 'monospace', fontSize: 11, marginTop: 1 }}>
                     {a.description}
                   </div>
                 </div>
-                {done && <span style={{ color: '#44aa44', fontSize: 16 }}>✓</span>}
+                {done && (
+                  <span style={{
+                    color: '#33aa55', fontSize: 13, fontWeight: 'bold',
+                    background: 'rgba(40,120,60,0.2)', border: '1px solid rgba(60,160,80,0.3)',
+                    borderRadius: 6, padding: '2px 6px',
+                  }}>✓</span>
+                )}
               </div>
             )
           })}
         </div>
       )}
 
-      <button type="button" onClick={onBack}
-        style={{ width: '100%', padding: '12px 0', fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
-          border: '2px solid #2a2a50', borderRadius: 8, cursor: 'pointer', letterSpacing: 2,
-          color: '#aaaaff', background: 'transparent' }}
-        onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-        {'<-'} BACK
-      </button>
+      <BackButton onBack={onBack} />
     </>
   )
 }
@@ -447,20 +478,28 @@ function upgradeStat(id: keyof MetaUpgrades, rank: number): string {
 }
 
 const panel: React.CSSProperties = {
-  background: '#0d0d1f',
-  border: '2px solid #4444aa',
-  borderRadius: 12,
+  background: 'rgba(8, 8, 22, 0.88)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
+  border: '1px solid rgba(90, 70, 200, 0.22)',
+  borderRadius: 18,
   padding: '32px 48px',
-  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
-  boxShadow: '0 0 40px #2222aa44',
+  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+  boxShadow: '0 12px 48px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.05)',
   minWidth: 400,
 }
 
 const btnBase: React.CSSProperties = {
   width: '100%', padding: '12px 0',
   fontSize: 15, fontFamily: 'monospace', fontWeight: 'bold',
-  border: '2px solid #4444cc', borderRadius: 8,
+  border: '1px solid rgba(80,80,200,0.35)', borderRadius: 10,
   cursor: 'pointer', letterSpacing: 2,
+  transition: 'all 0.18s ease',
+}
+
+const divider: React.CSSProperties = {
+  width: '100%', height: 1,
+  background: 'linear-gradient(90deg, transparent, rgba(70,70,160,0.4), transparent)',
 }
 
 export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
@@ -468,14 +507,27 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   onMultiplayer: () => void
   onLogout: () => void
 }) {
-  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades } = useProfileStore()
+  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades, unlockedCharacters, unlockCharacter } = useProfileStore()
   const username = useAuthStore(s => s.username)
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
-  const { selectedCharacter, setCharacter } = useCharacterStore()
-  const [view, setView] = useState<'home' | 'shop' | 'characters' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds'>('home')
+  const { selectedCharacter: _selectedCharacter, setCharacter } = useCharacterStore()
+  const unlockCostOfSelected = CHARACTER_UNLOCK_COSTS[_selectedCharacter]
+  const isSelectedLocked = unlockCostOfSelected !== undefined && !unlockedCharacters.includes(_selectedCharacter)
+  const selectedCharacter = isSelectedLocked ? 'knight' : _selectedCharacter
+  type MenuView = 'home' | 'shop' | 'characters' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds'
+  const VALID_VIEWS = new Set<string>(['home', 'shop', 'characters', 'statistics', 'leaderboard', 'achievements', 'admin', 'settings', 'controls', 'sounds'])
+  const [view, setViewRaw] = useState<MenuView>(() => {
+    const saved = sessionStorage.getItem('gods_menu_view')
+    return (saved && VALID_VIEWS.has(saved) ? saved : 'home') as MenuView
+  })
+  function setView(v: MenuView) {
+    sessionStorage.setItem('gods_menu_view', v)
+    setViewRaw(v)
+  }
   const [confirmRefundAll, setConfirmRefundAll] = useState(false)
   const [confirmRefund, setConfirmRefund] = useState<keyof MetaUpgrades | null>(null)
+  const [confirmUnlock, setConfirmUnlock] = useState<string | null>(null)
   const mob = useIsMobile()
 
   return (
@@ -483,85 +535,84 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
       position: 'fixed', inset: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       background: 'radial-gradient(ellipse at center, #0d0d22 0%, #07070f 100%)',
-      overflowY: mob ? 'auto' : undefined,
-      padding: mob ? '20px 0' : undefined,
+      padding: '20px 0',
     }}>
       <MenuBackground />
+
+      {/* Version badge */}
       <div style={{
-        position: 'fixed', bottom: 10, right: 14,
-        color: '#ffffff', fontFamily: 'monospace', fontSize: 16, letterSpacing: 2, fontWeight: 'bold',
+        position: 'fixed', bottom: 12, right: 16,
+        color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace', fontSize: 12, letterSpacing: 1,
         pointerEvents: 'none', userSelect: 'none',
       }}>
         v{__APP_VERSION__}
       </div>
+
+      {/* Title */}
       <div style={{
-        color: '#cc3333', fontSize: mob ? 30 : 56, fontFamily: 'monospace', fontWeight: 'bold',
-        letterSpacing: mob ? 3 : 10, textShadow: '0 0 30px #ff2222, 0 0 70px #880000',
+        fontSize: mob ? 30 : 54, fontFamily: 'monospace', fontWeight: 'bold',
+        letterSpacing: mob ? 3 : 9,
         marginBottom: 4, textAlign: 'center',
+        background: 'linear-gradient(135deg, #cc2222 0%, #ee4400 45%, #ffaa00 100%)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text',
+        filter: 'drop-shadow(0 0 18px rgba(200,50,20,0.55))',
       }}>
         GODS UNLEASHED
       </div>
+
+      {/* Subtitle */}
       <div style={{
-        color: '#3a3a66', fontSize: mob ? 10 : 12, fontFamily: 'monospace', letterSpacing: mob ? 2 : 6,
-        marginBottom: mob ? 20 : 40,
+        color: '#5566aa', fontSize: mob ? 10 : 11, fontFamily: 'monospace',
+        letterSpacing: mob ? 3 : 7, marginBottom: mob ? 20 : 36,
+        textTransform: 'uppercase',
       }}>
-        SURVIVE THE DIVINE
+        Survive the Divine
       </div>
 
       <div style={{
         ...panel,
         padding: mob ? '20px 16px' : '32px 48px',
-        minWidth: mob ? 'calc(100vw - 24px)' : (['shop', 'characters', 'leaderboard', 'achievements', 'admin'].includes(view) ? 520 : 400),
+        minWidth: mob ? 'calc(100vw - 24px)' : (['shop', 'characters', 'leaderboard', 'achievements', 'admin'].includes(view) ? 520 : 420),
         maxWidth: mob ? 'calc(100vw - 24px)' : undefined,
+        maxHeight: 'calc(100vh - 180px)',
         boxSizing: 'border-box',
       }}>
+
       {view === 'settings' ? (
         <>
-          <div style={{ color: '#aaaaff', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
-            SETTINGS
-          </div>
+          <ViewHeader color="#8888ff">SETTINGS</ViewHeader>
           <button type="button" onClick={() => setView('controls')}
-            style={{ ...btnBase, fontSize: 13, color: '#aaaaff', background: 'transparent', borderColor: '#2a2a55', boxShadow: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            style={{ ...btnBase, fontSize: 13, color: '#8888cc', background: 'rgba(20,20,55,0.5)', borderColor: 'rgba(60,60,130,0.3)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,80,0.7)'; e.currentTarget.style.color = '#aaaaff' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,55,0.5)'; e.currentTarget.style.color = '#8888cc' }}>
             CONTROLS
           </button>
           <button type="button" onClick={() => setView('sounds')}
-            style={{ ...btnBase, fontSize: 13, color: '#aaaaff', background: 'transparent', borderColor: '#2a2a55', boxShadow: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            style={{ ...btnBase, fontSize: 13, color: '#8888cc', background: 'rgba(20,20,55,0.5)', borderColor: 'rgba(60,60,130,0.3)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,80,0.7)'; e.currentTarget.style.color = '#aaaaff' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,55,0.5)'; e.currentTarget.style.color = '#8888cc' }}>
             SOUNDS
           </button>
-          <button type="button" onClick={() => setView('home')}
-            style={{ ...btnBase, fontSize: 13, color: '#aaaaff', background: 'transparent', borderColor: '#2a2a50', boxShadow: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-            {'<-'} BACK
-          </button>
+          <BackButton onBack={() => setView('home')} />
         </>
       ) : view === 'statistics' ? (
         <>
-          <div style={{ color: '#ccaa44', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
-            STATISTICS
-          </div>
+          <ViewHeader color="#ccaa44">STATISTICS</ViewHeader>
           <button type="button" onClick={() => setView('leaderboard')}
-            style={{ ...btnBase, fontSize: 13, color: '#ccaa44', background: 'transparent', borderColor: '#443311', boxShadow: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#1a1108')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            style={{ ...btnBase, fontSize: 13, color: '#ccaa44', background: 'rgba(30,22,8,0.5)', borderColor: 'rgba(100,70,10,0.4)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(45,32,10,0.7)'; e.currentTarget.style.color = '#ddbb55' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,22,8,0.5)'; e.currentTarget.style.color = '#ccaa44' }}>
             LEADERBOARD
           </button>
           <button type="button" onClick={() => setView('achievements')}
-            style={{ ...btnBase, fontSize: 13, color: '#9944cc', background: 'transparent', borderColor: '#331144', boxShadow: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#120818')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+            style={{ ...btnBase, fontSize: 13, color: '#9944cc', background: 'rgba(22,8,30,0.5)', borderColor: 'rgba(80,20,120,0.4)' }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(35,12,50,0.7)'; e.currentTarget.style.color = '#bb55ee' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(22,8,30,0.5)'; e.currentTarget.style.color = '#9944cc' }}>
             ACHIEVEMENTS
           </button>
-          <button type="button" onClick={() => setView('home')}
-            style={{ ...btnBase, fontSize: 13, color: '#aaaaff', background: 'transparent', borderColor: '#2a2a50', boxShadow: 'none' }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-            {'<-'} BACK
-          </button>
+          <BackButton onBack={() => setView('home')} />
         </>
       ) : view === 'leaderboard' ? (
         <LeaderboardView onBack={() => setView('statistics')} />
@@ -575,9 +626,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         <AdminPlayersView onBack={() => setView('home')} />
       ) : view === 'characters' ? (
         <>
-          <div style={{ color: '#aaaaff', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
-            SELECT CHARACTER
-          </div>
+          <ViewHeader color="#8888ff">SELECT CHARACTER</ViewHeader>
 
           <style>{`
             @keyframes char-pulse {
@@ -590,53 +639,89 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             }
           `}</style>
 
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 14px', borderRadius: 20,
+              background: 'rgba(60,50,0,0.35)', border: '1px solid rgba(160,120,0,0.35)',
+              color: '#ccaa22', fontFamily: 'monospace', fontSize: 16, fontWeight: 'bold',
+              textShadow: '0 0 10px #886600',
+            }}>
+              ◈ {coins}
+            </div>
+          </div>
+
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 7, overflowY: 'auto', flex: 1, minHeight: 0 }}>
             {ALL_CHARACTERS.map((id, i) => {
               const def = CHARACTER_DEFS[id]
               const isSelected = selectedCharacter === id
+              const unlockCost = CHARACTER_UNLOCK_COSTS[id]
+              const isLocked = unlockCost !== undefined && !unlockedCharacters.includes(id)
+              const canAfford = coins >= (unlockCost ?? 0)
               return (
                 <div
                   key={id}
-                  onClick={() => setCharacter(id)}
+                  onClick={() => { if (!isLocked) setCharacter(id) }}
                   style={{
                     position: 'relative', overflow: 'hidden',
-                    background: isSelected ? '#111130' : '#09091c',
-                    border: `2px solid ${isSelected ? def.color : '#1e1e44'}`,
-                    borderLeft: `5px solid ${def.color}`,
-                    borderRadius: 8, padding: '10px 14px',
-                    cursor: 'pointer', transition: 'border-color 0.1s',
+                    background: isSelected ? 'rgba(20,20,50,0.8)' : 'rgba(10,10,28,0.6)',
+                    border: `1px solid ${isLocked ? 'rgba(60,30,80,0.4)' : isSelected ? def.color + '66' : 'rgba(40,40,90,0.5)'}`,
+                    borderLeft: `4px solid ${isLocked ? '#44224466' : def.color}`,
+                    borderRadius: 10, padding: '10px 14px',
+                    cursor: isLocked ? 'default' : 'pointer',
+                    transition: 'border-color 0.15s, background 0.15s',
                     display: 'flex', flexDirection: 'row', gap: 12, alignItems: 'center',
+                    boxShadow: isSelected ? `0 0 20px ${def.color}22` : 'none',
                   }}
                 >
-                  {/* Pulsing radial glow */}
-                  <div style={{
+                  {!isLocked && <div style={{
                     position: 'absolute', inset: 0, pointerEvents: 'none',
-                    background: `radial-gradient(ellipse at 30% 50%, ${def.color}55 0%, transparent 70%)`,
+                    background: `radial-gradient(ellipse at 30% 50%, ${def.color}44 0%, transparent 70%)`,
                     animation: `char-pulse 2.4s ease-in-out ${i * 0.35}s infinite`,
-                  }} />
-                  {/* Shimmer sweep */}
-                  <div style={{
+                  }} />}
+                  {!isLocked && <div style={{
                     position: 'absolute', top: 0, bottom: 0, width: '30%',
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.07), transparent)',
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
                     pointerEvents: 'none',
                     animation: `char-shimmer ${3.5 + i * 0.4}s ease-in-out ${i * 0.6}s infinite`,
-                  }} />
+                  }} />}
 
-                  <CharSprite spriteKey={def.spriteKey} color={def.color} />
+                  {isLocked && <div style={{
+                    position: 'absolute', inset: 0, pointerEvents: 'none',
+                    background: 'linear-gradient(135deg, rgba(10,10,24,0.5) 0%, rgba(26,10,40,0.5) 100%)',
+                  }} />}
+
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{ opacity: isLocked ? 0.4 : 1 }}>
+                      <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} />
+                    </div>
+                    {isLocked && (
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 20,
+                      }}>
+                        🔒
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, position: 'relative' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      {isSelected && <span style={{ color: def.color, fontSize: 10 }}>▶</span>}
-                      <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, fontWeight: 'bold' }}>
+                      {isSelected && <span style={{ color: def.color, fontSize: 9 }}>▶</span>}
+                      <span style={{ color: isLocked ? '#776688' : '#ddddff', fontFamily: 'monospace', fontSize: 14, fontWeight: 'bold' }}>
                         {def.name.toUpperCase()}
                       </span>
-                      <span style={{ color: def.color, fontFamily: 'monospace', fontSize: 11, fontStyle: 'italic' }}>
+                      <span style={{ color: isLocked ? '#443355' : def.color + 'cc', fontFamily: 'monospace', fontSize: 11, fontStyle: 'italic' }}>
                         {def.trait}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px' }}>
                       {def.statLines.map(line => (
                         <span key={line.label} style={{
-                          color: line.positive ? '#44cc66' : '#cc4444',
+                          color: isLocked
+                            ? (line.positive ? '#1e4430' : '#441818')
+                            : (line.positive ? '#44cc66' : '#cc4444'),
                           fontFamily: 'monospace', fontSize: 11,
                         }}>
                           {line.positive ? '▲' : '▼'} {line.label}
@@ -644,29 +729,56 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       ))}
                     </div>
                   </div>
+
+                  {isLocked && (
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setConfirmUnlock(id) }}
+                      style={{
+                        flexShrink: 0, position: 'relative', zIndex: 1,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                        width: 72, height: 52,
+                        background: canAfford ? 'rgba(30,15,50,0.8)' : 'rgba(15,10,22,0.8)',
+                        border: `1px solid ${canAfford ? def.color + '55' : 'rgba(50,25,70,0.5)'}`,
+                        borderRadius: 8,
+                        cursor: 'pointer', transition: 'all 0.18s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = canAfford ? 'rgba(50,25,80,0.9)' : 'rgba(22,14,32,0.9)' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = canAfford ? 'rgba(30,15,50,0.8)' : 'rgba(15,10,22,0.8)' }}
+                    >
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                        color: canAfford ? '#ccaa22' : '#443322', letterSpacing: 1,
+                      }}>
+                        ◈ {unlockCost}
+                      </span>
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: 10, fontWeight: 'bold',
+                        color: canAfford ? def.color : '#332244', letterSpacing: 1,
+                      }}>
+                        UNLOCK
+                      </span>
+                    </button>
+                  )}
                 </div>
               )
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setView('home')}
-            style={{ ...btnBase, color: '#aaaaff', background: 'transparent', borderColor: '#2a2a50', fontSize: 13 }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            {'<-'} BACK
-          </button>
+          <BackButton onBack={() => setView('home')} />
         </>
       ) : view === 'shop' ? (
         <>
-          <div style={{ color: '#aaaaff', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 4 }}>
-            SHOP
-          </div>
+          <ViewHeader color="#ccaa44">SHOP</ViewHeader>
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <div style={{ color: '#ccaa22', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold', textShadow: '0 0 8px #886600' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '4px 14px', borderRadius: 20,
+              background: 'rgba(60,50,0,0.35)', border: '1px solid rgba(160,120,0,0.35)',
+              color: '#ccaa22', fontFamily: 'monospace', fontSize: 20, fontWeight: 'bold',
+              textShadow: '0 0 10px #886600',
+            }}>
               ◈ {coins}
             </div>
             {(() => {
@@ -683,12 +795,13 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                     type="button"
                     onClick={() => { refundAllUpgrades(); setConfirmRefundAll(false) }}
                     style={{
-                      padding: '3px 10px', background: '#2a0808',
-                      border: '1px solid #882222', borderRadius: 4,
-                      color: '#ff6666', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
+                      padding: '3px 10px', background: 'rgba(60,10,10,0.6)',
+                      border: '1px solid rgba(150,30,30,0.5)', borderRadius: 6,
+                      color: '#ff6666', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#3a0a0a' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = '#2a0808' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(90,15,15,0.8)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(60,10,10,0.6)' }}
                   >
                     YES
                   </button>
@@ -696,12 +809,13 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                     type="button"
                     onClick={() => setConfirmRefundAll(false)}
                     style={{
-                      padding: '3px 10px', background: 'transparent',
-                      border: '1px solid #333355', borderRadius: 4,
-                      color: '#aaaaff', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
+                      padding: '3px 10px', background: 'rgba(20,20,50,0.5)',
+                      border: '1px solid rgba(60,60,120,0.35)', borderRadius: 6,
+                      color: '#8888cc', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                      cursor: 'pointer', transition: 'all 0.15s ease',
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.background = '#111133' }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,70,0.7)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,50,0.5)' }}
                   >
                     NO
                   </button>
@@ -711,14 +825,14 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   type="button"
                   onClick={() => setConfirmRefundAll(true)}
                   style={{
-                    padding: '5px 12px',
-                    background: 'transparent', border: '1px solid #442222',
-                    borderRadius: 6, color: '#aa4444',
-                    fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold',
-                    cursor: 'pointer', letterSpacing: 1,
+                    padding: '4px 12px',
+                    background: 'rgba(40,10,10,0.5)', border: '1px solid rgba(100,30,30,0.4)',
+                    borderRadius: 7, color: '#aa4444',
+                    fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                    cursor: 'pointer', letterSpacing: 1, transition: 'all 0.15s ease',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#1a0808'; e.currentTarget.style.borderColor = '#882222' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#442222' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(65,15,15,0.7)'; e.currentTarget.style.borderColor = 'rgba(150,40,40,0.5)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(40,10,10,0.5)'; e.currentTarget.style.borderColor = 'rgba(100,30,30,0.4)' }}
                 >
                   ↩ REFUND ALL ◈{totalRefund}
                 </button>
@@ -726,20 +840,20 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             })()}
           </div>
 
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {SHOP_UPGRADES.map(upg => {
               const rank = upgrades[upg.id] ?? 0
               const isMax = rank >= UPGRADE_MAX_RANK
               const cost = isMax ? null : UPGRADE_COSTS[rank]
               const canAfford = cost !== null && coins >= cost
-
               const refundAmount = rank > 0 ? UPGRADE_COSTS[rank - 1] : 0
 
               return (
                 <div key={upg.id} style={{
-                  background: '#09091c', border: '1px solid #1e1e44',
-                  borderRadius: 8, padding: '10px 14px',
-                  display: 'flex', flexDirection: 'column', gap: 4,
+                  background: 'rgba(10,10,26,0.6)', border: '1px solid rgba(40,40,90,0.5)',
+                  borderRadius: 10, padding: '10px 14px',
+                  display: 'flex', flexDirection: 'column', gap: 5,
+                  transition: 'border-color 0.15s',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <span style={{
@@ -749,16 +863,16 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       {upg.label.toUpperCase()}
                     </span>
 
-                    <div style={{ display: 'flex', gap: 3 }}>
+                    <div style={{ display: 'flex', gap: 4 }}>
                       {Array.from({ length: UPGRADE_MAX_RANK }).map((_, i) => (
                         <span key={i} style={{
-                          color: i < rank ? '#ffcc33' : '#2a2a50',
-                          fontSize: 11, lineHeight: 1,
+                          color: i < rank ? '#ffcc33' : 'rgba(40,40,80,0.8)',
+                          fontSize: 10, lineHeight: 1,
                         }}>●</span>
                       ))}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end', minWidth: mob ? undefined : 140 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, justifyContent: 'flex-end', minWidth: mob ? undefined : 140 }}>
                       {rank > 0 && (
                         confirmRefund === upg.id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -766,12 +880,13 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                               type="button"
                               onClick={() => { refundUpgrade(upg.id); setConfirmRefund(null) }}
                               style={{
-                                padding: '3px 8px', background: '#2a0808',
-                                border: '1px solid #882222', borderRadius: 4,
-                                color: '#ff6666', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
+                                padding: '3px 8px', background: 'rgba(60,10,10,0.6)',
+                                border: '1px solid rgba(150,30,30,0.5)', borderRadius: 5,
+                                color: '#ff6666', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                                cursor: 'pointer', transition: 'all 0.15s ease',
                               }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#3a0a0a' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = '#2a0808' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(90,15,15,0.8)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(60,10,10,0.6)' }}
                             >
                               YES
                             </button>
@@ -779,12 +894,13 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                               type="button"
                               onClick={() => setConfirmRefund(null)}
                               style={{
-                                padding: '3px 8px', background: 'transparent',
-                                border: '1px solid #333355', borderRadius: 4,
-                                color: '#aaaaff', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', cursor: 'pointer',
+                                padding: '3px 8px', background: 'rgba(20,20,50,0.5)',
+                                border: '1px solid rgba(60,60,120,0.35)', borderRadius: 5,
+                                color: '#8888cc', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                                cursor: 'pointer', transition: 'all 0.15s ease',
                               }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#111133' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,70,0.7)' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,50,0.5)' }}
                             >
                               NO
                             </button>
@@ -795,15 +911,15 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                             onClick={() => setConfirmRefund(upg.id)}
                             style={{
                               padding: '3px 8px',
-                              background: 'transparent',
-                              border: '1px solid #442222',
-                              borderRadius: 4,
+                              background: 'rgba(40,10,10,0.5)',
+                              border: '1px solid rgba(100,30,30,0.4)',
+                              borderRadius: 5,
                               color: '#aa4444',
                               fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
-                              cursor: 'pointer',
+                              cursor: 'pointer', transition: 'all 0.15s ease',
                             }}
-                            onMouseEnter={e => { e.currentTarget.style.background = '#1a0808'; e.currentTarget.style.borderColor = '#882222' }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#442222' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(65,15,15,0.7)'; e.currentTarget.style.borderColor = 'rgba(150,40,40,0.5)' }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(40,10,10,0.5)'; e.currentTarget.style.borderColor = 'rgba(100,30,30,0.4)' }}
                           >
                             ↩ ◈{refundAmount}
                           </button>
@@ -811,15 +927,17 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       )}
                       {isMax ? (
                         <span style={{
-                          color: '#44aa44', fontFamily: 'monospace', fontSize: 11,
+                          color: '#44aa55', fontFamily: 'monospace', fontSize: 11,
                           fontWeight: 'bold', letterSpacing: 1,
+                          padding: '2px 8px', background: 'rgba(30,80,40,0.25)',
+                          border: '1px solid rgba(50,130,60,0.3)', borderRadius: 5,
                         }}>
                           MAX
                         </span>
                       ) : (
                         <>
                           <span style={{
-                            color: canAfford ? '#ccaa22' : '#554422',
+                            color: canAfford ? '#ccaa22' : '#443322',
                             fontFamily: 'monospace', fontSize: 12,
                           }}>
                             ◈ {cost}
@@ -830,15 +948,16 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                             disabled={!canAfford}
                             style={{
                               padding: '3px 10px',
-                              background: canAfford ? '#1a1a66' : '#0a0a1a',
-                              border: `1px solid ${canAfford ? '#4444cc' : '#1a1a33'}`,
-                              borderRadius: 4,
+                              background: canAfford ? 'rgba(30,30,110,0.7)' : 'rgba(12,12,28,0.5)',
+                              border: `1px solid ${canAfford ? 'rgba(80,80,200,0.5)' : 'rgba(30,30,60,0.4)'}`,
+                              borderRadius: 5,
                               color: canAfford ? '#aaaaff' : '#333355',
                               fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
                               cursor: canAfford ? 'pointer' : 'not-allowed',
+                              transition: 'all 0.15s ease',
                             }}
-                            onMouseEnter={e => { if (canAfford) e.currentTarget.style.background = '#2828aa' }}
-                            onMouseLeave={e => { if (canAfford) e.currentTarget.style.background = '#1a1a66' }}
+                            onMouseEnter={e => { if (canAfford) { e.currentTarget.style.background = 'rgba(50,50,160,0.8)'; e.currentTarget.style.color = '#ccccff' } }}
+                            onMouseLeave={e => { if (canAfford) { e.currentTarget.style.background = 'rgba(30,30,110,0.7)'; e.currentTarget.style.color = '#aaaaff' } }}
                           >
                             BUY
                           </button>
@@ -851,12 +970,12 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                     {rank > 0 ? (
                       <span style={{ color: '#44aa66' }}>{upgradeStat(upg.id, rank)}</span>
                     ) : (
-                      <span style={{ color: '#444466' }}>no bonus yet</span>
+                      <span style={{ color: '#333355' }}>no bonus yet</span>
                     )}
                     {!isMax && (
                       <>
-                        <span style={{ color: '#333355' }}>→</span>
-                        <span style={{ color: '#7777aa' }}>{upgradeStat(upg.id, rank + 1)}</span>
+                        <span style={{ color: '#222244' }}>→</span>
+                        <span style={{ color: '#6666aa' }}>{upgradeStat(upg.id, rank + 1)}</span>
                       </>
                     )}
                   </div>
@@ -865,53 +984,62 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setView('home')}
-            style={{
-              ...btnBase, color: '#aaaaff', background: 'transparent',
-              borderColor: '#2a2a50', fontSize: 13,
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          >
-            {'<-'} BACK
-          </button>
+          <BackButton onBack={() => setView('home')} />
         </>
       ) : (
         <>
-          <div style={{ color: '#5555ee', fontSize: 16, fontFamily: 'monospace', letterSpacing: 4, fontWeight: 'bold' }}>
-            ▶ {username ?? ''}
+          {/* Username badge */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            padding: '5px 16px', borderRadius: 20,
+            background: 'rgba(30,30,80,0.45)', border: '1px solid rgba(80,80,180,0.3)',
+            color: '#7788dd', fontFamily: 'monospace', fontSize: 14, fontWeight: 'bold', letterSpacing: 2,
+          }}>
+            <span style={{ color: '#5566bb', fontSize: 10 }}>▶</span>
+            {username ?? ''}
           </div>
 
-          <div style={{ color: '#cc9922', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold', textShadow: '0 0 8px #886600' }}>
+          {/* Coins badge */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '5px 18px', borderRadius: 20,
+            background: 'rgba(60,50,0,0.35)', border: '1px solid rgba(160,120,0,0.35)',
+            color: '#ccaa22', fontFamily: 'monospace', fontSize: 22, fontWeight: 'bold',
+            textShadow: '0 0 12px rgba(180,130,0,0.6)',
+          }}>
             ◈ {coins}
           </div>
 
+          {/* SINGLEPLAYER */}
           <button
             type="button"
             onClick={onPlay}
             style={{
               ...btnBase, padding: '14px 0', fontSize: 16,
-              color: '#ffffff', background: '#1e1e88',
-              borderColor: '#4444cc', boxShadow: '0 0 20px #2222aa88',
+              color: '#ffffff',
+              background: 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)',
+              borderColor: 'rgba(100,80,220,0.5)',
+              boxShadow: '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#2828aa')}
-            onMouseLeave={e => (e.currentTarget.style.background = '#1e1e88')}
+            onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(30,30,160,0.95) 0%, rgba(70,30,140,0.95) 100%)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(70,40,200,0.55), inset 0 1px 0 rgba(255,255,255,0.1)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)' }}
           >
             SINGLEPLAYER
           </button>
 
+          {/* MULTIPLAYER */}
           <button
             type="button"
             onClick={onMultiplayer}
             style={{
               ...btnBase, padding: '12px 0', fontSize: 14,
-              color: '#88ffcc', background: 'transparent',
-              borderColor: '#228855', boxShadow: '0 0 12px #22885544',
+              color: '#66ddaa',
+              background: 'rgba(10,40,28,0.5)',
+              borderColor: 'rgba(30,120,70,0.5)',
+              boxShadow: '0 0 12px rgba(20,100,60,0.25)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#0a2218')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(15,60,40,0.7)'; e.currentTarget.style.color = '#88ffcc'; e.currentTarget.style.boxShadow = '0 0 18px rgba(30,140,80,0.35)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(10,40,28,0.5)'; e.currentTarget.style.color = '#66ddaa'; e.currentTarget.style.boxShadow = '0 0 12px rgba(20,100,60,0.25)' }}
           >
             MULTIPLAYER
           </button>
@@ -922,17 +1050,17 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               onClick={() => setView('admin')}
               style={{
                 ...btnBase, fontSize: 12,
-                color: '#ff6666', background: 'transparent',
-                borderColor: '#661111', boxShadow: 'none',
+                color: '#cc5555', background: 'rgba(30,8,8,0.5)',
+                borderColor: 'rgba(100,20,20,0.4)', boxShadow: 'none',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#1a0808')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(50,12,12,0.7)'; e.currentTarget.style.color = '#ff6666' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,8,8,0.5)'; e.currentTarget.style.color = '#cc5555' }}
             >
               ADMIN PANEL
             </button>
           )}
 
-          <div style={{ width: '100%', height: 1, background: '#1a1a3a' }} />
+          <div style={divider} />
 
           <div style={{ display: 'flex', gap: 8, width: '100%' }}>
             <button
@@ -940,11 +1068,11 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               onClick={() => setView('characters')}
               style={{
                 ...btnBase, flex: 1, fontSize: 13,
-                color: '#aaaaff', background: 'transparent',
-                borderColor: '#3a3a66', boxShadow: '0 0 8px #2222aa33',
+                color: '#8888cc', background: 'rgba(18,18,50,0.5)',
+                borderColor: 'rgba(60,60,140,0.4)', boxShadow: 'none',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(28,28,75,0.7)'; e.currentTarget.style.color = '#aaaaff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(18,18,50,0.5)'; e.currentTarget.style.color = '#8888cc' }}
             >
               CHARACTER
             </button>
@@ -954,11 +1082,11 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               onClick={() => setView('shop')}
               style={{
                 ...btnBase, flex: 1, fontSize: 13,
-                color: '#ccaa44', background: 'transparent',
-                borderColor: '#443311', boxShadow: '0 0 8px #88660033',
+                color: '#bb9933', background: 'rgba(25,20,5,0.5)',
+                borderColor: 'rgba(100,70,10,0.4)', boxShadow: 'none',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#1a1108')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(38,30,8,0.7)'; e.currentTarget.style.color = '#ddbb55' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(25,20,5,0.5)'; e.currentTarget.style.color = '#bb9933' }}
             >
               SHOP
             </button>
@@ -969,11 +1097,11 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             onClick={() => setView('statistics')}
             style={{
               ...btnBase, fontSize: 13,
-              color: '#ccaa44', background: 'transparent',
-              borderColor: '#443311', boxShadow: 'none',
+              color: '#bb9933', background: 'rgba(25,20,5,0.5)',
+              borderColor: 'rgba(100,70,10,0.4)', boxShadow: 'none',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#1a1108')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(38,30,8,0.7)'; e.currentTarget.style.color = '#ddbb55' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(25,20,5,0.5)'; e.currentTarget.style.color = '#bb9933' }}
           >
             STATISTICS
           </button>
@@ -983,33 +1111,126 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             onClick={() => setView('settings')}
             style={{
               ...btnBase, fontSize: 13,
-              color: '#aaaaff', background: 'transparent',
-              borderColor: '#2a2a55', boxShadow: 'none',
+              color: '#8888cc', background: 'rgba(18,18,50,0.5)',
+              borderColor: 'rgba(60,60,140,0.4)', boxShadow: 'none',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(28,28,75,0.7)'; e.currentTarget.style.color = '#aaaaff' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(18,18,50,0.5)'; e.currentTarget.style.color = '#8888cc' }}
           >
             SETTINGS
           </button>
 
-          <div style={{ width: '100%', height: 1, background: '#1a1a3a' }} />
+          <div style={divider} />
 
           <button
             type="button"
             onClick={onLogout}
             style={{
               ...btnBase, fontSize: 12,
-              color: '#554444', background: 'transparent',
-              borderColor: '#2a1a1a', boxShadow: 'none',
+              color: '#443344', background: 'transparent',
+              borderColor: 'rgba(60,30,50,0.3)', boxShadow: 'none',
             }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#aa4444'; e.currentTarget.style.borderColor = '#441111' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#554444'; e.currentTarget.style.borderColor = '#2a1a1a' }}
+            onMouseEnter={e => { e.currentTarget.style.color = '#bb3333'; e.currentTarget.style.borderColor = 'rgba(120,30,30,0.5)'; e.currentTarget.style.background = 'rgba(30,8,8,0.4)' }}
+            onMouseLeave={e => { e.currentTarget.style.color = '#443344'; e.currentTarget.style.borderColor = 'rgba(60,30,50,0.3)'; e.currentTarget.style.background = 'transparent' }}
           >
             LOGOUT
           </button>
         </>
       )}
       </div>
+
+      {/* Character unlock confirmation modal */}
+      {confirmUnlock !== null && (() => {
+        const def = CHARACTER_DEFS[confirmUnlock as keyof typeof CHARACTER_DEFS]
+        const cost = CHARACTER_UNLOCK_COSTS[confirmUnlock]!
+        const canAfford = coins >= cost
+        return (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 100,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.78)',
+              backdropFilter: 'blur(4px)',
+            }}
+            onClick={() => setConfirmUnlock(null)}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'rgba(8,8,22,0.95)',
+                backdropFilter: 'blur(20px)',
+                border: `1px solid ${def.color}55`,
+                borderRadius: 18,
+                padding: '28px 32px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+                boxShadow: `0 12px 48px rgba(0,0,0,0.8), 0 0 30px ${def.color}22`,
+                minWidth: 280, maxWidth: 340,
+              }}
+            >
+              <div style={{ fontSize: 28 }}>🔒</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 'bold', color: '#ccccff', textAlign: 'center', letterSpacing: 1 }}>
+                Unlock <span style={{ color: def.color }}>{def.name}</span>?
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#776688', textAlign: 'center' }}>
+                {def.description}
+              </div>
+              <div style={{
+                fontFamily: 'monospace', fontSize: 20, fontWeight: 'bold',
+                color: canAfford ? '#ccaa22' : '#553322',
+                textShadow: canAfford ? '0 0 10px rgba(160,120,0,0.5)' : 'none',
+              }}>
+                ◈ {cost}
+              </div>
+              {!canAfford && (
+                <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#cc4444' }}>
+                  Not enough coins — you have ◈ {coins}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10, width: '100%' }}>
+                <button
+                  type="button"
+                  disabled={!canAfford}
+                  onClick={async () => {
+                    const ok = await unlockCharacter(confirmUnlock)
+                    if (ok) { setCharacter(confirmUnlock as any); setConfirmUnlock(null) }
+                  }}
+                  style={{
+                    flex: 1, padding: '10px 0',
+                    background: canAfford ? 'rgba(25,25,100,0.8)' : 'rgba(12,12,28,0.6)',
+                    border: `1px solid ${canAfford ? def.color + '66' : 'rgba(30,30,60,0.4)'}`,
+                    borderRadius: 10,
+                    color: canAfford ? '#ccccff' : '#333355',
+                    fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold', letterSpacing: 1,
+                    cursor: canAfford ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.18s ease',
+                  }}
+                  onMouseEnter={e => { if (canAfford) { e.currentTarget.style.background = 'rgba(45,45,150,0.9)'; e.currentTarget.style.color = '#ffffff' } }}
+                  onMouseLeave={e => { if (canAfford) { e.currentTarget.style.background = 'rgba(25,25,100,0.8)'; e.currentTarget.style.color = '#ccccff' } }}
+                >
+                  CONFIRM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmUnlock(null)}
+                  style={{
+                    flex: 1, padding: '10px 0',
+                    background: 'rgba(20,20,50,0.5)',
+                    border: '1px solid rgba(60,60,120,0.35)',
+                    borderRadius: 10,
+                    color: '#8888cc',
+                    fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold', letterSpacing: 1,
+                    cursor: 'pointer', transition: 'all 0.18s ease',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,75,0.7)'; e.currentTarget.style.color = '#aaaaff' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,50,0.5)'; e.currentTarget.style.color = '#8888cc' }}
+                >
+                  CANCEL
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

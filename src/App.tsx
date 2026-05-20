@@ -51,6 +51,7 @@ function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: ()
       height: window.innerHeight,
       backgroundColor: '#11112a',
       physics: { default: 'arcade', arcade: { debug: false } },
+      input: { activePointers: 3 },
       scene: [PreloadScene, MainScene],
       parent: containerRef.current ?? undefined,
     }
@@ -132,6 +133,7 @@ function App() {
       dashCooldown:   Math.max(400, Math.floor(DASH_COOLDOWN_MS * char.dashCooldownMult)),
       dashDistance:   1 + char.bonusDashDistance,
       aura:           char.startAura,
+      lightning:      char.startLightning,
       lifeDrain:      char.lifeDrain,
       armor:          char.baseArmor + (upgrades.armor ?? 0),
     })
@@ -180,6 +182,7 @@ function App() {
   const runTokenRef = useRef<string | null>(null)
 
   async function startRunWithToken() {
+    runTokenRef.current = null
     const authToken = useAuthStore.getState().token
     if (!authToken) return
     try {
@@ -207,7 +210,9 @@ function App() {
       (s.orbital > 0 ? 1 : 0) +
       (s.boomerang ? 1 : 0) +
       (s.flameTrail ? 1 : 0) +
-      (s.bloodNova ? 1 : 0)
+      (s.bloodNova ? 1 : 0) +
+      (s.lightning ? 1 : 0) +
+      (s.axe ? 1 : 0)
     fetch('/api/runs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
@@ -304,6 +309,7 @@ function App() {
   function handleLogout() {
     useAuthStore.getState().clearAuth()
     useProfileStore.getState().reset()
+    sessionStorage.removeItem('gods_menu_view')
     setInGame(false)
     setInLobby(false)
   }
