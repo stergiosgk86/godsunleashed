@@ -90,6 +90,7 @@ export class CombatSystem {
   private frontArcOnly: boolean
   private facingVx = 0
   private facingVy = 1
+  private swingSide = 1   // alternates -1 / +1 for whip crescent direction
   private arcGraphic: Phaser.GameObjects.Graphics
 
   constructor(scene: Phaser.Scene, effects: EffectsSystem, useThunderbolts = false, frontArcOnly = false) {
@@ -128,58 +129,95 @@ export class CombatSystem {
       hit = true
     }
     if (hit) soundSystem.enemyHit()
-    this.showSwordSwingEffect(px, py)
+    this.showWhipEffect(px, py, this.swingSide)
+    this.swingSide *= -1
   }
 
-  private showSwordSwingEffect(px: number, py: number) {
+  private showWhipEffect(px: number, py: number, side: number) {
     const g = this.scene.add.graphics().setDepth(6)
     const baseAngle = Math.atan2(this.facingVy, this.facingVx)
     const R = CombatSystem.SLASH_RANGE
-    const startAngle = baseAngle - Math.PI / 2
-    const obj = { t: 0 }
+    const perpBase = baseAngle + side * Math.PI / 2
+    const halfSpan = Math.PI * 0.55   // ~100° each side → 200° total crescent
+    const innerR = R * 0.25
+    const steps = 28
+
+    const draw = (progress: number, alpha: number) => {
+      g.clear()
+      const outerR = R * progress
+      if (progress < 0.05) return
+
+      // Faint crescent fill
+      g.fillStyle(0xfff0b4, alpha * 0.08)
+      g.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+        if (i === 0) g.moveTo(px + Math.cos(a) * outerR, py + Math.sin(a) * outerR)
+        else g.lineTo(px + Math.cos(a) * outerR, py + Math.sin(a) * outerR)
+      }
+      for (let i = steps; i >= 0; i--) {
+        const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+        g.lineTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
+      }
+      g.fillPath()
+
+      // Outer glow
+      g.lineStyle(9, 0xfff0b4, alpha * 0.15)
+      g.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+        if (i === 0) g.moveTo(px + Math.cos(a) * outerR, py + Math.sin(a) * outerR)
+        else g.lineTo(px + Math.cos(a) * outerR, py + Math.sin(a) * outerR)
+      }
+      g.strokePath()
+
+      // Bright outer arc edge
+      g.lineStyle(2, 0xffffff, alpha * 0.92)
+      g.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+        if (i === 0) g.moveTo(px + Math.cos(a) * outerR, py + Math.sin(a) * outerR)
+        else g.lineTo(px + Math.cos(a) * outerR, py + Math.sin(a) * outerR)
+      }
+      g.strokePath()
+
+      // Dim inner arc edge
+      g.lineStyle(1.5, 0xffffff, alpha * 0.38)
+      g.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+        if (i === 0) g.moveTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
+        else g.lineTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
+      }
+      g.strokePath()
+
+      // End cap lines connecting inner to outer
+      for (const s of [-1, 1] as const) {
+        const a = perpBase + s * halfSpan
+        g.lineStyle(1.5, 0xffffff, alpha * 0.48)
+        g.beginPath()
+        g.moveTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
+        g.lineTo(px + Math.cos(a) * outerR, py + Math.sin(a) * outerR)
+        g.strokePath()
+      }
+    }
+
+    // Phase 1: snap out (70ms)
+    const snap = { t: 0 }
     this.scene.tweens.add({
-      targets: obj, t: 1, duration: 200, ease: 'Sine.Out',
-      onUpdate: () => {
-        g.clear()
-        const currentAngle = startAngle + obj.t * Math.PI
-        const steps = 22
-        const fade = 1 - obj.t * 0.55
-
-        // Wide glow trail along the swept arc
-        g.lineStyle(7, 0xffffff, 0.09 * fade)
-        g.beginPath()
-        for (let i = 0; i <= steps; i++) {
-          const a = startAngle + (i / steps) * obj.t * Math.PI
-          if (i === 0) g.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
-          else g.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
-        }
-        g.strokePath()
-
-        // Sharp bright arc edge
-        g.lineStyle(1.5, 0xffffff, 0.55 * fade)
-        g.beginPath()
-        for (let i = 0; i <= steps; i++) {
-          const a = startAngle + (i / steps) * obj.t * Math.PI
-          if (i === 0) g.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
-          else g.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
-        }
-        g.strokePath()
-
-        // Sword blade at current swing position — wide glow
-        g.lineStyle(7, 0xffffff, 0.18 * fade)
-        g.beginPath()
-        g.moveTo(px + Math.cos(currentAngle) * 16, py + Math.sin(currentAngle) * 16)
-        g.lineTo(px + Math.cos(currentAngle) * R, py + Math.sin(currentAngle) * R)
-        g.strokePath()
-
-        // Sword blade core — sharp bright line
-        g.lineStyle(2, 0xffffff, 0.9 * fade)
-        g.beginPath()
-        g.moveTo(px + Math.cos(currentAngle) * 16, py + Math.sin(currentAngle) * 16)
-        g.lineTo(px + Math.cos(currentAngle) * R, py + Math.sin(currentAngle) * R)
-        g.strokePath()
+      targets: snap, t: 1, duration: 70, ease: 'Power3.Out',
+      onUpdate: () => draw(snap.t, 1),
+      onComplete: () => {
+        // Phase 2: brief hold then fade (80ms hold + 160ms fade)
+        this.scene.time.delayedCall(80, () => {
+          const fade = { t: 1 }
+          this.scene.tweens.add({
+            targets: fade, t: 0, duration: 160, ease: 'Power2.In',
+            onUpdate: () => draw(1, fade.t),
+            onComplete: () => g.destroy(),
+          })
+        })
       },
-      onComplete: () => g.destroy(),
     })
   }
 
@@ -188,23 +226,30 @@ export class CombatSystem {
     if (!this.frontArcOnly) return
     const R = CombatSystem.SLASH_RANGE
     const baseAngle = Math.atan2(this.facingVy, this.facingVx)
+    const halfSpan = Math.PI * 0.55
+    const innerR = R * 0.25
     const steps = 20
-    // Semicircle boundary
-    this.arcGraphic.lineStyle(1, 0xffffff, 0.14)
-    this.arcGraphic.beginPath()
-    for (let i = 0; i <= steps; i++) {
-      const a = baseAngle - Math.PI / 2 + (i / steps) * Math.PI
-      if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
-      else this.arcGraphic.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+
+    // Draw faint crescent outline for each side
+    for (const side of [-1, 1]) {
+      const perpBase = baseAngle + side * Math.PI / 2
+      this.arcGraphic.lineStyle(1, 0xffffff, 0.12)
+      this.arcGraphic.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+        if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+        else this.arcGraphic.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+      }
+      this.arcGraphic.strokePath()
+      this.arcGraphic.lineStyle(1, 0xffffff, 0.06)
+      this.arcGraphic.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+        if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
+        else this.arcGraphic.lineTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
+      }
+      this.arcGraphic.strokePath()
     }
-    this.arcGraphic.strokePath()
-    // Diameter line across the flat edge
-    this.arcGraphic.lineStyle(1, 0xffffff, 0.08)
-    const a1 = baseAngle - Math.PI / 2, a2 = baseAngle + Math.PI / 2
-    this.arcGraphic.beginPath()
-    this.arcGraphic.moveTo(px + Math.cos(a1) * R, py + Math.sin(a1) * R)
-    this.arcGraphic.lineTo(px + Math.cos(a2) * R, py + Math.sin(a2) * R)
-    this.arcGraphic.strokePath()
   }
 
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
