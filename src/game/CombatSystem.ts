@@ -107,88 +107,103 @@ export class CombatSystem {
     if (mag > 0) { this.facingVx = vx / mag; this.facingVy = vy / mag }
   }
 
-  private static readonly SLASH_RANGE = 110
-  private static readonly SLASH_HALF_ANGLE = Math.PI * 70 / 180  // ±70° = 140° cone
+  private static readonly SLASH_RANGE = 120
 
-  private inFrontArc(ex: number, ey: number, px: number, py: number): boolean {
+  // Full front hemisphere — dot > 0 means any enemy on the forward side
+  private inFrontHemisphere(ex: number, ey: number, px: number, py: number): boolean {
     const dx = ex - px, dy = ey - py
     const dist = Math.sqrt(dx * dx + dy * dy) || 1
-    return (dx / dist) * this.facingVx + (dy / dist) * this.facingVy > 0.34
+    return (dx / dist) * this.facingVx + (dy / dist) * this.facingVy > 0
   }
 
-  private fireFrontSlash(px: number, py: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
+  private fireSwordSwing(px: number, py: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
     const r2 = CombatSystem.SLASH_RANGE * CombatSystem.SLASH_RANGE
     let hit = false
     for (const e of enemies) {
       if (!e.active) continue
       const dx = e.x - px, dy = e.y - py
       if (dx * dx + dy * dy > r2) continue
-      if (!this.inFrontArc(e.x, e.y, px, py)) continue
+      if (!this.inFrontHemisphere(e.x, e.y, px, py)) continue
       this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
       hit = true
     }
     if (hit) soundSystem.enemyHit()
-    this.showSlashEffect(px, py)
+    this.showSwordSwingEffect(px, py)
   }
 
-  private showSlashEffect(px: number, py: number) {
+  private showSwordSwingEffect(px: number, py: number) {
     const g = this.scene.add.graphics().setDepth(6)
     const baseAngle = Math.atan2(this.facingVy, this.facingVx)
     const R = CombatSystem.SLASH_RANGE
-    const HA = CombatSystem.SLASH_HALF_ANGLE
-    const steps = 20
-    const obj = { alpha: 1 }
+    const startAngle = baseAngle - Math.PI / 2
+    const obj = { t: 0 }
     this.scene.tweens.add({
-      targets: obj, alpha: 0, duration: 220, ease: 'Power2In',
+      targets: obj, t: 1, duration: 200, ease: 'Sine.Out',
       onUpdate: () => {
         g.clear()
-        // Filled arc
-        g.fillStyle(0xff4411, obj.alpha * 0.22)
-        g.beginPath()
-        g.moveTo(px, py)
-        for (let i = 0; i <= steps; i++) {
-          const a = baseAngle - HA + (i / steps) * HA * 2
-          g.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
-        }
-        g.lineTo(px, py)
-        g.fillPath()
-        // Arc edge
-        g.lineStyle(2.5, 0xff6633, obj.alpha * 0.85)
+        const currentAngle = startAngle + obj.t * Math.PI
+        const steps = 22
+        const fade = 1 - obj.t * 0.55
+
+        // Wide glow trail along the swept arc
+        g.lineStyle(7, 0xffffff, 0.09 * fade)
         g.beginPath()
         for (let i = 0; i <= steps; i++) {
-          const a = baseAngle - HA + (i / steps) * HA * 2
+          const a = startAngle + (i / steps) * obj.t * Math.PI
           if (i === 0) g.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
           else g.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
         }
+        g.strokePath()
+
+        // Sharp bright arc edge
+        g.lineStyle(1.5, 0xffffff, 0.55 * fade)
+        g.beginPath()
+        for (let i = 0; i <= steps; i++) {
+          const a = startAngle + (i / steps) * obj.t * Math.PI
+          if (i === 0) g.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+          else g.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+        }
+        g.strokePath()
+
+        // Sword blade at current swing position — wide glow
+        g.lineStyle(7, 0xffffff, 0.18 * fade)
+        g.beginPath()
+        g.moveTo(px + Math.cos(currentAngle) * 16, py + Math.sin(currentAngle) * 16)
+        g.lineTo(px + Math.cos(currentAngle) * R, py + Math.sin(currentAngle) * R)
+        g.strokePath()
+
+        // Sword blade core — sharp bright line
+        g.lineStyle(2, 0xffffff, 0.9 * fade)
+        g.beginPath()
+        g.moveTo(px + Math.cos(currentAngle) * 16, py + Math.sin(currentAngle) * 16)
+        g.lineTo(px + Math.cos(currentAngle) * R, py + Math.sin(currentAngle) * R)
         g.strokePath()
       },
       onComplete: () => g.destroy(),
     })
   }
 
-  private drawArcIndicator(px: number, py: number) {
+  private drawSwordIndicator(px: number, py: number) {
     this.arcGraphic.clear()
     if (!this.frontArcOnly) return
     const R = CombatSystem.SLASH_RANGE
-    const HA = CombatSystem.SLASH_HALF_ANGLE
     const baseAngle = Math.atan2(this.facingVy, this.facingVx)
-    const steps = 16
-    this.arcGraphic.fillStyle(0xdd3311, 0.06)
-    this.arcGraphic.beginPath()
-    this.arcGraphic.moveTo(px, py)
-    for (let i = 0; i <= steps; i++) {
-      const a = baseAngle - HA + (i / steps) * HA * 2
-      this.arcGraphic.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
-    }
-    this.arcGraphic.lineTo(px, py)
-    this.arcGraphic.fillPath()
-    this.arcGraphic.lineStyle(1, 0xdd3311, 0.25)
+    const steps = 20
+    // Semicircle boundary
+    this.arcGraphic.lineStyle(1, 0xffffff, 0.14)
     this.arcGraphic.beginPath()
     for (let i = 0; i <= steps; i++) {
-      const a = baseAngle - HA + (i / steps) * HA * 2
+      const a = baseAngle - Math.PI / 2 + (i / steps) * Math.PI
       if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
       else this.arcGraphic.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
     }
+    this.arcGraphic.strokePath()
+    // Diameter line across the flat edge
+    this.arcGraphic.lineStyle(1, 0xffffff, 0.08)
+    const a1 = baseAngle - Math.PI / 2, a2 = baseAngle + Math.PI / 2
+    this.arcGraphic.beginPath()
+    this.arcGraphic.moveTo(px + Math.cos(a1) * R, py + Math.sin(a1) * R)
+    this.arcGraphic.lineTo(px + Math.cos(a2) * R, py + Math.sin(a2) * R)
     this.arcGraphic.strokePath()
   }
 
@@ -204,7 +219,7 @@ export class CombatSystem {
     const growthRank = upgrades.growth
     const coinDropChance = 0.02 + luckRank * 0.01
 
-    this.drawArcIndicator(playerX, playerY)
+    this.drawSwordIndicator(playerX, playerY)
 
     // Auto-fire / melee sweep
     const net = activeNetClient
@@ -213,7 +228,7 @@ export class CombatSystem {
       this.fireTimer = 0
       if (this.frontArcOnly) {
         // Ares: melee arc sweep — no projectile, direct damage in front cone
-        this.fireFrontSlash(playerX, playerY, damage, enemies, coinDropChance, lifeDrain, vampiric)
+        this.fireSwordSwing(playerX, playerY, damage, enemies, coinDropChance, lifeDrain, vampiric)
       } else {
         const target = this.findNearest(playerX, playerY, enemies, 600)
         if (target) {
