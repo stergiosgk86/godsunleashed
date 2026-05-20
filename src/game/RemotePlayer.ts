@@ -5,7 +5,12 @@ const CHAR_SPRITE: Record<string, string> = {
   knight:  'player',
   rogue:   'char_rogue',
   witch:   'char_witch',
-  shade: 'char_shade',
+  shade:   'char_shade',
+  zeus:    'char_zeus',
+}
+
+const CHAR_SCALE: Record<string, number> = {
+  zeus: 1.0,
 }
 
 export class RemotePlayer {
@@ -30,7 +35,7 @@ export class RemotePlayer {
     this.orbGraphic  = scene.add.graphics().setDepth(5)
     this.sprite = scene.add.sprite(x, y, this.spriteKey)
       .setDepth(4)
-      .setScale(1.5)
+      .setScale(CHAR_SCALE[characterType] ?? 1.5)
       .setAlpha(0.85)
     this.sprite.play(`${this.spriteKey}_down`)
     this.nameLabel = scene.add.text(x, y - 28, label, {

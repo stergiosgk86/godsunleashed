@@ -13,6 +13,16 @@ export class TouchJoystick {
   private originX = 0
   private originY = 0
 
+  // Converts raw canvas pointer coords to the same space as scrollFactor(0) game objects.
+  // Camera zoom scales those objects away from the camera center, so we invert that transform.
+  private toGameCoords(sx: number, sy: number): { x: number; y: number } {
+    const cam = this.scene.cameras.main
+    const halfW = cam.width / 2
+    const halfH = cam.height / 2
+    const zoom = cam.zoom
+    return { x: (sx - halfW) / zoom + halfW, y: (sy - halfH) / zoom + halfH }
+  }
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene
 
@@ -37,18 +47,20 @@ export class TouchJoystick {
   private onDown(pointer: Phaser.Input.Pointer) {
     if (this.activePointerId !== null) return
     this.activePointerId = pointer.id
-    this.originX = pointer.x
-    this.originY = pointer.y
-    this.base.setPosition(this.originX, this.originY).setAlpha(0.4)
-    this.knob.setPosition(this.originX, this.originY).setAlpha(0.75)
+    const { x, y } = this.toGameCoords(pointer.x, pointer.y)
+    this.originX = x
+    this.originY = y
+    this.base.setPosition(x, y).setAlpha(0.4)
+    this.knob.setPosition(x, y).setAlpha(0.75)
     this.vx = 0
     this.vy = 0
   }
 
   private onMove(pointer: Phaser.Input.Pointer) {
     if (pointer.id !== this.activePointerId) return
-    const dx = pointer.x - this.originX
-    const dy = pointer.y - this.originY
+    const { x, y } = this.toGameCoords(pointer.x, pointer.y)
+    const dx = x - this.originX
+    const dy = y - this.originY
     const dist = Math.sqrt(dx * dx + dy * dy)
     if (dist < 1) {
       this.vx = 0; this.vy = 0

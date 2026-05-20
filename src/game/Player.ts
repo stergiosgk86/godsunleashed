@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { useGameStore } from '../store/gameStore'
 import { useKeyBindingsStore, type BindableAction } from '../store/keyBindingsStore'
-import { type Direction, getDirection, playDir } from './spriteUtils'
+import { type Direction, getDirection, playDir, ZEUS_IDLE_FRAMES } from './spriteUtils'
 import { type EffectsSystem } from './EffectsSystem'
 import { soundSystem } from './SoundSystem'
 
@@ -31,6 +31,8 @@ export class Player {
   touchVx = 0
   touchVy = 0
   touchDashPressed = false
+  facingVx = 0
+  facingVy = 1
   private lastDir: Direction = 'down'
   private isDashing = false
   private dashTimeLeft = 0
@@ -40,14 +42,16 @@ export class Player {
 
   private bounds: Phaser.Geom.Rectangle
   private spriteKey: string
+  private idleFrames: Record<Direction, number>
   private nameLabel: Phaser.GameObjects.Text | null = null
 
-  constructor(scene: Phaser.Scene, x: number, y: number, spriteKey = 'player', username = '') {
+  constructor(scene: Phaser.Scene, x: number, y: number, spriteKey = 'player', username = '', scale = 1.5) {
     this.x = x
     this.y = y
     this.spriteKey = spriteKey
+    this.idleFrames = spriteKey === 'char_zeus' ? ZEUS_IDLE_FRAMES : { down: 1, left: 4, right: 7, up: 10 }
     this.bounds = scene.physics.world.bounds
-    this.graphic = scene.add.sprite(x, y, spriteKey).setDepth(4).setScale(1.5)
+    this.graphic = scene.add.sprite(x, y, spriteKey).setDepth(4).setScale(scale)
     if (username) {
       this.nameLabel = scene.add.text(x, y - 28, username, {
         fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
@@ -143,8 +147,9 @@ export class Player {
     this.graphic.setPosition(this.x, this.y)
     this.nameLabel?.setPosition(this.x, this.y - 28)
 
+    if (moving) { this.facingVx = vx; this.facingVy = vy }
     const dir = moving ? getDirection(vx, vy) : this.lastDir
-    this.lastDir = playDir(this.graphic, this.spriteKey, dir, this.lastDir, moving)
+    this.lastDir = playDir(this.graphic, this.spriteKey, dir, this.lastDir, moving, this.idleFrames)
 
     const { damageFlashUntil } = useGameStore.getState()
     const isFlashing = Date.now() < damageFlashUntil

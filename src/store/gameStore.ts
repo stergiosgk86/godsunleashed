@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might' | 'axe'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might' | 'axe'
 
 export function weaponBaseDamage(_level: number): number {
   return 15
@@ -21,6 +21,7 @@ const UPGRADE_POOL: Upgrade[] = [
   { id: 'multiShot',     label: 'Multi Shot',      description: 'Fire an extra projectile per attack' },
   { id: 'piercing',      label: 'Piercing',        description: 'Shots pass through enemies' },
   { id: 'aura',          label: 'Aura',            description: 'Pulses damage to all enemies in range' },
+  { id: 'auraTick',     label: 'Aura Tempo',      description: 'Aura pulses 250ms faster (stackable, up to 3×)' },
   { id: 'orbital',      label: 'Spirit Orb',      description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 3)' },
   { id: 'boomerang',   label: 'Boomerang',        description: 'Throws a disc that flies out then returns, hitting enemies twice' },
   { id: 'flameTrail',  label: 'Flame Trail',      description: 'Leaves burning patches as you move that damage nearby enemies' },
@@ -38,7 +39,7 @@ function xpNeeded(level: number) {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean }): Upgrade[] {
+function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean; aura: number; auraTick: number }): Upgrade[] {
   const pool = UPGRADE_POOL.filter(u => {
     if (u.id === 'piercing'   && state.piercing)       return false
     if (u.id === 'multiShot'  && state.multiShot >= 4) return false
@@ -50,6 +51,8 @@ function pickChoices(state: { piercing: boolean; multiShot: number; orbital: num
     if (u.id === 'lightning'  && state.lightning)      return false
     if (u.id === 'might'      && state.might >= 1.5)    return false
     if (u.id === 'axe'        && state.axe)            return false
+    if (u.id === 'auraTick'   && state.aura === 0)     return false
+    if (u.id === 'auraTick'   && state.auraTick >= 3)  return false
     return true
   })
   const shuffled = [...pool].sort(() => Math.random() - 0.5)
@@ -85,6 +88,7 @@ interface GameState {
   multiShot: number
   piercing: boolean
   aura: number
+  auraTick: number
   orbital: number
   boomerang: boolean
   flameTrail: boolean
@@ -147,6 +151,7 @@ export const useGameStore = create<GameState>()(
     multiShot: 0,
     piercing: false,
     aura: 0,
+    auraTick: 0,
     orbital: 0,
     boomerang: false,
     flameTrail: false,
@@ -238,7 +243,7 @@ export const useGameStore = create<GameState>()(
       isLevelUpPending: false, upgradeChoices: [],
       invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
-      dashDistance: 1, multiShot: 0, piercing: false, aura: 0, orbital: 0,
+      dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, orbital: 0,
       boomerang: false, flameTrail: false, bloodNova: false, vampiric: false, lightning: false, axe: false, armor: 0,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
@@ -259,6 +264,8 @@ export const useGameStore = create<GameState>()(
             return { piercing: true, isLevelUpPending: false }
           case 'aura':
             return { aura: s.aura + 1, isLevelUpPending: false }
+          case 'auraTick':
+            return { auraTick: s.auraTick + 1, isLevelUpPending: false }
           case 'orbital':
             return { orbital: s.orbital + 1, isLevelUpPending: false }
           case 'boomerang':

@@ -21,9 +21,13 @@ function emptyUpgrades(): MetaUpgrades {
   return { maxHealth: 0, recovery: 0, magnet: 0, might: 0, luck: 0, growth: 0, moveSpeed: 0, armor: 0, attackSpeed: 0 }
 }
 
+// Characters that cost coins — must match server CHARACTER_UNLOCK_COSTS
+export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { witch: 150, shade: 300, zeus: 1000, ares: 500 }
+
 interface ProfileStore {
   coins: number
   upgrades: MetaUpgrades
+  unlockedCharacters: string[]
   loaded: boolean
   fetchProfile: () => Promise<void>
   // Optimistic local-only update — server credit happens via POST /api/runs
@@ -32,12 +36,14 @@ interface ProfileStore {
   purchaseUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
   refundUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
   refundAllUpgrades: () => Promise<boolean>
+  unlockCharacter: (character: string) => Promise<boolean>
   reset: () => void
 }
 
 export const useProfileStore = create<ProfileStore>()((set) => ({
   coins: 0,
   upgrades: emptyUpgrades(),
+  unlockedCharacters: [],
   loaded: false,
 
   fetchProfile: async () => {
@@ -54,6 +60,7 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
       set({
         coins: data.coins ?? 0,
         upgrades: { ...emptyUpgrades(), ...(data.upgrades ?? {}) },
+        unlockedCharacters: Array.isArray(data.unlocked_characters) ? data.unlocked_characters : [],
         loaded: true,
       })
     } catch { /* network error — keep current state */ }
@@ -113,5 +120,21 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
     } catch { return false }
   },
 
-  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), loaded: false }),
+  unlockCharacter: async (character) => {
+    const token = useAuthStore.getState().token
+    if (!token) return false
+    try {
+      const res = await fetch('/api/characters/unlock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ character }),
+      })
+      if (!res.ok) return false
+      const data = await res.json() as { coins: number; unlocked_characters: string[] }
+      set({ coins: data.coins, unlockedCharacters: data.unlocked_characters })
+      return true
+    } catch { return false }
+  },
+
+  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), unlockedCharacters: [], loaded: false }),
 }))

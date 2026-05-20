@@ -2,6 +2,7 @@ import player      from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/
 import charRogue   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 05-1.png'
 import charWitch   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Female/Female 03-1.png'
 import charShade from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 08-1.png'
+import charAres  from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 04-1.png'
 import charZeus  from '../assets/Sprites/Characters/zeus_sheet.png'
 import xpOrbSprite from '../assets/Sprites/Items/xp_orb_sprite.png'
 import healthPotionSprite from '../assets/Sprites/Items/health_potion_sprite.png'
@@ -17,9 +18,11 @@ import enemyNecromancer from '../assets/PIPOYA FREE RPG Character Sprites 32x32/
 import boss from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Boss/Boss 01.png'
 import boomerangSprite from '../assets/Sprites/Weapons/Boomerang.png'
 import axeSprite from '../assets/Sprites/Weapons/Axe.png'
+import grassTileset from '../assets/grass_tileset.png'
+import treeSprite from '../assets/Sprites/Background/Tree.png'
 
 export const SPRITE_URLS = {
-  player, charRogue, charWitch, charShade, charZeus,
+  player, charRogue, charWitch, charShade, charZeus, charAres,
   xpOrbSprite, healthPotionSprite, coinSprite,
   enemyBasic,
   enemySpeeder,
@@ -32,4 +35,6 @@ export const SPRITE_URLS = {
   boss,
   boomerangSprite,
   axeSprite,
+  grassTileset,
+  treeSprite,
 }

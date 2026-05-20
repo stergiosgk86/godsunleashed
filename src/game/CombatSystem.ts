@@ -19,7 +19,7 @@ import { minimapData } from './minimapData'
 const CONTACT_RADIUS = 28
 const CONTACT_ENEMY_COOLDOWN = 1000  // ms between hits from each individual enemy
 const BULLET_HIT_RADIUS = 15
-const BOOMERANG_INTERVAL = 2500
+const BOOMERANG_INTERVAL = 3000
 const AXE_INTERVAL = 3000
 const AXE_HIT_R = 20
 const AXE_DAMAGE_MULT = 2.5
@@ -87,33 +87,83 @@ export class CombatSystem {
   // Lightning
   private lightningTimer = 0
   private useThunderbolts: boolean
+  private frontArcOnly: boolean
+  private facingVx = 0
+  private facingVy = 1
+  private arcGraphic: Phaser.GameObjects.Graphics
 
-  constructor(scene: Phaser.Scene, effects: EffectsSystem, useThunderbolts = false) {
+  constructor(scene: Phaser.Scene, effects: EffectsSystem, useThunderbolts = false, frontArcOnly = false) {
     this.useThunderbolts = useThunderbolts
+    this.frontArcOnly = frontArcOnly
+    this.arcGraphic = scene.add.graphics().setDepth(3)
     this.scene = scene
     this.effects = effects
     this.auraGraphic = scene.add.graphics().setDepth(2)
     this.orbGraphic = scene.add.graphics().setDepth(5)
   }
 
+  setFacing(vx: number, vy: number) {
+    const mag = Math.sqrt(vx * vx + vy * vy)
+    if (mag > 0) { this.facingVx = vx / mag; this.facingVy = vy / mag }
+  }
+
+  private frontArcEnemies(enemies: AnyEnemy[], px: number, py: number): AnyEnemy[] {
+    if (!this.frontArcOnly) return enemies
+    // ~140° cone (cos 70° ≈ 0.34) in the current facing direction
+    return enemies.filter(e => {
+      const dx = e.x - px, dy = e.y - py
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1
+      return (dx / dist) * this.facingVx + (dy / dist) * this.facingVy > 0.34
+    })
+  }
+
+  private drawArcIndicator(px: number, py: number) {
+    this.arcGraphic.clear()
+    if (!this.frontArcOnly) return
+    const HALF_ANGLE = Math.PI * 70 / 180
+    const RADIUS = 600
+    const baseAngle = Math.atan2(this.facingVy, this.facingVx)
+    this.arcGraphic.lineStyle(1, 0xdd3311, 0.18)
+    this.arcGraphic.beginPath()
+    this.arcGraphic.moveTo(px, py)
+    const steps = 16
+    for (let i = 0; i <= steps; i++) {
+      const a = baseAngle - HALF_ANGLE + (i / steps) * HALF_ANGLE * 2
+      this.arcGraphic.lineTo(px + Math.cos(a) * RADIUS, py + Math.sin(a) * RADIUS)
+    }
+    this.arcGraphic.lineTo(px, py)
+    this.arcGraphic.strokePath()
+    this.arcGraphic.fillStyle(0xdd3311, 0.04)
+    this.arcGraphic.beginPath()
+    this.arcGraphic.moveTo(px, py)
+    for (let i = 0; i <= steps; i++) {
+      const a = baseAngle - HALF_ANGLE + (i / steps) * HALF_ANGLE * 2
+      this.arcGraphic.lineTo(px + Math.cos(a) * RADIUS, py + Math.sin(a) * RADIUS)
+    }
+    this.arcGraphic.lineTo(px, py)
+    this.arcGraphic.fillPath()
+  }
+
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe } = useGameStore.getState()
+    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe } = useGameStore.getState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
     const luckRank = upgrades.luck
     const magnetRank = upgrades.magnet
     const growthRank = upgrades.growth
-    const coinDropChance = 0.05 + luckRank * 0.01
+    const coinDropChance = 0.02 + luckRank * 0.01
+
+    this.drawArcIndicator(playerX, playerY)
 
     // Auto-fire toward nearest enemy
     const net = activeNetClient
     this.fireTimer += delta
     if (this.fireTimer >= attackInterval) {
       this.fireTimer = 0
-      const target = this.findNearest(playerX, playerY, enemies, 350)
+      const target = this.findNearest(playerX, playerY, this.frontArcEnemies(enemies, playerX, playerY), 600)
       if (target) {
         const { multiShot, piercing: isPiercing } = useGameStore.getState()
         const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
@@ -247,34 +297,9 @@ export class CombatSystem {
       const radius = 60 + aura * 30
       this.auraAngle += delta * 0.0015
 
-      // Faint inner fill
-      this.auraGraphic.fillStyle(0x5511cc, 0.07)
-      this.auraGraphic.fillCircle(playerX, playerY, radius)
-
-      // Outer rotating arc segments
-      const numArcs = 3 + aura
-      const arcLen = (Math.PI * 2 / numArcs) * 0.65
-      for (let i = 0; i < numArcs; i++) {
-        const start = this.auraAngle + (i / numArcs) * Math.PI * 2
-        this.auraGraphic.lineStyle(2, 0xbb66ff, 0.9)
-        this.auraGraphic.beginPath()
-        this.auraGraphic.arc(playerX, playerY, radius, start, start + arcLen, false)
-        this.auraGraphic.strokePath()
-      }
-
-      // Inner counter-rotating arcs
-      const innerR = radius * 0.55
-      for (let i = 0; i < 2; i++) {
-        const start = -this.auraAngle * 1.8 + i * Math.PI
-        this.auraGraphic.lineStyle(1, 0xdd99ff, 0.35)
-        this.auraGraphic.beginPath()
-        this.auraGraphic.arc(playerX, playerY, innerR, start, start + Math.PI * 0.6, false)
-        this.auraGraphic.strokePath()
-      }
-
       // Damage tick
       this.auraTimer += delta
-      if (this.auraTimer >= 800) {
+      if (this.auraTimer >= 1500 - auraTick * 250) {
         this.auraTimer = 0
         this.auraFlashTimer = 0
         const auraDmg = damage * aura
@@ -288,17 +313,83 @@ export class CombatSystem {
         }
       }
 
-      // Expanding shockwave on damage tick
+      // All visuals only during the flash window (500ms after each damage tick)
       if (this.auraFlashTimer >= 0) {
         this.auraFlashTimer += delta
-        const t = Math.min(this.auraFlashTimer / 300, 1)
+        const t = Math.min(this.auraFlashTimer / 500, 1)
         if (t >= 1) {
           this.auraFlashTimer = -1
         } else {
+          const fade = 1 - t
           const ease = 1 - (1 - t) * (1 - t)
-          this.auraGraphic.lineStyle(3, 0xeeccff, (1 - t) * 0.95)
-          this.auraGraphic.strokeCircle(playerX, playerY, radius + ease * radius * 0.35)
-          this.auraGraphic.fillStyle(0xaa55ff, (1 - t) * 0.18)
+
+          // Layered glow fills
+          this.auraGraphic.fillStyle(0x2200aa, 0.10 * fade)
+          this.auraGraphic.fillCircle(playerX, playerY, radius * 1.15)
+          this.auraGraphic.fillStyle(0x4411cc, 0.15 * fade)
+          this.auraGraphic.fillCircle(playerX, playerY, radius)
+          this.auraGraphic.fillStyle(0x6622ee, 0.18 * fade)
+          this.auraGraphic.fillCircle(playerX, playerY, radius * 0.7)
+          this.auraGraphic.fillStyle(0x8833ff, 0.20 * fade)
+          this.auraGraphic.fillCircle(playerX, playerY, radius * 0.42)
+
+          // Outer ring
+          this.auraGraphic.lineStyle(5, 0x9944ff, 0.6 * fade)
+          this.auraGraphic.strokeCircle(playerX, playerY, radius)
+
+          // Rotating arc segments with bright tips
+          const numArcs = 3 + aura
+          const arcLen = (Math.PI * 2 / numArcs) * 0.55
+          for (let i = 0; i < numArcs; i++) {
+            const start = this.auraAngle + (i / numArcs) * Math.PI * 2
+            this.auraGraphic.lineStyle(2.5, 0xcc77ff, 0.9 * fade)
+            this.auraGraphic.beginPath()
+            this.auraGraphic.arc(playerX, playerY, radius, start, start + arcLen, false)
+            this.auraGraphic.strokePath()
+            const tipAngle = start + arcLen
+            this.auraGraphic.fillStyle(0xffffff, 0.75 * fade)
+            this.auraGraphic.fillCircle(playerX + Math.cos(tipAngle) * radius, playerY + Math.sin(tipAngle) * radius, 2.5)
+          }
+
+          // Mid-radius counter-rotating arcs
+          const midR = radius * 0.72
+          const numMidArcs = 2 + aura
+          for (let i = 0; i < numMidArcs; i++) {
+            const start = -this.auraAngle * 1.5 + (i / numMidArcs) * Math.PI * 2
+            this.auraGraphic.lineStyle(1.5, 0xee99ff, 0.5 * fade)
+            this.auraGraphic.beginPath()
+            this.auraGraphic.arc(playerX, playerY, midR, start, start + Math.PI * 0.5, false)
+            this.auraGraphic.strokePath()
+          }
+
+          // Inner fast-rotating arcs
+          for (let i = 0; i < 2; i++) {
+            const start = this.auraAngle * 2.3 + i * Math.PI
+            this.auraGraphic.lineStyle(1, 0xffeeff, 0.38 * fade)
+            this.auraGraphic.beginPath()
+            this.auraGraphic.arc(playerX, playerY, radius * 0.44, start, start + Math.PI * 0.4, false)
+            this.auraGraphic.strokePath()
+          }
+
+          // Edge sparks
+          const numSparks = 6 + aura * 2
+          for (let i = 0; i < numSparks; i++) {
+            const sparkAngle = this.auraAngle * 2.1 + (i / numSparks) * Math.PI * 2
+            const sparkR = radius + Math.sin(this.auraAngle * 5 + i * 1.3) * 7
+            const sx = playerX + Math.cos(sparkAngle) * sparkR
+            const sy = playerY + Math.sin(sparkAngle) * sparkR
+            this.auraGraphic.fillStyle(0xcc88ff, 0.6 * fade)
+            this.auraGraphic.fillCircle(sx, sy, 3)
+            this.auraGraphic.fillStyle(0xffffff, 0.85 * fade)
+            this.auraGraphic.fillCircle(sx, sy, 1.5)
+          }
+
+          // Expanding shockwave
+          this.auraGraphic.lineStyle(5, 0xffffff, (1 - t) * 0.75)
+          this.auraGraphic.strokeCircle(playerX, playerY, radius + ease * radius * 0.4)
+          this.auraGraphic.lineStyle(2, 0xdd99ff, (1 - t) * 0.55)
+          this.auraGraphic.strokeCircle(playerX, playerY, radius + ease * radius * 0.22)
+          this.auraGraphic.fillStyle(0xbb55ff, (1 - t) * 0.18)
           this.auraGraphic.fillCircle(playerX, playerY, radius)
         }
       }
@@ -369,7 +460,7 @@ export class CombatSystem {
       this.boomerangTimer += delta
       if (this.boomerangTimer >= BOOMERANG_INTERVAL) {
         this.boomerangTimer = 0
-        const target = this.findNearest(playerX, playerY, enemies)
+        const target = this.findNearest(playerX, playerY, this.frontArcEnemies(enemies, playerX, playerY))
         if (target) {
           this.boomerangs.push(new Boomerang(this.scene, playerX, playerY, target.x, target.y))
           soundSystem.shoot()
@@ -645,7 +736,7 @@ export class CombatSystem {
 
   spawnDropsAt(x: number, y: number, xpValue: number, isBoss: boolean) {
     const luckRank = useProfileStore.getState().upgrades.luck
-    const coinDropChance = 0.05 + luckRank * 0.01
+    const coinDropChance = 0.02 + luckRank * 0.01
 
     this.orbs.push(new XPOrb(this.scene, x, y, xpValue))
     if (isBoss) {

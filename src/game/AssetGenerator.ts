@@ -141,6 +141,26 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('projectile', 14, 8)
   g.clear()
 
+  // Zeus thunderbolt (32×10) — horizontal zigzag drawn with layered lines
+  // Tip points right; setRotation() will orient it toward the target at runtime.
+  const boltPts: [number, number][] = [[2,5],[8,3],[16,7],[24,3],[30,5]]
+  const drawBolt = () => {
+    g.beginPath()
+    g.moveTo(boltPts[0][0], boltPts[0][1])
+    for (let i = 1; i < boltPts.length; i++) g.lineTo(boltPts[i][0], boltPts[i][1])
+    g.strokePath()
+  }
+  g.lineStyle(7, 0x2244ff, 0.2); drawBolt()   // outer blue glow
+  g.lineStyle(4, 0x4488ff, 0.75); drawBolt()  // blue body
+  g.lineStyle(2, 0x99ccff, 1);   drawBolt()  // bright inner
+  g.lineStyle(1, 0xffffff, 0.9); drawBolt()  // white hot core
+  g.fillStyle(0xffffff, 0.95)
+  g.fillCircle(30, 5, 2.5)                   // bright leading tip
+  g.fillStyle(0x88aaff, 0.4)
+  g.fillCircle(30, 5, 4)                     // tip glow
+  g.generateTexture('zeus_bolt', 32, 10)
+  g.clear()
+
   // Enemy bullet (8x8)
   g.fillStyle(0xff5500, 1)
   g.fillCircle(4, 4, 4)
@@ -159,23 +179,6 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('xp_orb_glow', 36, 36)
   g.clear()
 
-  // XP orb gem (20x20) — dark border, green facets, white sparkle
-  g.fillStyle(0x005522, 1)
-  g.fillTriangle(10, 0, 20, 10, 10, 20)
-  g.fillTriangle(10, 0, 0, 10, 10, 20)
-  g.fillStyle(0x00cc55, 1)
-  g.fillTriangle(10, 2, 18, 10, 10, 18)
-  g.fillTriangle(10, 2, 2, 10, 10, 18)
-  g.fillStyle(0x33ff88, 0.85)
-  g.fillTriangle(10, 2, 16, 8, 10, 10)
-  g.fillTriangle(10, 2, 4, 8, 10, 10)
-  g.fillStyle(0xaaffdd, 0.65)
-  g.fillTriangle(8, 4, 12, 4, 10, 7)
-  g.fillStyle(0xffffff, 0.9)
-  g.fillCircle(8, 5, 1.5)
-  g.generateTexture('xp_orb', 20, 20)
-  g.clear()
-
   // Coin (12x12) — gold circle with shine
   // Coin glow halo (32x32) — additive-blend soft gold circles
   g.fillStyle(0xffcc00, 0.05)
@@ -185,17 +188,6 @@ export function generateAssets(scene: Phaser.Scene) {
   g.fillStyle(0xffdd44, 0.22)
   g.fillCircle(16, 16, 7)
   g.generateTexture('coin_glow', 32, 32)
-  g.clear()
-
-  g.fillStyle(0xcc9900, 1)
-  g.fillCircle(6, 6, 6)
-  g.fillStyle(0xffdd33, 1)
-  g.fillCircle(6, 6, 4)
-  g.fillStyle(0xffee88, 0.9)
-  g.fillCircle(4, 4, 2)
-  g.fillStyle(0xaa7700, 0.5)
-  g.fillCircle(7, 8, 2)
-  g.generateTexture('coin', 12, 12)
   g.clear()
 
   // Blood Tome (16x16) — crimson diamond
@@ -249,24 +241,6 @@ export function generateAssets(scene: Phaser.Scene) {
   g.fillStyle(0xff4444, 0.22)
   g.fillCircle(20, 20, 9)
   g.generateTexture('health_potion_glow', 40, 40)
-  g.clear()
-
-  // Health Potion (18x30) — red flask
-  g.fillStyle(0x5c2a00)          // cork
-  g.fillRect(6, 0, 6, 5)
-  g.fillStyle(0x660000)          // neck
-  g.fillRect(6, 5, 6, 7)
-  g.fillStyle(0x880000)          // body shadow
-  g.fillCircle(9, 21, 9)
-  g.fillStyle(0xdd1111)          // body fill
-  g.fillCircle(9, 21, 6)
-  g.fillStyle(0xff5555, 0.9)     // bright inner
-  g.fillCircle(9, 21, 3)
-  g.fillStyle(0xff9999, 0.85)    // left highlight
-  g.fillRect(3, 16, 3, 6)
-  g.fillStyle(0xffffff, 0.75)    // shine dot
-  g.fillRect(3, 16, 2, 3)
-  g.generateTexture('health_potion', 18, 30)
   g.clear()
 
   g.destroy()

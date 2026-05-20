@@ -8,6 +8,7 @@ const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight:
   { key: 'char_witch',    url: SPRITE_URLS.charWitch,    frameWidth: 32, frameHeight: 32 },
   { key: 'char_shade',   url: SPRITE_URLS.charShade,   frameWidth: 32, frameHeight: 32 },
   { key: 'char_zeus',    url: SPRITE_URLS.charZeus,    frameWidth: 96, frameHeight: 96 },
+  { key: 'char_ares',    url: SPRITE_URLS.charAres,    frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_basic',    url: SPRITE_URLS.enemyBasic,   frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_speeder',  url: SPRITE_URLS.enemySpeeder, frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_tank',     url: SPRITE_URLS.enemyTank,    frameWidth: 32, frameHeight: 32 },
@@ -48,6 +49,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('coin', SPRITE_URLS.coinSprite)
     this.load.image('boomerang', SPRITE_URLS.boomerangSprite)
     this.load.image('axe', SPRITE_URLS.axeSprite)
+    this.load.image('ground_tiles', SPRITE_URLS.grassTileset)
+    this.load.image('tree', SPRITE_URLS.treeSprite)
   }
 
   create() {

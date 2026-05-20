@@ -4,7 +4,7 @@ const SPEED = 500
 const LIFETIME = 5000  // safety-net; actual pruning is camera-bounds-based in CombatSystem
 
 export class Projectile {
-  private graphic: Phaser.GameObjects.Image
+  protected graphic: Phaser.GameObjects.Image
   x: number
   y: number
   vx: number
@@ -13,18 +13,24 @@ export class Projectile {
   damage = 1
   piercing = false
   hitTargets = new Set<object>()
+  hitRadius = 20
   private age = 0
 
-  constructor(scene: Phaser.Scene, x: number, y: number, targetX: number, targetY: number) {
+  constructor(
+    scene: Phaser.Scene, x: number, y: number,
+    targetX: number, targetY: number,
+    textureKey = 'projectile', speed = SPEED, scale = 1
+  ) {
     this.x = x
     this.y = y
     const dx = targetX - x
     const dy = targetY - y
     const dist = Math.sqrt(dx * dx + dy * dy) || 1
-    this.vx = (dx / dist) * SPEED
-    this.vy = (dy / dist) * SPEED
-    this.graphic = scene.add.image(x, y, 'projectile')
+    this.vx = (dx / dist) * speed
+    this.vy = (dy / dist) * speed
+    this.graphic = scene.add.image(x, y, textureKey)
       .setRotation(Math.atan2(dy, dx))
+      .setScale(scale)
       .setDepth(3)
   }
 

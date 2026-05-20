@@ -28,6 +28,7 @@ class EnemyProjectile implements EnemyBullet {
     this.graphic = scene.add.image(x, y, 'enemy_bullet')
       .setRotation(Math.atan2(dy, dx))
       .setTint(0xdd1111)
+      .setScale(1.5)
       .setDepth(3)
   }
 

@@ -15,10 +15,21 @@ export class TouchDashButton {
   dashConsumed = false
   private pressed = false
 
+  // Convert a raw canvas coordinate to the game-object coordinate space used by
+  // scrollFactor(0) objects. Camera zoom scales those objects around the camera
+  // center, so we invert that transform so hit tests align with visuals.
+  private toGameCoord(screenVal: number, half: number): number {
+    return (screenVal - half) / this.scene.cameras.main.zoom + half
+  }
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene
-    this.cx = scene.scale.width - RADIUS - 24
-    this.cy = scene.scale.height - RADIUS - 24
+    const halfW = scene.scale.width / 2
+    const halfH = scene.scale.height / 2
+    // Target screen position (bottom-left corner); convert to game-object space
+    // so the graphics render exactly there regardless of camera zoom.
+    this.cx = this.toGameCoord(RADIUS + 24, halfW)
+    this.cy = this.toGameCoord(scene.scale.height - RADIUS - 24, halfH)
 
     this.circle = scene.add.graphics().setScrollFactor(0).setDepth(DEPTH)
     this.arc = scene.add.graphics().setScrollFactor(0).setDepth(DEPTH + 1)
@@ -71,8 +82,12 @@ export class TouchDashButton {
 
   private onDown(pointer: Phaser.Input.Pointer) {
     if (this.activePointerId !== null) return
-    const dx = pointer.x - this.cx
-    const dy = pointer.y - this.cy
+    const halfW = this.scene.scale.width / 2
+    const halfH = this.scene.scale.height / 2
+    const px = this.toGameCoord(pointer.x, halfW)
+    const py = this.toGameCoord(pointer.y, halfH)
+    const dx = px - this.cx
+    const dy = py - this.cy
     if (dx * dx + dy * dy > RADIUS * RADIUS) return
     this.activePointerId = pointer.id
     this.pressed = true

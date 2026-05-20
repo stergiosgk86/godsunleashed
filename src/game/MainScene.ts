@@ -6,7 +6,7 @@ import { EffectsSystem } from './EffectsSystem'
 import { ClientEnemy } from './ClientEnemy'
 import { RemotePlayer } from './RemotePlayer'
 import { RemoteProjectile } from './RemoteProjectile'
-import { generateAssets, generateTilesetTexture, generatePropTextures } from './AssetGenerator'
+import { generateAssets, generatePropTextures } from './AssetGenerator'
 import { useGameStore } from '../store/gameStore'
 import { useCharacterStore } from '../store/characterStore'
 import { useAuthStore } from '../store/authStore'
@@ -20,7 +20,6 @@ import { saveRun, loadRun, clearRun } from './runSave'
 import { TouchJoystick } from './TouchJoystick'
 import { TouchDashButton } from './TouchDashButton'
 import { ChunkManager } from './ChunkManager'
-
 const SPAWN_X = 0
 const SPAWN_Y = 0
 
@@ -32,6 +31,7 @@ export class MainScene extends Phaser.Scene {
   private fpsText!: Phaser.GameObjects.Text
   private warningText!: Phaser.GameObjects.Text
   private finalWarningText!: Phaser.GameObjects.Text
+  private surgeText!: Phaser.GameObjects.Text
   private prevLevelUpPending = false
   private healPool = 0
 
@@ -54,19 +54,24 @@ export class MainScene extends Phaser.Scene {
     // Effectively infinite physics bounds for the chunk-streamed world
     this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
     generateAssets(this)
-    generateTilesetTexture(this)
     generatePropTextures(this)
+
+    // Large world-space TileSprite — same coordinate system as trees, no parallax drift
+    this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'ground_tiles')
+      .setOrigin(0.5, 0.5)
+      .setDepth(-10)
+
     this.chunkManager = new ChunkManager(this)
 
     this.effects = new EffectsSystem(this)
     const charType = useCharacterStore.getState().selectedCharacter
-    const spriteKey = CHARACTER_DEFS[charType].spriteKey
+    const charDef = CHARACTER_DEFS[charType]
     const username = useAuthStore.getState().username ?? ''
-    this.player = new Player(this, SPAWN_X, SPAWN_Y, spriteKey, username)
+    this.player = new Player(this, SPAWN_X, SPAWN_Y, charDef.spriteKey, username, charDef.scale)
     this.joystick = new TouchJoystick(this)
     if (window.innerWidth <= 768) this.dashButton = new TouchDashButton(this)
     this.spawner = new EnemySpawner(this)
-    this.combat = new CombatSystem(this, this.effects)
+    this.combat = new CombatSystem(this, this.effects, charDef.id === 'zeus', charDef.frontArcOnly)
     // Restore mid-run state after a page reload
     const savedRun = loadRun()
     if (savedRun && !activeNetClient) {
@@ -88,6 +93,7 @@ export class MainScene extends Phaser.Scene {
         multiShot: savedRun.multiShot,
         piercing: savedRun.piercing,
         aura: savedRun.aura,
+        auraTick: savedRun.auraTick ?? 0,
         orbital: savedRun.orbital,
         boomerang: savedRun.boomerang,
         flameTrail: savedRun.flameTrail,
@@ -107,8 +113,6 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
     if (window.innerWidth <= 768) this.cameras.main.setZoom(0.7)
 
-    // Seed initial chunks around wherever the player actually starts
-    this.chunkManager.update(this.player.x, this.player.y)
 
     this.fpsText = this.add
       .text(110, 14, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' })
@@ -133,6 +137,13 @@ export class MainScene extends Phaser.Scene {
       })
       .setOrigin(0.5).setScrollFactor(0).setAlpha(0).setDepth(20)
 
+    this.surgeText = this.add
+      .text(this.scale.width / 2, this.scale.height / 2 + 20, '', {
+        fontSize: '26px', color: '#ffcc00', fontFamily: 'monospace', fontStyle: 'bold',
+        stroke: '#000000', strokeThickness: 6,
+      })
+      .setOrigin(0.5).setScrollFactor(0).setAlpha(0).setDepth(20)
+
     this.spawner.onBossWarning = () => { this.showWarning(); soundSystem.bossWarning() }
     this.spawner.onBossSpawn = () => {
       this.cameras.main.shake(600, 0.02)
@@ -143,6 +154,7 @@ export class MainScene extends Phaser.Scene {
       this.cameras.main.shake(1000, 0.04)
       this.finalWarningText.setAlpha(0)
     }
+    this.spawner.onSurge = (type) => { this.showSurgeWarning(type) }
     this.spawner.onFinalBossDefeated = () => {
       soundSystem.bossDie()
       useGameStore.getState().win()
@@ -161,14 +173,14 @@ export class MainScene extends Phaser.Scene {
       (pending) => {
         if (pending) {
           soundSystem.levelUp()
-          soundSystem.pauseMusic()
+          soundSystem.duckMusic()
           // Stay invulnerable for the entire level-up screen
           useGameStore.setState({ invincibleUntil: Infinity })
         } else {
           // 2-second grace period after resuming so enemies that walked
           // onto the player during the pause don't instantly deal damage
           useGameStore.setState({ invincibleUntil: Date.now() + 2000 })
-          soundSystem.resumeMusic()
+          soundSystem.unduckMusic()
           if (sceneAlive) this.scene.resume()
         }
       }
@@ -227,6 +239,24 @@ export class MainScene extends Phaser.Scene {
       targets: this.finalWarningText,
       alpha: 0.2, duration: 400, yoyo: true, repeat: 10,
       onComplete: () => this.finalWarningText.setAlpha(0),
+    })
+  }
+
+  private showSurgeWarning(type: string) {
+    const labels: Record<string, string> = {
+      basic:   '⚡  HORDE INCOMING  ⚡',
+      speeder: '⚡  SPEEDERS INCOMING  ⚡',
+      tank:    '⚡  TANKS INCOMING  ⚡',
+      ghost:   '⚡  GHOST TIDE  ⚡',
+      ranged:  '⚡  RANGED FLOOD  ⚡',
+    }
+    this.surgeText.setText(labels[type] ?? '⚡  SURGE  ⚡')
+    this.tweens.killTweensOf(this.surgeText)
+    this.surgeText.setAlpha(1)
+    this.tweens.add({
+      targets: this.surgeText,
+      alpha: 0.15, duration: 300, yoyo: true, repeat: 5,
+      onComplete: () => this.surgeText.setAlpha(0),
     })
   }
 
@@ -331,6 +361,7 @@ export class MainScene extends Phaser.Scene {
       if (this.dashButton.consumePress()) this.player.touchDashPressed = true
     }
     this.player.update(delta, this.effects)
+    this.combat.setFacing(this.player.facingVx, this.player.facingVy)
     this.effects.update(delta)
 
     const net = activeNetClient
@@ -383,7 +414,7 @@ export class MainScene extends Phaser.Scene {
           hp: s.hp, maxHp: s.maxHp,
           might: s.might, attackInterval: s.attackInterval, moveSpeed: s.moveSpeed,
           dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
-          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura,
+          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick,
           orbital: s.orbital, boomerang: s.boomerang, flameTrail: s.flameTrail,
           bloodNova: s.bloodNova, vampiric: s.vampiric, lightning: s.lightning, axe: s.axe, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
           sessionCoins: s.sessionCoins,
@@ -405,6 +436,10 @@ export class MainScene extends Phaser.Scene {
     if (state.hp <= 0 && !state.isDead) {
       state.die()
       if (net) net.send({ type: 'died' })
+      this.scene.pause()
+      return
+    }
+    if (state.isDead) {
       this.scene.pause()
       return
     }

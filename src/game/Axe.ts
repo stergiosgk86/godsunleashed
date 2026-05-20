@@ -2,8 +2,8 @@ import Phaser from 'phaser'
 
 const GRAVITY   = 780  // px/s²
 const LAUNCH_VY = -580 // upward
-const SPEED_X   = 160  // horizontal
-const LAND_BELOW = 280 // px below launch before destroying
+const SPEED_X   = 80   // horizontal
+const LAND_BELOW = 650 // px below launch before destroying
 const HIT_R     = 20
 
 export class Axe {

@@ -754,7 +754,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       </span>
                       <span style={{
                         fontFamily: 'monospace', fontSize: 10, fontWeight: 'bold',
-                        color: canAfford ? def.color : '#332244', letterSpacing: 1,
+                        color: canAfford ? '#44ff88' : '#1a4433', letterSpacing: 1,
                       }}>
                         UNLOCK
                       </span>

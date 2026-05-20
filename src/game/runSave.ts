@@ -32,6 +32,7 @@ export interface RunSnapshot {
   multiShot: number
   piercing: boolean
   aura: number
+  auraTick: number
   orbital: number
   boomerang: boolean
   flameTrail: boolean

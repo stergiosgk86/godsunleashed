@@ -30,7 +30,7 @@ const MAX_UPGRADE_RANK = 5
 const VALID_UPGRADE_KEYS = new Set(['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed', 'armor', 'attackSpeed'])
 
 // Characters that require coins to unlock (others are free)
-const CHARACTER_UNLOCK_COSTS: Record<string, number> = { witch: 150, shade: 300, zeus: 1000 }
+const CHARACTER_UNLOCK_COSTS: Record<string, number> = { witch: 150, shade: 300, zeus: 1000, ares: 500 }
 const LOCKABLE_CHARACTERS = new Set(Object.keys(CHARACTER_UNLOCK_COSTS))
 
 const VALID_ACHIEVEMENT_IDS = new Set([
