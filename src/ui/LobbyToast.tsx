@@ -11,11 +11,6 @@ export function LobbyToast({ names, onDismiss, onJoin }: Props) {
 
   useEffect(() => {
     setVisible(true)
-    const t = window.setTimeout(() => {
-      setVisible(false)
-      window.setTimeout(onDismiss, 400)
-    }, 6000)
-    return () => clearTimeout(t)
   }, [])
 
   const label = names.length === 1
