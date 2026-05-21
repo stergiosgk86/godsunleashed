@@ -143,15 +143,6 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   const mob = useIsMobile()
   useEffect(() => { if (!isPaused) setView('main') }, [isPaused])
 
-  // Esc to resume — needs a window listener because Phaser's input is paused
-  // while the scene is paused. Only fires on the main view so it doesn't clash
-  // with the controls rebinding screen (which also intercepts Esc).
-  useEffect(() => {
-    if (!isPaused || view !== 'main') return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') togglePause() }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [isPaused, view, togglePause])
 
   if (!isPaused) return null
 

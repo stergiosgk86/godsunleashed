@@ -3,6 +3,7 @@ import Phaser from 'phaser'
 const ATTRACT_RADIUS = 150
 const ATTRACT_SPEED = 300
 const COLLECT_RADIUS = 20
+const UNCOLLECTABLE_MS = 400
 
 export class XPOrb {
   private graphic: Phaser.GameObjects.Image
@@ -33,7 +34,7 @@ export class XPOrb {
     const dy = playerY - this.y
     const dist = Math.sqrt(dx * dx + dy * dy)
 
-    if (dist < COLLECT_RADIUS) {
+    if (dist < COLLECT_RADIUS && this.time >= UNCOLLECTABLE_MS) {
       this.destroy()
       return this.value
     }
