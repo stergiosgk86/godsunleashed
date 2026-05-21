@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore, getValidatedCombatState } from '../store/gameStore'
 import { useKeyBindingsStore, type BindableAction } from '../store/keyBindingsStore'
 import { type Direction, getDirection, playDir, ZEUS_IDLE_FRAMES } from './spriteUtils'
 import { type EffectsSystem } from './EffectsSystem'
@@ -93,7 +93,7 @@ export class Player {
 
   update(delta: number, effects: EffectsSystem) {
     const dt = delta / 1000
-    const { moveSpeed, startDash, dashDistance } = useGameStore.getState()
+    const { moveSpeed, startDash, dashDistance } = getValidatedCombatState()
 
     let vx = this.touchVx
     let vy = this.touchVy

@@ -9,7 +9,7 @@ import { XPOrb } from './XPOrb'
 import { CoinOrb } from './CoinOrb'
 import { HealthPotion } from './HealthPotion'
 import { EffectsSystem } from './EffectsSystem'
-import { useGameStore, weaponBaseDamage } from '../store/gameStore'
+import { useGameStore, weaponBaseDamage, getValidatedCombatState } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
 import { soundSystem } from './SoundSystem'
 import { difficultyScale } from './difficultyScale'
@@ -272,7 +272,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe, divineShield, divineShieldActive, setDivineShield } = useGameStore.getState()
+    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -294,7 +294,6 @@ export class CombatSystem {
       } else {
         const target = this.findNearest(playerX, playerY, enemies, 600)
         if (target) {
-          const { multiShot, piercing: isPiercing } = useGameStore.getState()
           const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
           const spreadRad = 15 * (Math.PI / 180)
           for (let i = 0; i <= multiShot; i++) {

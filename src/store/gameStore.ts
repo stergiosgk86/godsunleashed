@@ -317,3 +317,20 @@ export const useGameStore = create<GameState>()(
     },
   }))
 )
+
+// Read-time clamping: prevents browser-console setState() abuse in solo mode.
+// All combat-hot-path code should destructure from this instead of getState().
+export function getValidatedCombatState() {
+  const s = useGameStore.getState()
+  return {
+    ...s,
+    might:          Math.min(2.0, Math.max(1.0, s.might)),
+    attackInterval: Math.max(250, s.attackInterval),
+    multiShot:      Math.min(4, Math.max(0, Math.floor(s.multiShot))),
+    aura:           Math.min(1, Math.max(0, Math.floor(s.aura))),
+    auraTick:       Math.min(3, Math.max(0, Math.floor(s.auraTick))),
+    auraRange:      Math.min(3, Math.max(0, Math.floor(s.auraRange))),
+    orbital:        Math.min(3, Math.max(0, Math.floor(s.orbital))),
+    moveSpeed:      Math.min(300, Math.max(50, s.moveSpeed)),
+  }
+}
