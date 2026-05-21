@@ -287,6 +287,7 @@ export class MainScene extends Phaser.Scene {
     this.events.once('shutdown', () => {
       unsubChosen()
       useGameStore.getState().setServerDrivenLeveling(false)
+      net.close()
     })
 
     net.on('levelUp', (msg) => {
@@ -358,6 +359,7 @@ export class MainScene extends Phaser.Scene {
     players: PlayerSnapshot[],
     elapsed: number,
   ) {
+    if (!this.sys.displayList) return
     runData.elapsed = elapsed
 
     // Reconcile enemy map
