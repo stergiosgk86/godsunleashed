@@ -196,6 +196,8 @@ function App() {
         const data = await res.json() as { playersWaiting: number; names: string[] }
         if (!inLobbyRef.current && data.playersWaiting > prevLobbyCount.current) {
           setLobbyNames(data.names)
+        } else if (data.playersWaiting === 0) {
+          setLobbyNames(null)
         }
         prevLobbyCount.current = data.playersWaiting
       } catch { /* non-fatal */ }
