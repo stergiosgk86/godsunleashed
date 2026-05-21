@@ -163,14 +163,15 @@ export class MainScene extends Phaser.Scene {
 
     this.setupMultiplayer()
 
-    // Esc to pause — handled via Phaser's keyboard so it fires even when the
-    // canvas has focus. Resuming is handled by PauseMenu (window listener) since
-    // Phaser's input plugin is inactive while the scene is paused.
-    const escKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
-    escKey.on('down', () => {
+    // Capture-phase listener fires before Phaser processes the event — reliable
+    // regardless of canvas focus. Resuming is in PauseMenu (same mechanism).
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
       const gs = useGameStore.getState()
       if (!gs.isDead && !gs.isWon && !gs.isLevelUpPending) gs.togglePause()
-    })
+    }
+    window.addEventListener('keydown', onEsc, { capture: true })
+    this.events.once('shutdown', () => window.removeEventListener('keydown', onEsc, { capture: true }))
 
     // Only resume here — pausing on level-up is handled in update() to avoid
     // calling scene.pause() from within a zustand subscriber mid-update-loop.
