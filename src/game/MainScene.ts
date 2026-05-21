@@ -7,7 +7,7 @@ import { ClientEnemy } from './ClientEnemy'
 import { RemotePlayer } from './RemotePlayer'
 import { RemoteProjectile } from './RemoteProjectile'
 import { generateAssets, generatePropTextures } from './AssetGenerator'
-import { useGameStore } from '../store/gameStore'
+import { useGameStore, UPGRADE_POOL, type Upgrade } from '../store/gameStore'
 import { useCharacterStore } from '../store/characterStore'
 import { useAuthStore } from '../store/authStore'
 import { CHARACTER_DEFS } from './characters'
@@ -263,6 +263,35 @@ export class MainScene extends Phaser.Scene {
   private setupMultiplayer() {
     const net = activeNetClient
     if (!net) return
+
+    // Server drives XP and level-ups in multiplayer
+    useGameStore.getState().setServerDrivenLeveling(true)
+
+    // Relay the player's upgrade choice to the server once they pick
+    const unsubChosen = useGameStore.subscribe(
+      s => s.chosenUpgrade,
+      (chosenId) => {
+        if (chosenId !== null) net.send({ type: 'chooseUpgrade', upgradeId: chosenId })
+      },
+    )
+    this.events.once('shutdown', () => {
+      unsubChosen()
+      useGameStore.getState().setServerDrivenLeveling(false)
+    })
+
+    net.on('levelUp', (msg) => {
+      const choices = msg.choices
+        .map(id => UPGRADE_POOL.find(u => u.id === id))
+        .filter((u): u is Upgrade => u !== undefined)
+      useGameStore.setState({
+        level: msg.level,
+        xp: msg.xp,
+        xpNeeded: msg.xpToNext,
+        isLevelUpPending: true,
+        upgradeChoices: choices,
+        chosenUpgrade: null,
+      })
+    })
 
     net.on('tick', (msg) => this.applyTick(msg.enemies, msg.players, msg.elapsed))
 

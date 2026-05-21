@@ -4,9 +4,89 @@ import type { S2CMessage, PlayerSnapshot } from './protocol.js'
 
 const TICK_MS = 50
 const MAX_PLAYERS = 4
-const MAX_DAMAGE  = 5_000   // cap per-hit damage from client
+const MAX_DAMAGE_FALLBACK = 200  // used before player upgrades are known
 const MAX_COORD   = 600_000 // matches ±500 000 physics bounds with some margin
 const MAX_VEL     = 2_000   // max projectile velocity component
+
+// All upgrade IDs the server knows about (mirrors client UPGRADE_POOL)
+const ALL_UPGRADE_IDS = [
+  'dashCooldown', 'dashDistance', 'multiShot', 'piercing',
+  'aura', 'auraTick', 'auraRange', 'orbital',
+  'boomerang', 'flameTrail', 'bloodNova', 'vampiric',
+  'lightning', 'might', 'axe', 'divineShield',
+] as const
+type UpgradeId = typeof ALL_UPGRADE_IDS[number]
+const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
+const DASH_IDS = new Set<string>(['dashCooldown', 'dashDistance'])
+
+// Mirrors client xpNeeded(level) in gameStore.ts
+function xpNeeded(level: number): number {
+  return Math.floor(level * (level + 4) * 2)
+}
+
+interface PlayerUpgrades {
+  piercing: boolean
+  multiShot: number   // 0–4
+  orbital: number     // 0–3
+  boomerang: boolean
+  flameTrail: boolean
+  bloodNova: boolean
+  vampiric: boolean
+  lightning: boolean
+  mightPicks: number  // 0–5
+  axe: boolean
+  aura: boolean
+  auraTick: number    // 0–3
+  auraRange: number   // 0–3
+  divineShield: boolean
+}
+
+function emptyUpgrades(): PlayerUpgrades {
+  return {
+    piercing: false, multiShot: 0, orbital: 0,
+    boomerang: false, flameTrail: false, bloodNova: false,
+    vampiric: false, lightning: false, mightPicks: 0,
+    axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false,
+  }
+}
+
+function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
+  const pool = ALL_UPGRADE_IDS.filter(id => {
+    if (isMelee && (id === 'multiShot' || id === 'piercing')) return false
+    if (id === 'piercing'    && u.piercing)          return false
+    if (id === 'multiShot'   && u.multiShot >= 4)    return false
+    if (id === 'orbital'     && u.orbital >= 3)      return false
+    if (id === 'boomerang'   && u.boomerang)         return false
+    if (id === 'flameTrail'  && u.flameTrail)        return false
+    if (id === 'bloodNova'   && u.bloodNova)         return false
+    if (id === 'vampiric'    && u.vampiric)          return false
+    if (id === 'lightning'   && u.lightning)         return false
+    if (id === 'might'       && u.mightPicks >= 5)   return false
+    if (id === 'axe'         && u.axe)               return false
+    if (id === 'divineShield'&& u.divineShield)      return false
+    if (id === 'aura'        && u.aura)              return false
+    if (id === 'auraTick'    && !u.aura)             return false
+    if (id === 'auraTick'    && u.auraTick >= 3)     return false
+    if (id === 'auraRange'   && !u.aura)             return false
+    if (id === 'auraRange'   && u.auraRange >= 3)    return false
+    return true
+  })
+
+  const shuffled: string[] = (pool as string[]).slice().sort(() => Math.random() - 0.5)
+  const choices: string[] = shuffled.slice(0, 3)
+
+  // At most one dash upgrade per offer
+  const dashCount = choices.filter((id: string) => DASH_IDS.has(id)).length
+  if (dashCount > 1) {
+    let dupIdx = -1
+    for (let i = choices.length - 1; i >= 0; i--) {
+      if (DASH_IDS.has(choices[i])) { dupIdx = i; break }
+    }
+    const replacement = shuffled.find((id: string) => !DASH_IDS.has(id) && !choices.includes(id))
+    if (dupIdx >= 0 && replacement) choices[dupIdx] = replacement
+  }
+  return choices
+}
 
 interface Player {
   id: string
@@ -19,6 +99,11 @@ interface Player {
   isHost: boolean
   aura: number
   orbital: number
+  // Server-authoritative XP/leveling
+  xp: number
+  level: number
+  pendingChoices: string[] | null  // non-null while waiting for chooseUpgrade
+  upgrades: PlayerUpgrades
 }
 
 export class GameRoom {
@@ -31,7 +116,10 @@ export class GameRoom {
   addPlayer(id: string, ws: WebSocket, characterType: string, username: string, x: number, y: number) {
     if (this.started) return
     const isHost = this.players.length === 0
-    this.players.push({ id, ws, x, y, characterType, username, dead: false, isHost, aura: 0, orbital: 0 })
+    this.players.push({
+      id, ws, x, y, characterType, username, dead: false, isHost, aura: 0, orbital: 0,
+      xp: 0, level: 1, pendingChoices: null, upgrades: emptyUpgrades(),
+    })
     this.broadcastWaiting()
     if (this.players.length >= MAX_PLAYERS) {
       this.startGame()
@@ -84,19 +172,76 @@ export class GameRoom {
     }
   }
 
-  handleHit(enemyId: number, damage: number) {
+  handleHit(playerId: string, enemyId: number, damage: number) {
     if (!Number.isInteger(enemyId) || enemyId < 0 || !isFinite(damage) || damage <= 0) return
-    const safeDamage = Math.min(Math.floor(damage), MAX_DAMAGE)
+    const player = this.players.find(p => p.id === playerId)
+    const cap = player ? this.maxHitDamage(player) : MAX_DAMAGE_FALLBACK
+    const safeDamage = Math.min(Math.floor(damage), cap)
     const enemy = this.spawner.findById(enemyId)
     if (!enemy || !enemy.active) return
 
     const died = enemy.takeDamage(safeDamage)
     if (died) {
       this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue })
-      // Update boss HP bar if this was a boss
       if (enemy.isBoss) this.broadcast({ type: 'bossHp', bossId: enemyId, hp: 0 })
+      this.grantXP(enemy.xpValue)
     } else if (enemy.isBoss) {
       this.broadcast({ type: 'bossHp', bossId: enemyId, hp: enemy.hp })
+    }
+  }
+
+  // Max legitimate per-hit damage based on server-tracked might upgrades.
+  // Blood Nova is the highest multiplier (5×); 1.5× safety buffer on top.
+  private maxHitDamage(p: Player): number {
+    const mightMult = 1.0 + p.upgrades.mightPicks * 0.1
+    return Math.ceil(15 * mightMult * 5 * 1.5)
+  }
+
+  handleChooseUpgrade(playerId: string, upgradeId: string) {
+    if (!VALID_UPGRADE_SET.has(upgradeId)) return
+    const p = this.players.find(p => p.id === playerId)
+    if (!p || !p.pendingChoices || !p.pendingChoices.includes(upgradeId)) return
+
+    p.pendingChoices = null
+
+    const u = p.upgrades
+    switch (upgradeId as UpgradeId) {
+      case 'piercing':    u.piercing = true; break
+      case 'multiShot':   u.multiShot = Math.min(4, u.multiShot + 1); break
+      case 'orbital':     u.orbital = Math.min(3, u.orbital + 1); p.orbital = u.orbital; break
+      case 'boomerang':   u.boomerang = true; break
+      case 'flameTrail':  u.flameTrail = true; break
+      case 'bloodNova':   u.bloodNova = true; break
+      case 'vampiric':    u.vampiric = true; break
+      case 'lightning':   u.lightning = true; break
+      case 'might':       u.mightPicks = Math.min(5, u.mightPicks + 1); break
+      case 'axe':         u.axe = true; break
+      case 'aura':        u.aura = true; p.aura = 1; break
+      case 'auraTick':    u.auraTick = Math.min(3, u.auraTick + 1); break
+      case 'auraRange':   u.auraRange = Math.min(3, u.auraRange + 1); break
+      case 'divineShield':u.divineShield = true; break
+      // dashCooldown, dashDistance: no server-side tracking needed
+    }
+  }
+
+  private grantXP(xpValue: number) {
+    for (const p of this.players) {
+      if (p.dead || p.pendingChoices !== null) continue
+      p.xp += xpValue
+      const needed = xpNeeded(p.level)
+      if (p.xp >= needed) {
+        p.xp -= needed
+        p.level++
+        const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares')
+        p.pendingChoices = choices
+        this.send(p.ws, {
+          type: 'levelUp',
+          level: p.level,
+          xp: p.xp,
+          xpToNext: xpNeeded(p.level),
+          choices,
+        })
+      }
     }
   }
 

@@ -1,7 +1,13 @@
 import { Router, Request, Response } from 'express'
 import { randomUUID } from 'crypto'
 import { requireAuth } from '../middleware/auth.js'
+import { rateLimit } from '../middleware/rateLimit.js'
 import { db } from '../db.js'
+
+// 60 reads/min per IP — prevents leaderboard/profile scraping
+const readRateLimit = rateLimit(60, 60_000)
+// 30 writes/min per IP — covers upgrade purchases, run submissions, etc.
+const writeRateLimit = rateLimit(30, 60_000)
 
 export const apiRouter = Router()
 apiRouter.use(requireAuth)
@@ -51,7 +57,7 @@ function xpToReachLevel(level: number): number {
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
-apiRouter.get('/profile', async (req: Request, res: Response) => {
+apiRouter.get('/profile', readRateLimit, async (req: Request, res: Response) => {
   const result = await db.query(
     `SELECT p.coins, p.upgrades, p.key_bindings, p.unlocked_characters, u.role
      FROM profiles p JOIN users u ON u.id = p.user_id
@@ -148,7 +154,7 @@ apiRouter.post('/key-bindings', async (req: Request, res: Response) => {
 
 // ── Upgrade purchases (server-side, atomic) ───────────────────────────────────
 
-apiRouter.post('/upgrades/purchase', async (req: Request, res: Response) => {
+apiRouter.post('/upgrades/purchase', writeRateLimit, async (req: Request, res: Response) => {
   const { upgrade } = req.body ?? {}
   if (typeof upgrade !== 'string' || !VALID_UPGRADE_KEYS.has(upgrade)) {
     res.status(400).json({ error: 'Invalid upgrade' }); return
@@ -339,7 +345,7 @@ apiRouter.delete('/admin/players/:id/runs', async (req: Request, res: Response) 
 
 // ── Leaderboard ───────────────────────────────────────────────────────────────
 
-apiRouter.get('/leaderboard', async (req: Request, res: Response) => {
+apiRouter.get('/leaderboard', readRateLimit, async (req: Request, res: Response) => {
   try {
     const [top, personal] = await Promise.all([
       db.query(
@@ -360,7 +366,7 @@ apiRouter.get('/leaderboard', async (req: Request, res: Response) => {
 
 // Issues a single-use token that must be included with the run submission.
 // Prevents submitting runs without having actually started a game session.
-apiRouter.post('/runs/start', async (req: Request, res: Response) => {
+apiRouter.post('/runs/start', writeRateLimit, async (req: Request, res: Response) => {
   const token = randomUUID()
   await db.query(
     'UPDATE profiles SET active_run_token = $1 WHERE user_id = $2',
@@ -369,7 +375,7 @@ apiRouter.post('/runs/start', async (req: Request, res: Response) => {
   res.json({ token })
 })
 
-apiRouter.post('/runs', async (req: Request, res: Response) => {
+apiRouter.post('/runs', writeRateLimit, async (req: Request, res: Response) => {
   const {
     runToken, score, kills, timeSurvived, coins, won, multiplayer,
     bossKills, level, damageDealt, weaponCount, tookDamage, finalHp, maxHp,

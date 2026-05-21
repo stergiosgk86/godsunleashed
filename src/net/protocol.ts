@@ -27,6 +27,7 @@ export type C2SMessage =
   | { type: 'died' }
   | { type: 'startGame' }
   | { type: 'projectile'; x: number; y: number; vx: number; vy: number }
+  | { type: 'chooseUpgrade'; upgradeId: string }
 
 // Server → Client
 export type S2CMessage =
@@ -41,3 +42,4 @@ export type S2CMessage =
   | { type: 'playerLeft' }
   | { type: 'projectile'; playerId: string; x: number; y: number; vx: number; vy: number }
   | { type: 'bossProjectile'; enemyId: number; x: number; y: number; vx: number; vy: number }
+  | { type: 'levelUp'; level: number; xp: number; xpToNext: number; choices: string[] }

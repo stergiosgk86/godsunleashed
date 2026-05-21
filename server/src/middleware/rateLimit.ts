@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express'
 
 interface Bucket { count: number; resetAt: number }
-const buckets = new Map<string, Bucket>()
 
 function getIp(req: Request): string {
   return (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0].trim()
@@ -11,8 +10,19 @@ function getIp(req: Request): string {
 
 /**
  * Simple in-memory rate limiter: max `limit` requests per `windowMs` per IP.
+ * Each call creates an independent bucket map so limiters don't interfere.
  */
 export function rateLimit(limit: number, windowMs: number) {
+  const buckets = new Map<string, Bucket>()
+
+  // Periodically clean up stale entries so the map doesn't grow forever
+  setInterval(() => {
+    const now = Date.now()
+    for (const [ip, b] of buckets) {
+      if (now >= b.resetAt) buckets.delete(ip)
+    }
+  }, 60_000).unref()
+
   return (req: Request, res: Response, next: NextFunction) => {
     const ip = getIp(req)
     const now = Date.now()
@@ -29,11 +39,3 @@ export function rateLimit(limit: number, windowMs: number) {
     next()
   }
 }
-
-// Periodically clean up stale entries so the map doesn't grow forever
-setInterval(() => {
-  const now = Date.now()
-  for (const [ip, b] of buckets) {
-    if (now >= b.resetAt) buckets.delete(ip)
-  }
-}, 60_000)

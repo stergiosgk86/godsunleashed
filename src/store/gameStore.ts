@@ -16,7 +16,7 @@ export interface Upgrade {
   description: string
 }
 
-const UPGRADE_POOL: Upgrade[] = [
+export const UPGRADE_POOL: Upgrade[] = [
   { id: 'dashCooldown',  label: 'Swift Dash',      description: '25% shorter dash cooldown' },
   { id: 'dashDistance',  label: 'Longer Dash',     description: '40% further dash distance' },
   { id: 'multiShot',     label: 'Multi Shot',      description: 'Fire an extra projectile per attack' },
@@ -122,6 +122,9 @@ interface GameState {
   recentAchievement: { id: string; name: string } | null
   adminInvincible: boolean
 
+  serverDrivenLeveling: boolean
+  chosenUpgrade: UpgradeId | null
+  setServerDrivenLeveling: (value: boolean) => void
   addXP: (amount: number) => void
   setAdminInvincible: (value: boolean) => void
   setDivineShield: (active: boolean) => void
@@ -144,6 +147,8 @@ interface GameState {
 
 export const useGameStore = create<GameState>()(
   subscribeWithSelector((set, get) => ({
+    serverDrivenLeveling: false,
+    chosenUpgrade: null,
     xp: 0,
     xpNeeded: xpNeeded(1),
     level: 1,
@@ -189,8 +194,14 @@ export const useGameStore = create<GameState>()(
     recentAchievement: null,
     adminInvincible: false,
 
+    setServerDrivenLeveling: (value) => set({ serverDrivenLeveling: value }),
+
     addXP: (amount) => {
       set(s => {
+        if (s.serverDrivenLeveling) {
+          // Server drives level-ups in multiplayer; just fill the XP bar visually
+          return { xp: Math.min(s.xp + amount, s.xpNeeded) }
+        }
         let { xp, xpNeeded: needed, level, isLevelUpPending } = s
         xp += amount
         if (xp >= needed && !isLevelUpPending) {
@@ -265,6 +276,7 @@ export const useGameStore = create<GameState>()(
     clearRecentAchievement: () => set({ recentAchievement: null }),
 
     resetRun: () => set({
+      chosenUpgrade: null,
       xp: 0, xpNeeded: xpNeeded(1), level: 1,
       hp: 100, maxHp: 100,
       might: 1.0, attackInterval: 500, moveSpeed: 200,
@@ -279,42 +291,28 @@ export const useGameStore = create<GameState>()(
 
     chooseUpgrade: (id) => {
       set(s => {
+        let upgrade: Partial<GameState>
         switch (id) {
-          case 'moveSpeed':
-            return { moveSpeed: Math.min(300, Math.floor(s.moveSpeed * 1.15)), isLevelUpPending: false }
-          case 'dashCooldown':
-            return { dashCooldown: Math.max(400, Math.floor(s.dashCooldown * 0.75)), isLevelUpPending: false }
-          case 'dashDistance':
-            return { dashDistance: s.dashDistance + 0.4, isLevelUpPending: false }
-          case 'multiShot':
-            return { multiShot: s.multiShot + 1, isLevelUpPending: false }
-          case 'piercing':
-            return { piercing: true, isLevelUpPending: false }
-          case 'aura':
-            return { aura: s.aura + 1, isLevelUpPending: false }
-          case 'auraTick':
-            return { auraTick: s.auraTick + 1, isLevelUpPending: false }
-          case 'auraRange':
-            return { auraRange: Math.min(3, s.auraRange + 1), isLevelUpPending: false }
-          case 'orbital':
-            return { orbital: s.orbital + 1, isLevelUpPending: false }
-          case 'boomerang':
-            return { boomerang: true, isLevelUpPending: false }
-          case 'flameTrail':
-            return { flameTrail: true, isLevelUpPending: false }
-          case 'bloodNova':
-            return { bloodNova: true, isLevelUpPending: false }
-          case 'vampiric':
-            return { vampiric: true, isLevelUpPending: false }
-          case 'lightning':
-            return { lightning: true, isLevelUpPending: false }
-          case 'axe':
-            return { axe: true, isLevelUpPending: false }
-          case 'divineShield':
-            return { divineShield: true, isLevelUpPending: false }
-          case 'might':
-            return { might: Math.min(1.5, s.might + 0.1), isLevelUpPending: false }
+          case 'moveSpeed':    upgrade = { moveSpeed: Math.min(300, Math.floor(s.moveSpeed * 1.15)) }; break
+          case 'dashCooldown': upgrade = { dashCooldown: Math.max(400, Math.floor(s.dashCooldown * 0.75)) }; break
+          case 'dashDistance': upgrade = { dashDistance: s.dashDistance + 0.4 }; break
+          case 'multiShot':    upgrade = { multiShot: s.multiShot + 1 }; break
+          case 'piercing':     upgrade = { piercing: true }; break
+          case 'aura':         upgrade = { aura: s.aura + 1 }; break
+          case 'auraTick':     upgrade = { auraTick: s.auraTick + 1 }; break
+          case 'auraRange':    upgrade = { auraRange: Math.min(3, s.auraRange + 1) }; break
+          case 'orbital':      upgrade = { orbital: s.orbital + 1 }; break
+          case 'boomerang':    upgrade = { boomerang: true }; break
+          case 'flameTrail':   upgrade = { flameTrail: true }; break
+          case 'bloodNova':    upgrade = { bloodNova: true }; break
+          case 'vampiric':     upgrade = { vampiric: true }; break
+          case 'lightning':    upgrade = { lightning: true }; break
+          case 'axe':          upgrade = { axe: true }; break
+          case 'divineShield': upgrade = { divineShield: true }; break
+          case 'might':        upgrade = { might: Math.min(1.5, s.might + 0.1) }; break
+          default:             upgrade = {}
         }
+        return { ...upgrade, isLevelUpPending: false, chosenUpgrade: id }
       })
     },
   }))

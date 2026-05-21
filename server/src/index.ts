@@ -75,17 +75,27 @@ httpServer.on('upgrade', (req, socket, head) => {
 let openRoom: GameRoom | null = null
 let idCounter = 0
 
+// Max WebSocket messages per second per connection.
+// Normal gameplay: ~20 input + up to ~80 hit/projectile bursts = well under 200.
+const WS_MSG_LIMIT = 200
+
 wss.on('connection', (ws) => {
   const authed = ws as unknown as AuthedWS
   const playerId = `p${++idCounter}`
   const label = `${authed.username ?? '?'}#${playerId}`
   let room: GameRoom | null = null
   let joined = false
+  let wsMsgCount = 0
+  let wsMsgWindowStart = Date.now()
   console.log(`[${label}] connected`)
 
   ws.on('error', (err) => console.error(`[${label}] ws error:`, err))
 
   ws.on('message', (raw) => {
+    // Per-connection rate limit: close the socket if the client floods messages
+    const now = Date.now()
+    if (now - wsMsgWindowStart >= 1000) { wsMsgCount = 0; wsMsgWindowStart = now }
+    if (++wsMsgCount > WS_MSG_LIMIT) { ws.close(4029, 'Rate limited'); return }
     let msg: C2SMessage
     try { msg = JSON.parse(raw.toString()) as C2SMessage }
     catch { return }
@@ -117,7 +127,7 @@ wss.on('connection', (ws) => {
     if (msg.type === 'input') {
       room.updatePlayerPos(playerId, msg.x, msg.y, msg.aura, msg.orbital)
     } else if (msg.type === 'hit') {
-      room.handleHit(msg.enemyId, msg.damage)
+      room.handleHit(playerId, msg.enemyId, msg.damage)
     } else if (msg.type === 'died') {
       console.log(`[${label}] died`)
       room.markPlayerDead(playerId)
@@ -128,6 +138,8 @@ wss.on('connection', (ws) => {
       }
     } else if (msg.type === 'projectile') {
       room.relayProjectile(playerId, msg.x, msg.y, msg.vx, msg.vy)
+    } else if (msg.type === 'chooseUpgrade') {
+      room.handleChooseUpgrade(playerId, msg.upgradeId)
     }
   })
 
