@@ -4,7 +4,7 @@ import { useCharacterStore } from './characterStore'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might' | 'axe'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might' | 'axe' | 'divineShield'
 
 export function weaponBaseDamage(_level: number): number {
   return 15
@@ -32,6 +32,7 @@ const UPGRADE_POOL: Upgrade[] = [
   { id: 'lightning',  label: 'Thunder Strike',   description: 'Every 4s lightning bolts strike 2 random enemies for heavy damage' },
   { id: 'might',     label: 'Power',            description: '+10% weapon damage (stackable, up to 5×)' },
   { id: 'axe',      label: 'War Axe',          description: 'Hurls a spinning axe in an arc — hits on the way up and again on the way down' },
+  { id: 'divineShield', label: 'Divine Shield', description: 'Grants a shield that blocks the next hit. After absorbing a hit you are briefly immune, then the shield recharges in 7s' },
 ]
 
 function xpNeeded(level: number) {
@@ -41,7 +42,7 @@ function xpNeeded(level: number) {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number }): Upgrade[] {
+function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean }): Upgrade[] {
   const isMelee = useCharacterStore.getState().selectedCharacter === 'ares'
   const pool = UPGRADE_POOL.filter(u => {
     if (isMelee && u.id === 'multiShot')               return false
@@ -56,6 +57,7 @@ function pickChoices(state: { piercing: boolean; multiShot: number; orbital: num
     if (u.id === 'lightning'  && state.lightning)      return false
     if (u.id === 'might'      && state.might >= 1.5)    return false
     if (u.id === 'axe'        && state.axe)            return false
+    if (u.id === 'divineShield' && state.divineShield)  return false
     if (u.id === 'aura'       && state.aura >= 1)       return false
     if (u.id === 'auraTick'   && state.aura === 0)     return false
     if (u.id === 'auraTick'   && state.auraTick >= 3)  return false
@@ -105,6 +107,8 @@ interface GameState {
   vampiric: boolean
   lightning: boolean
   axe: boolean
+  divineShield: boolean
+  divineShieldActive: boolean
   armor: number
   sessionCoins: number
   isDead: boolean
@@ -120,6 +124,7 @@ interface GameState {
 
   addXP: (amount: number) => void
   setAdminInvincible: (value: boolean) => void
+  setDivineShield: (active: boolean) => void
   takeDamage: (amount: number) => void
   takeContactDamage: (amount: number) => void
   die: () => void
@@ -169,6 +174,8 @@ export const useGameStore = create<GameState>()(
     vampiric: false,
     lightning: false,
     axe: false,
+    divineShield: false,
+    divineShieldActive: false,
     armor: 0,
     sessionCoins: 0,
     isDead: false,
@@ -200,19 +207,30 @@ export const useGameStore = create<GameState>()(
     },
 
     setAdminInvincible: (value) => set({ adminInvincible: value }),
+    setDivineShield: (active) => set({ divineShieldActive: active }),
 
     // Contact damage: per-enemy cooldowns in CombatSystem — no global invincibility here.
     takeContactDamage: (amount) => {
-      const { hp, isDead, adminInvincible, armor } = get()
+      const { hp, isDead, adminInvincible, armor, divineShieldActive } = get()
       if (isDead || adminInvincible) return
+      if (divineShieldActive) {
+        set({ divineShieldActive: false })
+        return
+      }
       const reduced = Math.max(1, amount - armor)
       set({ hp: Math.max(0, hp - reduced), damageFlashUntil: Date.now() + 200, tookDamageThisRun: true })
       if (get().hp <= 0) get().die()
     },
 
     takeDamage: (amount) => {
-      const { invincibleUntil, hp, isDead, adminInvincible, armor } = get()
-      if (isDead || adminInvincible || Date.now() < invincibleUntil) return
+      const { invincibleUntil, hp, isDead, adminInvincible, armor, divineShieldActive } = get()
+      if (isDead || adminInvincible) return
+      if (divineShieldActive) {
+        const now = Date.now()
+        set({ divineShieldActive: false, invincibleUntil: now + 1000, damageFlashUntil: now + 300 })
+        return
+      }
+      if (Date.now() < invincibleUntil) return
       const now = Date.now()
       const reduced = Math.max(1, amount - armor)
       set({ hp: Math.max(0, hp - reduced), invincibleUntil: now + 1000, damageFlashUntil: now + 1000, tookDamageThisRun: true })
@@ -254,7 +272,7 @@ export const useGameStore = create<GameState>()(
       invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, auraRange: 0, orbital: 0,
-      boomerang: false, flameTrail: false, bloodNova: false, vampiric: false, lightning: false, axe: false, armor: 0,
+      boomerang: false, flameTrail: false, bloodNova: false, vampiric: false, lightning: false, axe: false, divineShield: false, divineShieldActive: false, armor: 0,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
     }),
@@ -292,6 +310,8 @@ export const useGameStore = create<GameState>()(
             return { lightning: true, isLevelUpPending: false }
           case 'axe':
             return { axe: true, isLevelUpPending: false }
+          case 'divineShield':
+            return { divineShield: true, isLevelUpPending: false }
           case 'might':
             return { might: Math.min(1.5, s.might + 0.1), isLevelUpPending: false }
         }

@@ -38,6 +38,7 @@ const POTION_HEAL = 25
 const POTION_MAX = 3
 const POTION_SPAWN_MIN = 180
 const POTION_SPAWN_MAX = 320
+const DIVINE_COOLDOWN_MS = 7000
 
 interface FlamePool {
   x: number; y: number
@@ -91,6 +92,12 @@ export class CombatSystem {
   private facingVx = 0
   private facingVy = 1
   private arcGraphic: Phaser.GameObjects.Graphics
+  // Divine Shield
+  private divineTimer = 0
+  private divinePhase: 'active' | 'cooldown' = 'cooldown'
+  private divineInitialized = false
+  private divineGraphic: Phaser.GameObjects.Graphics
+  private divineAngle = 0
 
   constructor(scene: Phaser.Scene, effects: EffectsSystem, useThunderbolts = false, frontArcOnly = false) {
     this.useThunderbolts = useThunderbolts
@@ -100,6 +107,7 @@ export class CombatSystem {
     this.effects = effects
     this.auraGraphic = scene.add.graphics().setDepth(2)
     this.orbGraphic = scene.add.graphics().setDepth(5)
+    this.divineGraphic = scene.add.graphics().setDepth(7)
   }
 
   setFacing(vx: number, vy: number) {
@@ -264,7 +272,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe } = useGameStore.getState()
+    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe, divineShield, divineShieldActive, setDivineShield } = useGameStore.getState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -696,6 +704,69 @@ export class CombatSystem {
         for (const t of targets) {
           this.fireLightningBolt(t.x, t.y)
           this.applyHit(t, boltDmg, coinDropChance, lifeDrain, vampiric)
+        }
+      }
+    }
+
+    // === Divine Shield ===
+    this.divineGraphic.clear()
+    if (divineShield) {
+      if (!this.divineInitialized) {
+        this.divineInitialized = true
+        this.divinePhase = 'active'
+        this.divineTimer = 0
+        setDivineShield(true)
+      }
+
+      this.divineAngle += delta * 0.002
+
+      if (this.divinePhase === 'active') {
+        // Shield was broken by a hit (store flipped divineShieldActive to false)
+        if (!divineShieldActive) {
+          this.divinePhase = 'cooldown'
+          this.divineTimer = 0
+        } else {
+          // Active: stays up indefinitely until hit
+          const pulse = 0.8 + 0.2 * Math.sin(this.divineAngle * 4)
+          const R = 38 * pulse
+          this.divineGraphic.fillStyle(0xffee88, 0.12 * pulse)
+          this.divineGraphic.fillCircle(playerX, playerY, R * 1.3)
+          this.divineGraphic.fillStyle(0xffdd00, 0.20 * pulse)
+          this.divineGraphic.fillCircle(playerX, playerY, R)
+          this.divineGraphic.lineStyle(3, 0xffee44, 0.9 * pulse)
+          this.divineGraphic.strokeCircle(playerX, playerY, R)
+          this.divineGraphic.lineStyle(1.5, 0xffffff, 0.55 * pulse)
+          this.divineGraphic.strokeCircle(playerX, playerY, R * 1.15)
+          const numArcs = 4
+          for (let i = 0; i < numArcs; i++) {
+            const a = this.divineAngle + (i / numArcs) * Math.PI * 2
+            const arcLen = Math.PI * 0.35
+            this.divineGraphic.lineStyle(2.5, 0xffee00, 0.85 * pulse)
+            this.divineGraphic.beginPath()
+            this.divineGraphic.arc(playerX, playerY, R, a, a + arcLen, false)
+            this.divineGraphic.strokePath()
+            const tipA = a + arcLen
+            this.divineGraphic.fillStyle(0xffffff, 0.9 * pulse)
+            this.divineGraphic.fillCircle(playerX + Math.cos(tipA) * R, playerY + Math.sin(tipA) * R, 2.5)
+          }
+        }
+      } else {
+        // Cooldown: recharge progress ring
+        this.divineTimer += delta
+        if (this.divineTimer >= DIVINE_COOLDOWN_MS) {
+          this.divineTimer = 0
+          this.divinePhase = 'active'
+          setDivineShield(true)
+        }
+        const progress = Math.min(this.divineTimer / DIVINE_COOLDOWN_MS, 1)
+        const R = 38
+        this.divineGraphic.lineStyle(1.5, 0xaaaaaa, 0.25)
+        this.divineGraphic.strokeCircle(playerX, playerY, R)
+        if (progress > 0.02) {
+          this.divineGraphic.lineStyle(2.5, 0xcccc66, 0.55)
+          this.divineGraphic.beginPath()
+          this.divineGraphic.arc(playerX, playerY, R, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress, false)
+          this.divineGraphic.strokePath()
         }
       }
     }
