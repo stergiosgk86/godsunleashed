@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken'
 import { GameRoom } from './GameRoom.js'
 import { authRouter } from './routes/auth.js'
 import { apiRouter } from './routes/api.js'
+import { saveRunRecord } from './runSaver.js'
 import type { C2SMessage } from './protocol.js'
 
 const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus'])
@@ -75,6 +76,27 @@ httpServer.on('upgrade', (req, socket, head) => {
 let openRoom: GameRoom | null = null
 let idCounter = 0
 
+function attachGameEndHandler(room: GameRoom) {
+  room.onGameEnd = (results) => {
+    for (const result of results) {
+      saveRunRecord(result)
+        .then((newAchievements) => {
+          // Find the player's WS by userId to send runSaved — room may be partially torn down,
+          // so we look up the player directly via the result object's userId.
+          // The `runSaved` message is sent here via the individual ws still held in the room.
+          room.sendRunSaved(result.userId, {
+            kills: result.kills,
+            timeSurvived: result.timeSurvived,
+            coins: result.coins,
+            won: result.won,
+            newAchievements,
+          })
+        })
+        .catch(err => console.error(`[runSaver] failed to save run for ${result.username}:`, err))
+    }
+  }
+}
+
 // Max WebSocket messages per second per connection.
 // Normal gameplay: ~20 input + up to ~80 hit/projectile bursts = well under 200.
 const WS_MSG_LIMIT = 200
@@ -104,18 +126,27 @@ wss.on('connection', (ws) => {
       if (joined) return
       if (!VALID_CHARACTER_TYPES.has(msg.characterType)) return
       joined = true
-      console.log(`[${label}] joined as ${msg.characterType}`)
-
-      if (!openRoom || openRoom.isFull) {
-        openRoom = new GameRoom()
-      }
-      room = openRoom
+      console.log(`[${label}] joined as ${msg.characterType}${msg.solo ? ' (solo)' : ''}`)
 
       const startX = 2000 + (Math.random() - 0.5) * 200
       const startY = 2000 + (Math.random() - 0.5) * 200
-      room.addPlayer(playerId, ws, msg.characterType, authed.username ?? '?', startX, startY)
 
-      if (room.isFull || room.isStarted) {
+      if (msg.solo) {
+        // Solo: dedicated room that starts immediately; not shared with other players
+        const soloRoom = new GameRoom(true)
+        attachGameEndHandler(soloRoom)
+        room = soloRoom
+      } else {
+        if (!openRoom || openRoom.isFull) {
+          openRoom = new GameRoom()
+          attachGameEndHandler(openRoom)
+        }
+        room = openRoom
+      }
+
+      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY)
+
+      if (!msg.solo && (room.isFull || room.isStarted)) {
         console.log(`[${label}] room full → game starting`)
         openRoom = null
       }

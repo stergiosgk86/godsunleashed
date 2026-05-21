@@ -1,6 +1,7 @@
 import type { WebSocket } from 'ws'
 import { ServerSpawner } from './ServerSpawner.js'
 import type { S2CMessage, PlayerSnapshot } from './protocol.js'
+import type { PlayerRunData } from './runSaver.js'
 
 const TICK_MS = 50
 const MAX_PLAYERS = 4
@@ -88,8 +89,12 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
   return choices
 }
 
+// Per-player coin drop rate (2% per kill, no luck rank knowledge server-side)
+const COIN_DROP_CHANCE = 0.02
+
 interface Player {
   id: string
+  userId: number
   ws: WebSocket
   x: number
   y: number
@@ -104,6 +109,11 @@ interface Player {
   level: number
   pendingChoices: string[] | null  // non-null while waiting for chooseUpgrade
   upgrades: PlayerUpgrades
+  // Server-tracked run stats
+  kills: number
+  bossKills: number
+  coins: number
+  damageDealt: number
 }
 
 export class GameRoom {
@@ -112,16 +122,25 @@ export class GameRoom {
   private interval: ReturnType<typeof setInterval> | null = null
   private bosses = new Map<number, number>()  // id → maxHp
   private started = false
+  private finished = false
+  private startMs = 0
+  private readonly isSolo: boolean
 
-  addPlayer(id: string, ws: WebSocket, characterType: string, username: string, x: number, y: number) {
+  // Called once when the game ends (won or all dead). Set by the room creator.
+  onGameEnd?: (results: PlayerRunData[]) => void
+
+  constructor(isSolo = false) { this.isSolo = isSolo }
+
+  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number) {
     if (this.started) return
     const isHost = this.players.length === 0
     this.players.push({
-      id, ws, x, y, characterType, username, dead: false, isHost, aura: 0, orbital: 0,
+      id, userId, ws, x, y, characterType, username, dead: false, isHost, aura: 0, orbital: 0,
       xp: 0, level: 1, pendingChoices: null, upgrades: emptyUpgrades(),
+      kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
     this.broadcastWaiting()
-    if (this.players.length >= MAX_PLAYERS) {
+    if (this.players.length >= MAX_PLAYERS || this.isSolo) {
       this.startGame()
     }
   }
@@ -161,6 +180,9 @@ export class GameRoom {
   markPlayerDead(id: string) {
     const p = this.players.find(p => p.id === id)
     if (p) p.dead = true
+    if (this.isSolo && this.players.every(p => p.dead)) {
+      this.finishGame(false)
+    }
   }
 
   relayProjectile(fromId: string, x: number, y: number, vx: number, vy: number) {
@@ -180,10 +202,21 @@ export class GameRoom {
     const enemy = this.spawner.findById(enemyId)
     if (!enemy || !enemy.active) return
 
+    if (player) player.damageDealt += safeDamage
+
     const died = enemy.takeDamage(safeDamage)
     if (died) {
       this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue })
       if (enemy.isBoss) this.broadcast({ type: 'bossHp', bossId: enemyId, hp: 0 })
+      if (player) {
+        player.kills++
+        if (enemy.isBoss) {
+          player.bossKills++
+          player.coins += 4 + Math.floor(Math.random() * 5)  // bosses always drop coins
+        } else if (Math.random() < COIN_DROP_CHANCE) {
+          player.coins++
+        }
+      }
       this.grantXP(enemy.xpValue)
     } else if (enemy.isBoss) {
       this.broadcast({ type: 'bossHp', bossId: enemyId, hp: enemy.hp })
@@ -248,10 +281,10 @@ export class GameRoom {
   removePlayer(id: string): boolean {
     const leaving = this.players.find(p => p.id === id)
     this.players = this.players.filter(p => p.id !== id)
-    // Only force-kill survivors if an alive player disconnects mid-game.
-    // Dead players navigating to Main Menu should not affect living players.
     if (leaving && !leaving.dead) {
       this.broadcast({ type: 'playerLeft' })
+      // Solo: player rage-quit while alive — save whatever they earned
+      if (this.isSolo && this.started) this.finishGame(false)
     }
     if (this.players.length === 0) {
       this.stop()
@@ -265,8 +298,14 @@ export class GameRoom {
   get isStarted(): boolean { return this.started }
   get waitingUsernames(): string[] { return this.players.map(p => p.username) }
 
+  sendRunSaved(userId: number, msg: { kills: number; timeSurvived: number; coins: number; won: boolean; newAchievements: string[] }) {
+    const p = this.players.find(p => p.userId === userId)
+    if (p) this.send(p.ws, { type: 'runSaved', ...msg })
+  }
+
   private startLoop() {
     this.started = true
+    this.startMs = Date.now()
     this.spawner.onBossWarning = (final) => {
       this.broadcast({ type: 'bossWarning', final })
     }
@@ -276,10 +315,43 @@ export class GameRoom {
     }
     this.spawner.onFinalBossDefeated = () => {
       this.broadcast({ type: 'gameOver', won: true })
-      this.stop()
+      this.finishGame(true)
     }
 
     this.interval = setInterval(() => this.tick(), TICK_MS)
+  }
+
+  private finishGame(won: boolean) {
+    if (this.finished) return
+    this.finished = true
+    this.stop()
+    if (!this.onGameEnd) return
+    const timeSurvived = Date.now() - this.startMs
+    const results: PlayerRunData[] = this.players.map(p => {
+      const u = p.upgrades
+      const weaponCount = 1
+        + (u.aura ? 1 : 0)
+        + (u.orbital > 0 ? 1 : 0)
+        + (u.boomerang ? 1 : 0)
+        + (u.flameTrail ? 1 : 0)
+        + (u.bloodNova ? 1 : 0)
+        + (u.lightning ? 1 : 0)
+        + (u.axe ? 1 : 0)
+      return {
+        userId: p.userId,
+        username: p.username,
+        kills: p.kills,
+        coins: p.coins,
+        timeSurvived,
+        won,
+        bossKills: p.bossKills,
+        level: p.level,
+        weaponCount,
+        multiplayer: !this.isSolo,
+        damageDealt: p.damageDealt,
+      }
+    })
+    this.onGameEnd(results)
   }
 
   private tick() {

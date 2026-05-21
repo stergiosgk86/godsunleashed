@@ -20,12 +20,19 @@ import { useCharacterStore } from './store/characterStore'
 import { clearRun } from './game/runSave'
 import { CHARACTER_DEFS } from './game/characters'
 import { setNetClient, activeNetClient } from './net/netState'
+import { NetClient } from './net/NetClient'
 import { runData } from './game/runData'
 import { AchievementToast } from './ui/AchievementToast'
 import { LobbyToast } from './ui/LobbyToast'
 import { soundSystem } from './game/SoundSystem'
-import type { NetClient } from './net/NetClient'
 import type { PlayerSnapshot } from './net/protocol'
+
+const WS_BASE = import.meta.env.VITE_SERVER_URL
+  ?? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
+
+function makeWsUrl(token: string) {
+  return `${WS_BASE}?token=${encodeURIComponent(token)}`
+}
 
 function parseJwt(token: string): { userId: number; username: string } {
   const payload = token.split('.')[1]
@@ -165,11 +172,9 @@ function App() {
       const shouldRestoreGame = sessionStorage.getItem('gods_screen') === 'game'
       if (currentToken) {
         await fetchProfile()
-        // Restore singleplayer session after page reload
+        // Restore singleplayer session after page reload (runs handlePlay path)
         if (shouldRestoreGame) {
-          startRun()
-          startRunWithToken()
-          setInGame(true)
+          void handlePlay()
         }
       }
 
@@ -208,29 +213,29 @@ function App() {
   }, [token])
 
   const runSubmittedRef = useRef(false)
-  const runTokenRef = useRef<string | null>(null)
 
-  async function startRunWithToken() {
-    runTokenRef.current = null
-    const authToken = useAuthStore.getState().token
-    if (!authToken) return
-    try {
-      const res = await fetch('/api/runs/start', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${authToken}` },
-      })
-      if (res.ok) {
-        const data = await res.json() as { token: string }
-        runTokenRef.current = data.token
+  // Register the runSaved handler on any net client (solo or multi).
+  // The server writes the run to DB and sends back the result.
+  function registerRunSavedHandler(net: NetClient) {
+    net.on('runSaved', (msg) => {
+      if (msg.newAchievements.length) {
+        for (const id of msg.newAchievements) {
+          const a = ACHIEVEMENT_MAP[id]
+          if (a) useGameStore.setState({ recentAchievement: { id, name: a.name } })
+        }
       }
-    } catch { /* non-fatal — submitRun will fail gracefully without a token */ }
+      useProfileStore.getState().fetchProfile()
+    })
   }
 
+  // Only used as a fallback when there is no active WS connection (should not happen
+  // in practice anymore, but kept so unauthenticated/offline edge cases degrade gracefully).
   function submitRun() {
     if (runSubmittedRef.current) return
+    if (activeNetClient) return  // server already saves WS-connected runs
     const s = useGameStore.getState()
     const authToken = useAuthStore.getState().token
-    if (!authToken || s.kills === 0) return  // skip empty runs
+    if (!authToken || s.kills === 0) return
     runSubmittedRef.current = true
     const timeMs = runData.elapsed
     const score = s.kills * 10 + s.sessionCoins * 5 + Math.floor(timeMs / 1000) * 2 + (s.isWon ? 5000 : 0)
@@ -246,20 +251,10 @@ function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
       body: JSON.stringify({
-        runToken: runTokenRef.current,
-        score,
-        kills: s.kills,
-        timeSurvived: timeMs,
-        coins: s.sessionCoins,
-        won: s.isWon,
-        multiplayer: !!activeNetClient,
-        bossKills: s.bossKills,
-        level: s.level,
-        damageDealt: s.damageDealt,
-        weaponCount,
-        tookDamage: s.tookDamageThisRun,
-        finalHp: s.hp,
-        maxHp: s.maxHp,
+        score, kills: s.kills, timeSurvived: timeMs, coins: s.sessionCoins,
+        won: s.isWon, multiplayer: false, bossKills: s.bossKills, level: s.level,
+        damageDealt: s.damageDealt, weaponCount, tookDamage: s.tookDamageThisRun,
+        finalHp: s.hp, maxHp: s.maxHp,
       }),
     })
       .then(r => r.json())
@@ -275,7 +270,7 @@ function App() {
       .catch(() => { /* non-fatal */ })
   }
 
-  // Submit run to leaderboard on death or win
+  // Submit run to leaderboard on death or win (fallback path only)
   useEffect(() => {
     if (!inGame) return
     runSubmittedRef.current = false
@@ -286,11 +281,19 @@ function App() {
     return unsub
   }, [inGame])
 
-  function handlePlay() {
-    setNetClient(null)
+  async function handlePlay() {
     clearRun()
     startRun()
-    startRunWithToken()
+    const authToken = useAuthStore.getState().token
+    const charType = useCharacterStore.getState().selectedCharacter
+    if (authToken) {
+      const net = new NetClient(makeWsUrl(authToken))
+      registerRunSavedHandler(net)
+      await new Promise<void>((resolve) => {
+        net.on('start', (msg) => { net.playerId = msg.yourId; setNetClient(net); resolve() })
+        net.onOpen(() => net.send({ type: 'join', characterType: charType, solo: true }))
+      })
+    }
     setInGame(true)
   }
 
@@ -299,9 +302,9 @@ function App() {
   }
 
   function handleLobbyReady(net: NetClient, _players: PlayerSnapshot[]) {
+    registerRunSavedHandler(net)
     setNetClient(net)
     startRun()
-    startRunWithToken()
     setInLobby(false)
     setInGame(true)
   }
@@ -329,9 +332,7 @@ function App() {
       setInGame(false)
       setInLobby(true)
     } else {
-      startRun()
-      startRunWithToken()
-      setRunKey(k => k + 1)
+      void handlePlay().then(() => setRunKey(k => k + 1))
     }
   }
 

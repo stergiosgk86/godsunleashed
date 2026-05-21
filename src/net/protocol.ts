@@ -21,7 +21,7 @@ export interface PlayerSnapshot {
 
 // Client → Server
 export type C2SMessage =
-  | { type: 'join'; characterType: string }
+  | { type: 'join'; characterType: string; solo?: boolean }
   | { type: 'input'; x: number; y: number; aura: number; orbital: number }
   | { type: 'hit'; enemyId: number; damage: number }
   | { type: 'died' }
@@ -43,3 +43,4 @@ export type S2CMessage =
   | { type: 'projectile'; playerId: string; x: number; y: number; vx: number; vy: number }
   | { type: 'bossProjectile'; enemyId: number; x: number; y: number; vx: number; vy: number }
   | { type: 'levelUp'; level: number; xp: number; xpToNext: number; choices: string[] }
+  | { type: 'runSaved'; kills: number; timeSurvived: number; coins: number; won: boolean; newAchievements: string[] }
