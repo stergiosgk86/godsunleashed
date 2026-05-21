@@ -392,6 +392,7 @@ export class MainScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
+    if (useGameStore.getState().isPaused) return
     this.chunkManager.update(this.player.x, this.player.y)
     this.player.touchVx = this.joystick.vx
     this.player.touchVy = this.joystick.vy
