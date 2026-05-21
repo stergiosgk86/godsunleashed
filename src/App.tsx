@@ -41,16 +41,9 @@ function parseJwt(token: string): { userId: number; username: string } {
 
 function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const togglePause = useGameStore(s => s.togglePause)
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const gs = useGameStore.getState()
-      if (e.key === 'Escape' && !gs.isDead && !gs.isWon) togglePause()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [togglePause])
+  // Pausing via Esc is handled inside MainScene (Phaser keyboard).
+  // Resuming via Esc is handled in PauseMenu (window listener, works while Phaser scene is paused).
 
   useEffect(() => {
     const config: Phaser.Types.Core.GameConfig = {
