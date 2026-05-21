@@ -203,7 +203,7 @@ function App() {
       } catch { /* non-fatal */ }
     }
     poll()
-    const id = setInterval(poll, 5000)
+    const id = setInterval(poll, 2000)
     return () => clearInterval(id)
   }, [token])
 
