@@ -20,7 +20,7 @@ const LANE_MARGIN  = 20          // world-px beyond the screen edge for regular 
 const RECYCLE_EXTRA = 300  // additional world-px past the spawn edge before an enemy is recycled
 const INITIAL_FILL_PER_EDGE = 5  // enemies pre-spawned per edge at run start
 const MAX_ENEMIES = 600
-const BOSS_FIRST_SPAWN = 90_000
+const BOSS_FIRST_SPAWN = 150_000
 const BOSS_REPEAT = 120_000
 const BOSS_WARNING = 5_000
 const FINAL_BOSS_LOCK = RUN_DURATION - 30_000  // stop regular boss cycle 30s before end
@@ -38,13 +38,13 @@ interface LaneDef {
 
 const LANE_DEFS: LaneDef[] = [
   { type: 'basic',       startTime: 0,        intervalStart: 1200,  intervalEnd: 250,  burstStart: 1, burstEnd: 3 },
-  { type: 'speeder',     startTime: 20_000,   intervalStart: 1800,  intervalEnd: 350,  burstStart: 1, burstEnd: 3 },
-  { type: 'tank',        startTime: 45_000,   intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
-  { type: 'exploder',    startTime: 60_000,   intervalStart: 3500,  intervalEnd: 900,  burstStart: 1, burstEnd: 2 },
-  { type: 'ghost',       startTime: 70_000,   intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
-  { type: 'ranged',      startTime: 120_000,  intervalStart: 2500,  intervalEnd: 600,  burstStart: 1, burstEnd: 2 },
-  { type: 'charger',     startTime: 300_000,  intervalStart: 4000,  intervalEnd: 1200, burstStart: 1, burstEnd: 2 },
-  { type: 'necromancer', startTime: 480_000,  intervalStart: 6000,  intervalEnd: 2000, burstStart: 1, burstEnd: 1 },
+  { type: 'speeder',     startTime: 50_000,   intervalStart: 1800,  intervalEnd: 350,  burstStart: 1, burstEnd: 3 },
+  { type: 'tank',        startTime: 90_000,   intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
+  { type: 'exploder',    startTime: 120_000,  intervalStart: 3500,  intervalEnd: 900,  burstStart: 1, burstEnd: 2 },
+  { type: 'ghost',       startTime: 150_000,  intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
+  { type: 'ranged',      startTime: 210_000,  intervalStart: 2500,  intervalEnd: 600,  burstStart: 1, burstEnd: 2 },
+  { type: 'charger',     startTime: 480_000,  intervalStart: 4000,  intervalEnd: 1200, burstStart: 1, burstEnd: 2 },
+  { type: 'necromancer', startTime: 780_000,  intervalStart: 6000,  intervalEnd: 2000, burstStart: 1, burstEnd: 1 },
 ]
 
 interface SurgeDef {
@@ -444,7 +444,7 @@ export class EnemySpawner {
   private spawnBoss(playerX: number, playerY: number) {
     this.bossAlive = true
     const { x, y } = this.edgeSpawnPoint(playerX, playerY)
-    if (this.elapsed >= 5 * 60_000) {
+    if (this.elapsed < 5 * 60_000) {
       const boss = new SummonerBoss(this.scene, x, y)
       boss.onSummon = (bx, by, count, phase2) => {
         for (let i = 0; i < count; i++) {
@@ -468,13 +468,13 @@ export class EnemySpawner {
     if (this.bossAlive) return this.enemies.some(e => e instanceof SummonerBoss && e.active) ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
     if (this.surgeActive) return '⚡ SURGE!'
     const t = overrideElapsed ?? this.elapsed
-    if (t < 20_000)  return 'Wave 1 — Basic'
-    if (t < 45_000)  return 'Wave 2 — + Speeders'
-    if (t < 60_000)  return 'Wave 3 — + Tanks'
-    if (t < 70_000)  return 'Wave 4 — + Exploders'
-    if (t < 120_000) return 'Wave 5 — + Ghosts'
-    if (t < 300_000) return 'Wave 6 — + Ranged'
-    if (t < 480_000) return 'Wave 7 — + Chargers'
+    if (t < 50_000)  return 'Wave 1 — Basic'
+    if (t < 90_000)  return 'Wave 2 — + Speeders'
+    if (t < 120_000) return 'Wave 3 — + Tanks'
+    if (t < 150_000) return 'Wave 4 — + Exploders'
+    if (t < 210_000) return 'Wave 5 — + Ghosts'
+    if (t < 480_000) return 'Wave 6 — + Ranged'
+    if (t < 780_000) return 'Wave 7 — + Chargers'
     return 'Wave 8 — + Necromancers'
   }
 }

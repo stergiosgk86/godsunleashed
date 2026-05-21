@@ -11,7 +11,7 @@ import { authRouter } from './routes/auth.js'
 import { apiRouter } from './routes/api.js'
 import type { C2SMessage } from './protocol.js'
 
-const VALID_CHARACTER_TYPES = new Set(['knight', 'rogue', 'witch', 'shade', 'zeus', 'ares'])
+const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus'])
 
 const SECRET = process.env.JWT_SECRET!
 

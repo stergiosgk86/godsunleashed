@@ -1,4 +1,4 @@
-export type CharacterType = 'knight' | 'rogue' | 'witch' | 'shade' | 'zeus' | 'ares'
+export type CharacterType = 'ares' | 'rogue' | 'witch' | 'shade' | 'zeus'
 
 export interface CharacterDef {
   id: CharacterType
@@ -29,18 +29,21 @@ export interface CharacterDef {
 }
 
 export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
-  knight: {
-    id: 'knight', name: 'Knight', trait: 'Steadfast',
-    description: 'Balanced in all aspects. A solid choice for any run.',
-    spriteKey: 'player', color: '#4488ff',
+  ares: {
+    id: 'ares', name: 'Ares', trait: 'Vanguard Strike',
+    description: 'God of War. Devastating frontal power — but can only strike enemies ahead.',
+    spriteKey: 'char_ares', color: '#dd3311',
     statLines: [
-      { label: '1 Armor',                positive: true },
-      { label: 'No other bonuses',        positive: true },
+      { label: '+50% Might',          positive: true  },
+      { label: '1 Armor',             positive: true  },
+      { label: '+30 Move Speed',      positive: true  },
+      { label: '+50 Max HP',          positive: true  },
+      { label: 'Front Arc Only',      positive: false },
     ],
-    bonusMaxHp: 0, baseArmor: 1, mightMult: 1.0, bonusMoveSpeed: 0,
+    bonusMaxHp: 50, baseArmor: 1, mightMult: 1.5, bonusMoveSpeed: 30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
-    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, frontArcOnly: false,
-    scale: 1.5,
+    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, frontArcOnly: true,
+    scale: 0.85,
   },
   rogue: {
     id: 'rogue', name: 'Rogue', trait: 'Shadow Step',
@@ -106,22 +109,6 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     scale: 1.0,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 768 },
   },
-  ares: {
-    id: 'ares', name: 'Ares', trait: 'Vanguard Strike',
-    description: 'God of War. Devastating frontal power — but can only strike enemies ahead.',
-    spriteKey: 'char_ares', color: '#dd3311',
-    statLines: [
-      { label: '+50% Might',          positive: true  },
-      { label: '1 Armor',             positive: true  },
-      { label: '+30 Move Speed',       positive: true  },
-      { label: 'Front Arc Only',       positive: false },
-      { label: '-10 Max HP',           positive: false },
-    ],
-    bonusMaxHp: -10, baseArmor: 1, mightMult: 1.5, bonusMoveSpeed: 30,
-    attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
-    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, frontArcOnly: true,
-    scale: 0.85,
-  },
 }
 
-export const ALL_CHARACTERS: CharacterType[] = ['knight', 'rogue', 'witch', 'shade', 'zeus', 'ares']
+export const ALL_CHARACTERS: CharacterType[] = ['ares', 'rogue', 'witch', 'shade', 'zeus']

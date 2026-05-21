@@ -9,8 +9,8 @@ const INVULN_INTERVAL  = 10_000  // 10s vulnerable before next shield
 const INVULN_DURATION  =  5_000  // 5s invulnerable
 const SUMMON_INTERVAL_P1 = 8_000
 const SUMMON_INTERVAL_P2 = 4_500
-const SUMMON_COUNT_P1  = 6
-const SUMMON_COUNT_P2  = 10
+const SUMMON_COUNT_P1  = 12
+const SUMMON_COUNT_P2  = 18
 
 const TINT_NORMAL = 0x33dd77
 const TINT_P2     = 0xff8844

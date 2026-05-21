@@ -514,7 +514,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const { selectedCharacter: _selectedCharacter, setCharacter } = useCharacterStore()
   const unlockCostOfSelected = CHARACTER_UNLOCK_COSTS[_selectedCharacter]
   const isSelectedLocked = unlockCostOfSelected !== undefined && !unlockedCharacters.includes(_selectedCharacter)
-  const selectedCharacter = isSelectedLocked ? 'knight' : _selectedCharacter
+  const selectedCharacter = isSelectedLocked ? 'ares' : _selectedCharacter
   type MenuView = 'home' | 'shop' | 'characters' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds'
   const VALID_VIEWS = new Set<string>(['home', 'shop', 'characters', 'statistics', 'leaderboard', 'achievements', 'admin', 'settings', 'controls', 'sounds'])
   const [view, setViewRaw] = useState<MenuView>(() => {
@@ -528,6 +528,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const [confirmRefundAll, setConfirmRefundAll] = useState(false)
   const [confirmRefund, setConfirmRefund] = useState<keyof MetaUpgrades | null>(null)
   const [confirmUnlock, setConfirmUnlock] = useState<string | null>(null)
+  const [unlockError, setUnlockError] = useState<string | null>(null)
   const mob = useIsMobile()
 
   const VIEW_PARENT: Partial<Record<MenuView, MenuView>> = {
@@ -539,7 +540,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   useEffect(() => {
     function onEsc(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
-      if (confirmUnlock)    { setConfirmUnlock(null);        return }
+      if (confirmUnlock)    { setConfirmUnlock(null); setUnlockError(null); return }
       if (confirmRefundAll) { setConfirmRefundAll(false);    return }
       if (confirmRefund)    { setConfirmRefund(null);        return }
       const parent = VIEW_PARENT[view]
@@ -752,7 +753,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   {isLocked && (
                     <button
                       type="button"
-                      onClick={e => { e.stopPropagation(); setConfirmUnlock(id) }}
+                      onClick={e => { e.stopPropagation(); setUnlockError(null); setConfirmUnlock(id) }}
                       style={{
                         flexShrink: 0, position: 'relative', zIndex: 1,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
@@ -1171,7 +1172,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               background: 'rgba(0,0,0,0.78)',
               backdropFilter: 'blur(4px)',
             }}
-            onClick={() => setConfirmUnlock(null)}
+            onClick={() => { setConfirmUnlock(null); setUnlockError(null) }}
           >
             <div
               onClick={e => e.stopPropagation()}
@@ -1205,13 +1206,20 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   Not enough coins — you have ◈ {coins}
                 </div>
               )}
+              {unlockError && (
+                <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#ff6644', textAlign: 'center' }}>
+                  {unlockError}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 10, width: '100%' }}>
                 <button
                   type="button"
                   disabled={!canAfford}
                   onClick={async () => {
+                    setUnlockError(null)
                     const ok = await unlockCharacter(confirmUnlock)
                     if (ok) { setCharacter(confirmUnlock as any); setConfirmUnlock(null) }
+                    else setUnlockError('Unlock failed — please try again')
                   }}
                   style={{
                     flex: 1, padding: '10px 0',
@@ -1230,7 +1238,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setConfirmUnlock(null)}
+                  onClick={() => { setConfirmUnlock(null); setUnlockError(null) }}
                   style={{
                     flex: 1, padding: '10px 0',
                     background: 'rgba(20,20,50,0.5)',

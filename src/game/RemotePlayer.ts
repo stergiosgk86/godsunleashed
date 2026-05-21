@@ -2,7 +2,6 @@ import Phaser from 'phaser'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 
 const CHAR_SPRITE: Record<string, string> = {
-  knight:  'player',
   rogue:   'char_rogue',
   witch:   'char_witch',
   shade:   'char_shade',

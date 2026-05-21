@@ -10,7 +10,7 @@ interface CharacterState {
 export const useCharacterStore = create<CharacterState>()(
   persist(
     (set) => ({
-      selectedCharacter: 'knight',
+      selectedCharacter: 'ares',
       setCharacter: (type) => set({ selectedCharacter: type }),
     }),
     { name: 'gods-character' }
