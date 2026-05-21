@@ -33,10 +33,28 @@ app.use(passport.initialize())
 app.use('/auth', authRouter)
 app.use('/api',  apiRouter)
 
-// Public lobby status — no auth required, minimal info
-app.get('/lobby/status', (_req, res) => {
+// SSE clients waiting for lobby updates
+const lobbyListeners = new Set<import('http').ServerResponse>()
+
+function pushLobbyUpdate() {
   const names = openRoom ? openRoom.waitingUsernames : []
-  res.json({ playersWaiting: names.length, names })
+  const payload = `data: ${JSON.stringify({ playersWaiting: names.length, names })}\n\n`
+  for (const res of lobbyListeners) res.write(payload)
+}
+
+// Lobby stream — SSE, no auth required
+app.get('/lobby/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.flushHeaders()
+
+  // Send current state immediately so the client doesn't wait for the next change
+  const names = openRoom ? openRoom.waitingUsernames : []
+  res.write(`data: ${JSON.stringify({ playersWaiting: names.length, names })}\n\n`)
+
+  lobbyListeners.add(res)
+  req.on('close', () => lobbyListeners.delete(res))
 })
 
 // Serve the built React app for all non-API routes
@@ -150,6 +168,7 @@ wss.on('connection', (ws) => {
         console.log(`[${label}] room full → game starting`)
         openRoom = null
       }
+      if (!msg.solo) pushLobbyUpdate()
       return
     }
 
@@ -177,8 +196,10 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     console.log(`[${label}] disconnected`)
     if (room) {
+      const wasOpen = openRoom === room
       const empty = room.removePlayer(playerId)
-      if (empty && openRoom === room) openRoom = null
+      if (empty && wasOpen) { openRoom = null; pushLobbyUpdate() }
+      else if (wasOpen) pushLobbyUpdate()  // player left but room still has others waiting
     }
   })
 })

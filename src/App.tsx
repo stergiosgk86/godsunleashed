@@ -194,11 +194,10 @@ function App() {
 
   useEffect(() => {
     if (!token) return
-    const poll = async () => {
+    const es = new EventSource('/lobby/stream')
+    es.onmessage = (e) => {
       try {
-        const res = await fetch('/lobby/status')
-        if (!res.ok) return
-        const data = await res.json() as { playersWaiting: number; names: string[] }
+        const data = JSON.parse(e.data as string) as { playersWaiting: number; names: string[] }
         if (!inLobbyRef.current && data.playersWaiting > prevLobbyCount.current) {
           setLobbyNames(data.names)
         } else if (data.playersWaiting === 0) {
@@ -207,9 +206,7 @@ function App() {
         prevLobbyCount.current = data.playersWaiting
       } catch { /* non-fatal */ }
     }
-    poll()
-    const id = setInterval(poll, 1000)
-    return () => clearInterval(id)
+    return () => es.close()
   }, [token])
 
   const runSubmittedRef = useRef(false)
