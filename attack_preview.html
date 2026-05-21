@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Ares Attack Preview</title>
+  <style>
+    body { background: #0d0d22; display: flex; gap: 40px; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: monospace; }
+    .panel { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    canvas { background: #111128; border: 1px solid #333366; border-radius: 8px; }
+    h2 { color: #aaaaff; margin: 0; font-size: 14px; letter-spacing: 2px; text-transform: uppercase; }
+    p { color: #666699; margin: 0; font-size: 11px; text-align: center; max-width: 200px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+<div class="panel">
+  <h2>Option A — Sword Swing</h2>
+  <canvas id="swordCanvas" width="240" height="240"></canvas>
+  <p>Blade rotates in an arc.<br>Trail follows behind the tip.</p>
+</div>
+
+<div class="panel">
+  <h2>Option B — Whip Style</h2>
+  <canvas id="whipCanvas" width="240" height="240"></canvas>
+  <p>Crescent snaps in instantly.<br>Alternates left / right each attack.</p>
+</div>
+
+<script>
+const CX = 120, CY = 120, R = 90
+
+// ─── OPTION A: SWORD SWING ───────────────────────────────────────────────────
+const swordCanvas = document.getElementById('swordCanvas')
+const sg = swordCanvas.getContext('2d')
+
+let swordT = 0, swordFade = 1, swordPhase = 'swing'
+let swordDir = 1  // facing right
+
+function drawSword(t, alpha) {
+  sg.clearRect(0, 0, 240, 240)
+  const baseAngle = 0  // facing right
+  const startAngle = baseAngle - Math.PI / 2
+  const currentAngle = startAngle + t * Math.PI
+
+  if (t > 0.02) {
+    const steps = 22
+    const swept = t * Math.PI
+
+    // Full trail glow
+    sg.beginPath()
+    for (let i = 0; i <= steps; i++) {
+      const a = startAngle + (i / steps) * swept
+      const x = CX + Math.cos(a) * R, y = CY + Math.sin(a) * R
+      i === 0 ? sg.moveTo(x, y) : sg.lineTo(x, y)
+    }
+    sg.strokeStyle = `rgba(255,238,210,${alpha * 0.09})`
+    sg.lineWidth = 10
+    sg.stroke()
+
+    // Bright recent streak
+    const recentSwept = Math.min(swept, Math.PI * 0.4)
+    const recentStart = currentAngle - recentSwept
+    sg.beginPath()
+    for (let i = 0; i <= steps; i++) {
+      const a = recentStart + (i / steps) * recentSwept
+      const x = CX + Math.cos(a) * R, y = CY + Math.sin(a) * R
+      i === 0 ? sg.moveTo(x, y) : sg.lineTo(x, y)
+    }
+    sg.strokeStyle = `rgba(255,238,210,${alpha * 0.6})`
+    sg.lineWidth = 3.5
+    sg.stroke()
+  }
+
+  // Blade glow
+  sg.beginPath()
+  sg.moveTo(CX + Math.cos(currentAngle) * 13, CY + Math.sin(currentAngle) * 13)
+  sg.lineTo(CX + Math.cos(currentAngle) * R, CY + Math.sin(currentAngle) * R)
+  sg.strokeStyle = `rgba(255,238,210,${alpha * 0.18})`
+  sg.lineWidth = 10
+  sg.stroke()
+
+  // Blade core
+  sg.beginPath()
+  sg.moveTo(CX + Math.cos(currentAngle) * 13, CY + Math.sin(currentAngle) * 13)
+  sg.lineTo(CX + Math.cos(currentAngle) * R, CY + Math.sin(currentAngle) * R)
+  sg.strokeStyle = `rgba(255,255,255,${alpha * 0.95})`
+  sg.lineWidth = 2.5
+  sg.stroke()
+
+  // Cross-guard
+  const perp = currentAngle + Math.PI / 2
+  const gx = CX + Math.cos(currentAngle) * 13, gy = CY + Math.sin(currentAngle) * 13
+  sg.beginPath()
+  sg.moveTo(gx + Math.cos(perp) * 5, gy + Math.sin(perp) * 5)
+  sg.lineTo(gx - Math.cos(perp) * 5, gy - Math.sin(perp) * 5)
+  sg.strokeStyle = `rgba(210,210,255,${alpha * 0.85})`
+  sg.lineWidth = 2
+  sg.stroke()
+
+  // Tip flash
+  sg.beginPath()
+  sg.arc(CX + Math.cos(currentAngle) * R, CY + Math.sin(currentAngle) * R, 3, 0, Math.PI * 2)
+  sg.fillStyle = `rgba(255,255,255,${alpha * 0.75})`
+  sg.fill()
+
+  // Player dot
+  sg.beginPath()
+  sg.arc(CX, CY, 5, 0, Math.PI * 2)
+  sg.fillStyle = '#dd3311'
+  sg.fill()
+}
+
+let swordLast = 0
+const SWORD_SWING = 140, SWORD_FADE = 130, SWORD_PAUSE = 500
+let swordTimer = 0
+
+function animateSword(ts) {
+  const delta = ts - swordLast; swordLast = ts
+  swordTimer += delta
+
+  if (swordPhase === 'pause') {
+    sg.clearRect(0, 0, 240, 240)
+    sg.beginPath(); sg.arc(CX, CY, 5, 0, Math.PI * 2)
+    sg.fillStyle = '#dd3311'; sg.fill()
+    if (swordTimer > SWORD_PAUSE) { swordTimer = 0; swordPhase = 'swing'; swordT = 0 }
+  } else if (swordPhase === 'swing') {
+    swordT = Math.min(1, swordTimer / SWORD_SWING)
+    drawSword(swordT, 1)
+    if (swordTimer >= SWORD_SWING) { swordTimer = 0; swordPhase = 'fade'; swordFade = 1 }
+  } else if (swordPhase === 'fade') {
+    swordFade = Math.max(0, 1 - swordTimer / SWORD_FADE)
+    drawSword(1, swordFade)
+    if (swordTimer >= SWORD_FADE) { swordTimer = 0; swordPhase = 'pause' }
+  }
+  requestAnimationFrame(animateSword)
+}
+requestAnimationFrame(ts => { swordLast = ts; animateSword(ts) })
+
+
+// ─── OPTION B: WHIP STYLE ────────────────────────────────────────────────────
+const whipCanvas = document.getElementById('whipCanvas')
+const wg = whipCanvas.getContext('2d')
+
+let whipPhase = 'pause', whipTimer = 0, whipLast = 0
+let whipSide = 1  // 1 = right, -1 = left
+let whipFade = 1
+
+const WHIP_SNAP = 70, WHIP_HOLD = 80, WHIP_FADE = 160, WHIP_PAUSE = 500
+
+// Whip is a horizontal crescent extending to one side
+// side=1: extends to the right of facing (down on screen since facing=right)
+function drawWhip(progress, alpha, side) {
+  wg.clearRect(0, 0, 240, 240)
+
+  // The crescent: arc from -20° to +160° of the perpendicular direction
+  // side=1 means the crescent opens to the right of facing (which is facing=0=right, so crescent goes downward)
+  // In VS, whip goes left or right. Let's say facing=right (0°), whip alternates up/down
+  const facingAngle = 0  // facing right
+  const perpBase = facingAngle + side * Math.PI / 2  // perpendicular direction
+
+  // Crescent: a curved slash in the perpendicular direction
+  // Spans from perpBase - 60° to perpBase + 60°, at radius R
+  // But it's elongated — inner radius ~30, outer ~R
+  const halfSpan = Math.PI * 0.55  // ~100° arc span
+  const outerR = R * progress
+  const innerR = R * 0.25
+
+  const steps = 28
+
+  if (progress > 0.05) {
+    // Faint fill
+    wg.beginPath()
+    // Outer arc
+    for (let i = 0; i <= steps; i++) {
+      const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+      const x = CX + Math.cos(a) * outerR, y = CY + Math.sin(a) * outerR
+      i === 0 ? wg.moveTo(x, y) : wg.lineTo(x, y)
+    }
+    // Inner arc (reverse)
+    for (let i = steps; i >= 0; i--) {
+      const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+      const x = CX + Math.cos(a) * innerR, y = CY + Math.sin(a) * innerR
+      wg.lineTo(x, y)
+    }
+    wg.closePath()
+    wg.fillStyle = `rgba(255,240,180,${alpha * 0.08})`
+    wg.fill()
+
+    // Outer glow arc
+    wg.beginPath()
+    for (let i = 0; i <= steps; i++) {
+      const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+      const x = CX + Math.cos(a) * outerR, y = CY + Math.sin(a) * outerR
+      i === 0 ? wg.moveTo(x, y) : wg.lineTo(x, y)
+    }
+    wg.strokeStyle = `rgba(255,240,180,${alpha * 0.15})`
+    wg.lineWidth = 9
+    wg.stroke()
+
+    // Bright outer arc edge
+    wg.beginPath()
+    for (let i = 0; i <= steps; i++) {
+      const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+      const x = CX + Math.cos(a) * outerR, y = CY + Math.sin(a) * outerR
+      i === 0 ? wg.moveTo(x, y) : wg.lineTo(x, y)
+    }
+    wg.strokeStyle = `rgba(255,255,255,${alpha * 0.92})`
+    wg.lineWidth = 2
+    wg.stroke()
+
+    // Inner arc (inner edge of crescent)
+    wg.beginPath()
+    for (let i = 0; i <= steps; i++) {
+      const a = perpBase - halfSpan + (i / steps) * halfSpan * 2
+      const x = CX + Math.cos(a) * innerR, y = CY + Math.sin(a) * innerR
+      i === 0 ? wg.moveTo(x, y) : wg.lineTo(x, y)
+    }
+    wg.strokeStyle = `rgba(255,255,255,${alpha * 0.4})`
+    wg.lineWidth = 1.5
+    wg.stroke()
+
+    // Two end lines connecting inner to outer
+    for (const s of [-1, 1]) {
+      const a = perpBase + s * halfSpan
+      wg.beginPath()
+      wg.moveTo(CX + Math.cos(a) * innerR, CY + Math.sin(a) * innerR)
+      wg.lineTo(CX + Math.cos(a) * outerR, CY + Math.sin(a) * outerR)
+      wg.strokeStyle = `rgba(255,255,255,${alpha * 0.5})`
+      wg.lineWidth = 1.5
+      wg.stroke()
+    }
+  }
+
+  // Player dot
+  wg.beginPath()
+  wg.arc(CX, CY, 5, 0, Math.PI * 2)
+  wg.fillStyle = '#dd3311'
+  wg.fill()
+}
+
+function animateWhip(ts) {
+  const delta = ts - whipLast; whipLast = ts
+  whipTimer += delta
+
+  if (whipPhase === 'pause') {
+    wg.clearRect(0, 0, 240, 240)
+    wg.beginPath(); wg.arc(CX, CY, 5, 0, Math.PI * 2)
+    wg.fillStyle = '#dd3311'; wg.fill()
+    if (whipTimer > WHIP_PAUSE) {
+      whipTimer = 0; whipPhase = 'snap'
+      whipSide *= -1  // alternate sides
+    }
+  } else if (whipPhase === 'snap') {
+    const p = Math.min(1, whipTimer / WHIP_SNAP)
+    // Ease out cubic for snap
+    const ease = 1 - Math.pow(1 - p, 3)
+    drawWhip(ease, 1, whipSide)
+    if (whipTimer >= WHIP_SNAP) { whipTimer = 0; whipPhase = 'hold' }
+  } else if (whipPhase === 'hold') {
+    drawWhip(1, 1, whipSide)
+    if (whipTimer >= WHIP_HOLD) { whipTimer = 0; whipPhase = 'fade' }
+  } else if (whipPhase === 'fade') {
+    const fade = Math.max(0, 1 - whipTimer / WHIP_FADE)
+    drawWhip(1, fade, whipSide)
+    if (whipTimer >= WHIP_FADE) { whipTimer = 0; whipPhase = 'pause' }
+  }
+
+  requestAnimationFrame(animateWhip)
+}
+requestAnimationFrame(ts => { whipLast = ts; animateWhip(ts) })
+</script>
+</body>
+</html>

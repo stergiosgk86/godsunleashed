@@ -72,6 +72,7 @@ export function playDir(
   moving: boolean,
   idleFrames: Record<Direction, number> = IDLE_FRAMES
 ): Direction {
+  if (!sprite.active || !sprite.anims) return lastDir
   if (!moving) {
     if (sprite.anims.isPlaying) {
       sprite.anims.stop()
