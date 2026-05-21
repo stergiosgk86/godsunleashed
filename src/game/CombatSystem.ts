@@ -727,7 +727,7 @@ export class CombatSystem {
           this.divineTimer = 0
         } else {
           // Active: stays up indefinitely until hit
-          const pulse = 0.8 + 0.2 * Math.sin(this.divineAngle * 4)
+          const pulse = 0.8 + 0.2 * Math.sin(this.divineAngle * 1.5)
           const R = 38 * pulse
           this.divineGraphic.fillStyle(0xffee88, 0.12 * pulse)
           this.divineGraphic.fillCircle(playerX, playerY, R * 1.3)
