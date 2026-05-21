@@ -32,6 +32,12 @@ app.use(passport.initialize())
 app.use('/auth', authRouter)
 app.use('/api',  apiRouter)
 
+// Public lobby status — no auth required, minimal info
+app.get('/lobby/status', (_req, res) => {
+  const names = openRoom ? openRoom.waitingUsernames : []
+  res.json({ playersWaiting: names.length, names })
+})
+
 // Serve the built React app for all non-API routes
 app.use(express.static(DIST))
 app.get('/{*path}', (_req, res) => {

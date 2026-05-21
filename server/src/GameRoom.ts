@@ -118,6 +118,7 @@ export class GameRoom {
   get isFull(): boolean { return this.players.length >= MAX_PLAYERS }
   get isEmpty(): boolean { return this.players.length === 0 }
   get isStarted(): boolean { return this.started }
+  get waitingUsernames(): string[] { return this.players.map(p => p.username) }
 
   private startLoop() {
     this.started = true

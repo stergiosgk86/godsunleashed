@@ -22,6 +22,7 @@ import { CHARACTER_DEFS } from './game/characters'
 import { setNetClient, activeNetClient } from './net/netState'
 import { runData } from './game/runData'
 import { AchievementToast } from './ui/AchievementToast'
+import { LobbyToast } from './ui/LobbyToast'
 import { soundSystem } from './game/SoundSystem'
 import type { NetClient } from './net/NetClient'
 import type { PlayerSnapshot } from './net/protocol'
@@ -96,7 +97,10 @@ function App() {
   const [inLobby, setInLobby] = useState(false)
   const [runKey, setRunKey] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [lobbyNames, setLobbyNames] = useState<string[] | null>(null)
   const initRef = useRef(false)
+  const prevLobbyCount = useRef(0)
+  const inLobbyRef = useRef(false)
 
   const token = useAuthStore(s => s.token)
   const setAuth = useAuthStore(s => s.setAuth)
@@ -177,6 +181,29 @@ function App() {
   useEffect(() => {
     sessionStorage.setItem('gods_screen', inGame ? 'game' : 'menu')
   }, [inGame])
+
+  useEffect(() => {
+    inLobbyRef.current = inLobby
+    if (!inLobby) prevLobbyCount.current = 0
+  }, [inLobby])
+
+  useEffect(() => {
+    if (!token) return
+    const poll = async () => {
+      try {
+        const res = await fetch('/lobby/status')
+        if (!res.ok) return
+        const data = await res.json() as { playersWaiting: number; names: string[] }
+        if (!inLobbyRef.current && data.playersWaiting > prevLobbyCount.current) {
+          setLobbyNames(data.names)
+        }
+        prevLobbyCount.current = data.playersWaiting
+      } catch { /* non-fatal */ }
+    }
+    poll()
+    const id = setInterval(poll, 5000)
+    return () => clearInterval(id)
+  }, [token])
 
   const runSubmittedRef = useRef(false)
   const runTokenRef = useRef<string | null>(null)
@@ -331,11 +358,25 @@ function App() {
     )
   }
 
+  const lobbyToastEl = lobbyNames ? (
+    <LobbyToast
+      names={lobbyNames}
+      onDismiss={() => setLobbyNames(null)}
+      onJoin={() => { setLobbyNames(null); handleMultiplayer() }}
+    />
+  ) : null
+
   if (!inGame) {
-    return <MainMenu onPlay={handlePlay} onMultiplayer={handleMultiplayer} onLogout={handleLogout} />
+    return <>
+      <MainMenu onPlay={handlePlay} onMultiplayer={handleMultiplayer} onLogout={handleLogout} />
+      {lobbyToastEl}
+    </>
   }
 
-  return <GameView key={runKey} onQuit={handleQuit} onPlayAgain={handlePlayAgain} />
+  return <>
+    <GameView key={runKey} onQuit={handleQuit} onPlayAgain={handlePlayAgain} />
+    {lobbyToastEl}
+  </>
 }
 
 export default App
