@@ -36,7 +36,7 @@ interface ProfileStore {
   purchaseUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
   refundUpgrade: (upgrade: keyof MetaUpgrades) => Promise<boolean>
   refundAllUpgrades: () => Promise<boolean>
-  unlockCharacter: (character: string) => Promise<boolean>
+  unlockCharacter: (character: string) => Promise<string | true>
   reset: () => void
 }
 
@@ -122,18 +122,21 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
 
   unlockCharacter: async (character) => {
     const token = useAuthStore.getState().token
-    if (!token) return false
+    if (!token) return 'Not logged in'
     try {
       const res = await fetch('/api/characters/unlock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ character }),
       })
-      if (!res.ok) return false
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        return body.error ?? `Server error ${res.status}`
+      }
       const data = await res.json() as { coins: number; unlocked_characters: string[] }
       set({ coins: data.coins, unlockedCharacters: data.unlocked_characters })
       return true
-    } catch { return false }
+    } catch { return 'Network error' }
   },
 
   reset: () => set({ coins: 0, upgrades: emptyUpgrades(), unlockedCharacters: [], loaded: false }),

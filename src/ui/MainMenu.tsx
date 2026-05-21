@@ -1217,9 +1217,9 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   disabled={!canAfford}
                   onClick={async () => {
                     setUnlockError(null)
-                    const ok = await unlockCharacter(confirmUnlock)
-                    if (ok) { setCharacter(confirmUnlock as any); setConfirmUnlock(null) }
-                    else setUnlockError('Unlock failed — please try again')
+                    const result = await unlockCharacter(confirmUnlock)
+                    if (result === true) { setCharacter(confirmUnlock as any); setConfirmUnlock(null) }
+                    else setUnlockError(result)
                   }}
                   style={{
                     flex: 1, padding: '10px 0',
