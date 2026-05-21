@@ -15,14 +15,18 @@ apiRouter.use(requireAuth)
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const MAX_PROFILE_COINS  = 5_000_000
-const MAX_RUN_SCORE      = 10_000_000
-const MAX_RUN_KILLS      = 10_000
+// Observed solo record: ~5,100 kills. 4p doubles spawn rate so give headroom.
+// Cap at 7,000 — blocks 10k submissions while allowing legitimate top runs.
+// Per-sec rate check can't distinguish legit from fake (legit peak ~6.25/s)
+// so keep it generous; the hard cap is the real gate.
+const MAX_RUN_SCORE      = 100_000
+const MAX_RUN_KILLS      = 7_000
 const MAX_RUN_TIME_MS    = 32 * 60 * 1000
 const MAX_SESSION_COINS  = 300    // ~3× observed best; real max is ~0.1 coins/sec
 const MAX_COINS_PER_SEC  = 0.5   // generous ceiling — 5× observed max rate
 const MIN_RUN_GAP_MS     = 10_000 // minimum 10 s between submissions
 const RUN_DURATION_MS    = 30 * 60 * 1000  // must match client runData.ts
-const MAX_KILLS_PER_SEC  = 50    // generous ceiling for burst AoE builds
+const MAX_KILLS_PER_SEC  = 10    // observed peak ~6.25/s; 10 covers burst AoE
 const MAX_XP_PER_SEC     = 500   // MAX_KILLS_PER_SEC × max xp/kill (5) × max xp scale (2)
 const BOSS_FIRST_MS      = 90_000
 const BOSS_REPEAT_MS     = 120_000
