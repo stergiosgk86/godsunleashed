@@ -915,6 +915,12 @@ export class CombatSystem {
     return Math.max(1, dmg + Math.floor(Math.random() * 5) - 2)
   }
 
+  adminSpawnItem(type: 'potion' | 'xporb' | 'coin', x: number, y: number): void {
+    if (type === 'potion') this.potions.push(new HealthPotion(this.scene, x, y))
+    else if (type === 'xporb') this.orbs.push(new XPOrb(this.scene, x, y, 50))
+    else if (type === 'coin') this.coins.push(new CoinOrb(this.scene, x, y))
+  }
+
   spawnDropsAt(x: number, y: number, xpValue: number, isBoss: boolean) {
     const luckRank = useProfileStore.getState().upgrades.luck
     const coinDropChance = 0.02 + luckRank * 0.01

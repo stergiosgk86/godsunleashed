@@ -463,6 +463,34 @@ export class EnemySpawner {
     this.onBossSpawn?.()
   }
 
+  cleanupDead(): void {
+    this.enemies = this.enemies.filter(e => e.active)
+  }
+
+  adminSpawnEnemy(type: string, playerX: number, playerY: number): void {
+    const { x, y } = this.edgeSpawnPoint(playerX, playerY)
+    if (type === 'boss') {
+      this.enemies.push(new BossEnemy(this.scene, x, y))
+    } else if (type === 'summoner') {
+      const boss = new SummonerBoss(this.scene, x, y)
+      boss.onSummon = (bx, by, count, phase2) => {
+        for (let i = 0; i < count; i++) {
+          const a = (i / count) * Math.PI * 2
+          const mx = bx + Math.cos(a) * (80 + Math.random() * 60)
+          const my = by + Math.sin(a) * (80 + Math.random() * 60)
+          this.enemies.push(phase2 && i % 2 === 0
+            ? new Enemy(this.scene, mx, my, 'speeder')
+            : new Enemy(this.scene, mx, my, 'basic'))
+        }
+      }
+      this.enemies.push(boss)
+    } else if (type === 'finalBoss') {
+      this.enemies.push(new FinalBossEnemy(this.scene, x, y))
+    } else {
+      this.spawnEnemy(x, y, playerX, playerY, type as SpawnType)
+    }
+  }
+
   waveLabel(overrideElapsed?: number): string {
     if (this.finalBossAlive) return '☠ THE DEATH'
     if (this.bossAlive) return this.enemies.some(e => e instanceof SummonerBoss && e.active) ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'

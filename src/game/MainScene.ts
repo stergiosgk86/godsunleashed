@@ -7,7 +7,7 @@ import { ClientEnemy } from './ClientEnemy'
 import { RemotePlayer } from './RemotePlayer'
 import { RemoteProjectile } from './RemoteProjectile'
 import { generateAssets, generatePropTextures } from './AssetGenerator'
-import { useGameStore, UPGRADE_POOL, type Upgrade } from '../store/gameStore'
+import { useGameStore, UPGRADE_POOL, type Upgrade, type AdminSpawnEntity } from '../store/gameStore'
 import { useCharacterStore } from '../store/characterStore'
 import { useAuthStore } from '../store/authStore'
 import { CHARACTER_DEFS } from './characters'
@@ -221,6 +221,7 @@ export class MainScene extends Phaser.Scene {
     )
     const unsubDead = useGameStore.subscribe(s => s.isDead, isDead => { if (isDead) clearRun() })
     const unsubWon  = useGameStore.subscribe(s => s.isWon,  isWon  => { if (isWon)  clearRun() })
+
     this.events.once('shutdown', () => {
       sceneAlive = false
       soundSystem.stopMusic()
@@ -235,6 +236,21 @@ export class MainScene extends Phaser.Scene {
       this.remoteProjectiles = []
       this.clientEnemies.clear()
     })
+  }
+
+  private handleAdminSpawn(entity: AdminSpawnEntity) {
+    const px = this.player.x
+    const py = this.player.y
+    const ITEM_DIST = 220 + Math.random() * 80
+    const angle = Math.random() * Math.PI * 2
+    const ix = px + Math.cos(angle) * ITEM_DIST
+    const iy = py + Math.sin(angle) * ITEM_DIST
+
+    if (entity === 'potion' || entity === 'xporb' || entity === 'coin') {
+      this.combat.adminSpawnItem(entity, ix, iy)
+    } else {
+      this.spawner.adminSpawnEnemy(entity, px, py)
+    }
   }
 
   private showWarning() {
@@ -360,6 +376,10 @@ export class MainScene extends Phaser.Scene {
       useGameStore.getState().setBossInvulnerable(msg.invulnerable)
     })
 
+    net.on('adminSpawnItem', (msg) => {
+      this.combat.adminSpawnItem(msg.entity as 'potion' | 'xporb' | 'coin', msg.x, msg.y)
+    })
+
     net.on('exploderExplode', (msg) => {
       const dx = msg.x - this.player.x
       const dy = msg.y - this.player.y
@@ -434,6 +454,13 @@ export class MainScene extends Phaser.Scene {
 
   update(_time: number, delta: number) {
     if (useGameStore.getState().isPaused) return
+
+    const spawnRequest = useGameStore.getState().adminSpawnRequest
+    if (spawnRequest) {
+      useGameStore.getState().clearAdminSpawnRequest()
+      this.handleAdminSpawn(spawnRequest)
+    }
+
     this.chunkManager.update(this.player.x, this.player.y)
     this.player.touchVx = this.joystick.vx
     this.player.touchVy = this.joystick.vy
@@ -463,7 +490,10 @@ export class MainScene extends Phaser.Scene {
       }
       const allClientEnemies = Array.from(this.clientEnemies.values())
       for (const ce of allClientEnemies) ce.update(0, 0, delta)
-      this.combat.update(this.player.x, this.player.y, allClientEnemies, delta)
+      for (const e of this.spawner.all) e.update(this.player.x, this.player.y, delta)
+      this.spawner.cleanupDead()
+      const allEnemies: import('./Enemy').AnyEnemy[] = [...allClientEnemies, ...this.spawner.all]
+      this.combat.update(this.player.x, this.player.y, allEnemies, delta)
       for (const rp of this.remotePlayers.values()) rp.tick(delta)
       const REMOTE_HIT_R = 25 * 25
       for (const rp of this.remoteProjectiles) {

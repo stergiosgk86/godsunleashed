@@ -313,6 +313,27 @@ export class GameRoom {
     }
   }
 
+  adminSpawn(entity: string, requesterId: string) {
+    if (!this.started || this.finished) return
+    const requester = this.players.find(p => p.id === requesterId)
+    if (!requester) return
+    const positions = this.players.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH }))
+    const ITEM_DIST = 220 + Math.random() * 80
+    const angle = Math.random() * Math.PI * 2
+    const ix = requester.x + Math.cos(angle) * ITEM_DIST
+    const iy = requester.y + Math.sin(angle) * ITEM_DIST
+
+    if (entity === 'potion' || entity === 'xporb' || entity === 'coin') {
+      this.send(requester.ws, { type: 'adminSpawnItem', entity, x: ix, y: iy })
+    } else {
+      const spawned = this.spawner.adminSpawnEnemy(entity, positions)
+      if (spawned && spawned.isBoss) {
+        this.bosses.set(spawned.id, spawned.maxHp)
+        this.broadcast({ type: 'bossSpawn', bossId: spawned.id, maxHp: spawned.maxHp, final: spawned.kind === 'finalBoss', kind: spawned.kind })
+      }
+    }
+  }
+
   removePlayer(id: string): boolean {
     const leaving = this.players.find(p => p.id === id)
     if (leaving && !leaving.dead) {

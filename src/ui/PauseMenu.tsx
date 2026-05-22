@@ -9,7 +9,7 @@ function useIsMobile() {
   }, [])
   return mob
 }
-import { useGameStore, weaponBaseDamage } from '../store/gameStore'
+import { useGameStore, weaponBaseDamage, type AdminSpawnEntity } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { AdminPlayersView } from './AdminPlayersView'
@@ -69,10 +69,43 @@ function StatsView() {
   )
 }
 
+const SPAWN_GROUPS: { label: string; color: string; items: { label: string; entity: AdminSpawnEntity }[] }[] = [
+  {
+    label: 'ENEMIES', color: '#ff8844',
+    items: [
+      { label: 'Basic',       entity: 'basic' },
+      { label: 'Speeder',     entity: 'speeder' },
+      { label: 'Tank',        entity: 'tank' },
+      { label: 'Ranged',      entity: 'ranged' },
+      { label: 'Exploder',    entity: 'exploder' },
+      { label: 'Ghost',       entity: 'ghost' },
+      { label: 'Charger',     entity: 'charger' },
+      { label: 'Necromancer', entity: 'necromancer' },
+    ],
+  },
+  {
+    label: 'BOSSES', color: '#ff4444',
+    items: [
+      { label: 'Summoner', entity: 'summoner' },
+      { label: 'Boss',     entity: 'boss' },
+      { label: 'Final Boss', entity: 'finalBoss' },
+    ],
+  },
+  {
+    label: 'ITEMS', color: '#44ff88',
+    items: [
+      { label: 'Potion', entity: 'potion' },
+      { label: 'XP Orb', entity: 'xporb' },
+      { label: 'Coin',   entity: 'coin' },
+    ],
+  },
+]
+
 function AdminPanel({ onBack }: { onBack: () => void }) {
   const adminInvincible = useGameStore(s => s.adminInvincible)
   const setAdminInvincible = useGameStore(s => s.setAdminInvincible)
-  const [subView, setSubView] = useState<'main' | 'players'>('main')
+  const requestAdminSpawn = useGameStore(s => s.requestAdminSpawn)
+  const [subView, setSubView] = useState<'main' | 'players' | 'spawn'>('main')
 
   const toggleStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -83,6 +116,55 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
 
   if (subView === 'players') {
     return <AdminPlayersView onBack={() => setSubView('main')} />
+  }
+
+  if (subView === 'spawn') {
+    return (
+      <>
+        <div style={{
+          color: '#ff4444', fontSize: 20, fontFamily: 'monospace', fontWeight: 'bold',
+          letterSpacing: 3, textShadow: '0 0 10px #ff2222',
+        }}>
+          SPAWN
+        </div>
+
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', maxHeight: '60vh' }}>
+          {SPAWN_GROUPS.map(group => (
+            <div key={group.label}>
+              <div style={{ color: group.color, fontFamily: 'monospace', fontSize: 11, letterSpacing: 2, marginBottom: 6 }}>
+                {group.label}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                {group.items.map(item => (
+                  <button
+                    key={item.entity}
+                    onClick={() => { requestAdminSpawn(item.entity); useGameStore.getState().togglePause() }}
+                    style={{
+                      padding: '8px 4px', fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold',
+                      border: `1px solid ${group.color}44`, borderRadius: 5,
+                      background: '#0a0a1a', color: '#ccccff', cursor: 'pointer', letterSpacing: 1,
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '#0a0a1a')}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setSubView('main')}
+          style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none', marginTop: 8 }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          ← BACK
+        </button>
+      </>
+    )
   }
 
   return (
@@ -105,6 +187,12 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
           }}>
             {adminInvincible ? 'ON' : 'OFF'}
           </span>
+        </div>
+        <div style={toggleStyle} onClick={() => setSubView('spawn')}>
+          <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>
+            SPAWN
+          </span>
+          <span style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>→</span>
         </div>
         <div style={toggleStyle} onClick={() => setSubView('players')}>
           <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>

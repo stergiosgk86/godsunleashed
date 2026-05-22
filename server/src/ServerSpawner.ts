@@ -368,4 +368,36 @@ export class ServerSpawner {
       return { x: p.x + along * halfW, y: p.y + side * halfH }
     }
   }
+
+  adminSpawnEnemy(kind: string, players: SpawnerPlayer[]): ServerEnemy | null {
+    if (this.enemies.length >= MAX_ENEMIES) return null
+    const hpMult = 1
+    const pos = this.edgePoint(players)
+    if (kind === 'finalBoss') {
+      const e = new ServerEnemy('finalBoss' as EnemyKind, pos.x, pos.y, hpMult)
+      this.enemies.push(e)
+      return e
+    }
+    if (kind === 'boss' || kind === 'summoner') {
+      const bossKind: EnemyKind = kind === 'summoner' ? 'summoner' : 'boss'
+      const e = new ServerEnemy(bossKind, pos.x, pos.y, hpMult)
+      if (bossKind === 'summoner') {
+        e.onSummon = (sx, sy, count, phase2) => {
+          for (let i = 0; i < count; i++) {
+            const a  = (i / count) * Math.PI * 2
+            const mx = sx + Math.cos(a) * (80 + Math.random() * 60)
+            const my = sy + Math.sin(a) * (80 + Math.random() * 60)
+            const mk: EnemyKind = phase2 && i % 2 === 0 ? 'speeder' : 'basic'
+            this.enemies.push(new ServerEnemy(mk, mx, my, hpMult))
+          }
+        }
+        e.onInvulnChange = (invuln) => this.onBossInvuln?.(e.id, invuln)
+      }
+      this.enemies.push(e)
+      return e
+    }
+    const validKinds: SpawnKind[] = ['basic', 'speeder', 'tank', 'ranged', 'exploder', 'ghost', 'charger', 'necromancer']
+    const safeKind: SpawnKind = validKinds.includes(kind as SpawnKind) ? (kind as SpawnKind) : 'basic'
+    return this.spawnEnemy(safeKind, pos.x, pos.y, hpMult, players)
+  }
 }

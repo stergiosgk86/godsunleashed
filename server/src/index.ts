@@ -10,6 +10,7 @@ import { GameRoom } from './GameRoom.js'
 import { authRouter } from './routes/auth.js'
 import { apiRouter } from './routes/api.js'
 import { saveRunRecord } from './runSaver.js'
+import { db } from './db.js'
 import type { C2SMessage } from './protocol.js'
 
 const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon'])
@@ -197,6 +198,15 @@ wss.on('connection', (ws) => {
       room.pausePlayer(playerId)
     } else if (msg.type === 'resume') {
       room.resumePlayer(playerId)
+    } else if (msg.type === 'adminSpawn') {
+      const r = room
+      if (r) {
+        db.query('SELECT role FROM users WHERE id = $1', [authed.userId])
+          .then(res => {
+            if (res.rows[0]?.role === 'super_admin') r.adminSpawn(msg.entity, playerId)
+          })
+          .catch(() => {})
+      }
     }
   })
 

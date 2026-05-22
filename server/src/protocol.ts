@@ -32,6 +32,7 @@ export type C2SMessage =
   | { type: 'chooseUpgrade'; upgradeId: string }
   | { type: 'pause' }
   | { type: 'resume' }
+  | { type: 'adminSpawn'; entity: string }
 
 export type S2CMessage =
   | { type: 'waiting'; playerCount: number; isHost: boolean }
@@ -50,3 +51,4 @@ export type S2CMessage =
   | { type: 'surge'; enemyType: string }
   | { type: 'bossInvuln'; bossId: number; invulnerable: boolean }
   | { type: 'exploderExplode'; x: number; y: number }
+  | { type: 'adminSpawnItem'; entity: string; x: number; y: number }

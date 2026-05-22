@@ -6,6 +6,11 @@ export const DASH_COOLDOWN_MS = 5000
 
 export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might' | 'axe' | 'divineShield'
 
+export type AdminSpawnEntity =
+  | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
+  | 'boss' | 'summoner' | 'finalBoss'
+  | 'potion' | 'xporb' | 'coin'
+
 export function weaponBaseDamage(_level: number): number {
   return 15
 }
@@ -122,6 +127,9 @@ interface GameState {
   tookDamageThisRun: boolean
   recentAchievement: { id: string; name: string } | null
   adminInvincible: boolean
+  adminSpawnRequest: AdminSpawnEntity | null
+  requestAdminSpawn: (entity: AdminSpawnEntity) => void
+  clearAdminSpawnRequest: () => void
 
   serverDrivenLeveling: boolean
   chosenUpgrade: UpgradeId | null
@@ -196,6 +204,9 @@ export const useGameStore = create<GameState>()(
     tookDamageThisRun: false,
     recentAchievement: null,
     adminInvincible: false,
+    adminSpawnRequest: null,
+    requestAdminSpawn: (entity) => set({ adminSpawnRequest: entity }),
+    clearAdminSpawnRequest: () => set({ adminSpawnRequest: null }),
 
     setServerDrivenLeveling: (value) => set({ serverDrivenLeveling: value }),
 
