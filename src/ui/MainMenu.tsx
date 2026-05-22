@@ -20,12 +20,13 @@ import { ControlsView } from './ControlsView'
 import { SoundsView } from './SoundsView'
 
 const CHAR_SPRITE_URL: Record<string, string> = {
-  player:       SPRITE_URLS.player,
-  char_rogue:   SPRITE_URLS.charRogue,
-  char_witch:   SPRITE_URLS.charWitch,
-  char_shade:   SPRITE_URLS.charShade,
-  char_zeus:    SPRITE_URLS.charZeus,
-  char_ares:    SPRITE_URLS.charAres,
+  player:          SPRITE_URLS.player,
+  char_rogue:      SPRITE_URLS.charRogue,
+  char_witch:      SPRITE_URLS.charWitch,
+  char_shade:      SPRITE_URLS.charShade,
+  char_zeus:       SPRITE_URLS.charZeus,
+  char_ares:       SPRITE_URLS.charAres,
+  char_poseidon:   SPRITE_URLS.charPoseidon,
 }
 
 const SCALE = 2
@@ -336,7 +337,7 @@ function LeaderboardView({ onBack }: { onBack: () => void }) {
       ) : runs.length === 0 ? (
         <div style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>No runs yet. Be the first!</div>
       ) : (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 360, overflowY: 'auto' }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           <div style={{
             display: 'grid', gridTemplateColumns: '28px 1fr 70px 55px 52px 52px',
             gap: '0 8px', padding: '4px 10px',
@@ -421,7 +422,7 @@ function AchievementsView({ onBack }: { onBack: () => void }) {
       {loading ? (
         <div style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>Loading…</div>
       ) : (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5, maxHeight: 360, overflowY: 'auto' }}>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {ACHIEVEMENTS.map(a => {
             const done = unlocked.has(a.id)
             return (
@@ -598,6 +599,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         maxWidth: mob ? 'calc(100vw - 24px)' : undefined,
         maxHeight: 'calc(100vh - 180px)',
         boxSizing: 'border-box',
+        overflow: 'hidden',
       }}>
 
       {view === 'settings' ? (
@@ -860,7 +862,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             })()}
           </div>
 
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minHeight: 0, overflowY: 'auto' }}>
             {SHOP_UPGRADES.map(upg => {
               const rank = upgrades[upg.id] ?? 0
               const isMax = rank >= UPGRADE_MAX_RANK
@@ -1007,7 +1009,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
           <BackButton onBack={() => setView('home')} />
         </>
       ) : (
-        <>
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, flex: 1, minHeight: 0, overflowY: 'auto' }}>
           {/* Username badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -1155,7 +1157,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
           >
             LOGOUT
           </button>
-        </>
+        </div>
       )}
       </div>
 

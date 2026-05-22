@@ -198,6 +198,106 @@ function ConfirmClearRunsModal({ player, onConfirm, onCancel }: {
   )
 }
 
+function GiveCoinsModal({ player, onConfirm, onCancel }: {
+  player: PlayerRow
+  onConfirm: (amount: number) => void
+  onCancel: () => void
+}) {
+  const [raw, setRaw] = useState('')
+  const label = player.username ?? `#${player.id}`
+  const amount = parseInt(raw, 10)
+  const valid = Number.isInteger(amount) && amount > 0 && amount <= 5_000_000
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 10, borderRadius: 'inherit',
+    }}>
+      <div style={{
+        background: '#0d0d1a', border: '2px solid #443300',
+        borderRadius: 10, padding: '28px 32px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        boxShadow: '0 0 30px #ffcc4455',
+        minWidth: 280,
+      }}>
+        <div style={{ color: '#ffcc44', fontSize: 14, fontFamily: 'monospace', letterSpacing: 2, fontWeight: 'bold' }}>
+          GIVE COINS
+        </div>
+        <div style={{ color: '#ccccff', fontSize: 12, fontFamily: 'monospace', textAlign: 'center', lineHeight: 1.6 }}>
+          Add coins to{' '}
+          <span style={{ color: '#aaaaff', fontWeight: 'bold' }}>{label}</span>
+        </div>
+        <input
+          type="number"
+          min={1}
+          max={5000000}
+          value={raw}
+          onChange={e => setRaw(e.target.value)}
+          placeholder="Amount"
+          autoFocus
+          style={{
+            width: 140, padding: '6px 10px',
+            fontSize: 13, fontFamily: 'monospace', textAlign: 'center',
+            background: '#0a0a18', border: '1px solid #443300', borderRadius: 5,
+            color: '#ffcc44', outline: 'none',
+          }}
+          onKeyDown={e => { if (e.key === 'Enter' && valid) onConfirm(amount) }}
+        />
+        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+          <button
+            type="button"
+            disabled={!valid}
+            onClick={() => onConfirm(amount)}
+            style={{
+              padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+              color: valid ? '#ffcc44' : '#665500', background: 'transparent',
+              border: `1px solid ${valid ? '#443300' : '#221800'}`, borderRadius: 5,
+              cursor: valid ? 'pointer' : 'default', letterSpacing: 1,
+              transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              if (!valid) return
+              e.currentTarget.style.background = '#3a2400'
+              e.currentTarget.style.borderColor = '#ffcc44'
+              e.currentTarget.style.color = '#ffe088'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = valid ? '#443300' : '#221800'
+              e.currentTarget.style.color = valid ? '#ffcc44' : '#665500'
+            }}
+          >
+            GIVE
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+              color: '#aaaaff', background: 'transparent',
+              border: '1px solid #2a2a50', borderRadius: 5,
+              cursor: 'pointer', letterSpacing: 1,
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#111133'
+              e.currentTarget.style.borderColor = '#aaaaff'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = '#2a2a50'
+            }}
+          >
+            CANCEL
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const token = useAuthStore(s => s.token)
   const [players, setPlayers] = useState<PlayerRow[]>([])
@@ -205,8 +305,10 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [resetting, setResetting] = useState<Set<number>>(new Set())
   const [clearingRuns, setClearingRuns] = useState<Set<number>>(new Set())
+  const [givingCoins, setGivingCoins] = useState<Set<number>>(new Set())
   const [confirmTarget, setConfirmTarget] = useState<PlayerRow | null>(null)
   const [confirmClearRuns, setConfirmClearRuns] = useState<PlayerRow | null>(null)
+  const [giveCoinsTarget, setGiveCoinsTarget] = useState<PlayerRow | null>(null)
   const [toast, setToast] = useState<{ msg: string; color: string } | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -222,6 +324,28 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       .then((d: { players: PlayerRow[] }) => { setPlayers(d.players); setLoading(false) })
       .catch(() => { setFetchError('Failed to load'); setLoading(false) })
   }, [token])
+
+  async function executeGiveCoins(p: PlayerRow, amount: number) {
+    setGiveCoinsTarget(null)
+    setGivingCoins(prev => new Set(prev).add(p.id))
+    try {
+      const res = await fetch(`/api/admin/players/${p.id}/coins`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setPlayers(prev => prev.map(row =>
+        row.id === p.id ? { ...row, coins: data.coins } : row
+      ))
+      showToast(`+${amount} coins granted to ${p.username ?? `#${p.id}`}`, '#ffcc44')
+    } catch {
+      showToast('Failed to give coins', '#ff4444')
+    } finally {
+      setGivingCoins(prev => { const next = new Set(prev); next.delete(p.id); return next })
+    }
+  }
 
   async function executeClearRuns(p: PlayerRow) {
     setConfirmClearRuns(null)
@@ -262,7 +386,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div style={{ position: 'relative', width: '100%' }}>
+    <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, overflowY: 'auto' }}>
       {toast && (
         <div style={{
           position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
@@ -289,6 +413,13 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
           player={confirmClearRuns}
           onConfirm={() => executeClearRuns(confirmClearRuns)}
           onCancel={() => setConfirmClearRuns(null)}
+        />
+      )}
+      {giveCoinsTarget && (
+        <GiveCoinsModal
+          player={giveCoinsTarget}
+          onConfirm={(amount) => executeGiveCoins(giveCoinsTarget, amount)}
+          onCancel={() => setGiveCoinsTarget(null)}
         />
       )}
 
@@ -371,6 +502,33 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                       }}
                     >
                       RESET
+                    </button>
+                    <button
+                      type="button"
+                      disabled={givingCoins.has(p.id)}
+                      onClick={() => setGiveCoinsTarget(p)}
+                      style={{
+                        padding: '2px 8px', fontSize: 10, fontFamily: 'monospace',
+                        color: '#ffcc44', background: 'transparent',
+                        border: '1px solid #443300', borderRadius: 4,
+                        cursor: givingCoins.has(p.id) ? 'default' : 'pointer',
+                        opacity: givingCoins.has(p.id) ? 0.4 : 1,
+                        letterSpacing: 1,
+                        transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        if (givingCoins.has(p.id)) return
+                        e.currentTarget.style.background = '#3a2400'
+                        e.currentTarget.style.borderColor = '#ffcc44'
+                        e.currentTarget.style.color = '#ffe088'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.borderColor = '#443300'
+                        e.currentTarget.style.color = '#ffcc44'
+                      }}
+                    >
+                      COINS
                     </button>
                     <button
                       type="button"
