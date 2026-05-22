@@ -91,6 +91,7 @@ interface GameState {
   damageFlashUntil: number
   bossHp: number | null
   bossMaxHp: number
+  bossInvulnerable: boolean
   isPaused: boolean
   dashCooldown: number
   dashCooldownUntil: number
@@ -134,6 +135,7 @@ interface GameState {
   win: () => void
   chooseUpgrade: (id: UpgradeId) => void
   setBossHp: (hp: number | null, maxHp?: number) => void
+  setBossInvulnerable: (invuln: boolean) => void
   togglePause: () => void
   startDash: () => boolean
   addSessionCoins: (amount: number) => void
@@ -163,6 +165,7 @@ export const useGameStore = create<GameState>()(
     damageFlashUntil: 0,
     bossHp: null,
     bossMaxHp: 300,
+    bossInvulnerable: false,
     isPaused: false,
     dashCooldown: DASH_COOLDOWN_MS,
     dashCooldownUntil: 0,
@@ -254,6 +257,8 @@ export const useGameStore = create<GameState>()(
       set(s => ({ bossHp: hp, bossMaxHp: maxHp ?? s.bossMaxHp }))
     },
 
+    setBossInvulnerable: (invuln) => set({ bossInvulnerable: invuln }),
+
     togglePause: () => {
       set(s => {
         if (s.isLevelUpPending) return {}
@@ -281,7 +286,7 @@ export const useGameStore = create<GameState>()(
       hp: 100, maxHp: 100,
       might: 1.0, attackInterval: 500, moveSpeed: 200,
       isLevelUpPending: false, upgradeChoices: [],
-      invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300,
+      invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300, bossInvulnerable: false,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, auraRange: 0, orbital: 0,
       boomerang: false, flameTrail: false, bloodNova: false, vampiric: false, lightning: false, axe: false, divineShield: false, divineShieldActive: false, armor: 0,

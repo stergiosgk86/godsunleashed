@@ -1,4 +1,4 @@
-export type CharacterType = 'ares' | 'rogue' | 'witch' | 'shade' | 'zeus'
+export type CharacterType = 'ares' | 'rogue' | 'witch' | 'shade' | 'zeus' | 'poseidon'
 
 export interface CharacterDef {
   id: CharacterType
@@ -20,6 +20,7 @@ export interface CharacterDef {
   startAura: number
   lifeDrain: number
   startLightning: boolean
+  startBoomerang: boolean
   // Only fires at enemies within a ~140° arc in the facing direction
   frontArcOnly: boolean
   // In-game sprite scale (default 1.5 for 32×32 sprites)
@@ -42,7 +43,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     ],
     bonusMaxHp: 50, baseArmor: 1, mightMult: 1.5, bonusMoveSpeed: 30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
-    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, frontArcOnly: true,
+    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false, frontArcOnly: true,
     scale: 0.85,
   },
   rogue: {
@@ -58,7 +59,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     ],
     bonusMaxHp: -20, baseArmor: 0, mightMult: 0.9, bonusMoveSpeed: 50,
     attackIntervalMult: 1.0, dashCooldownMult: 0.55, bonusDashDistance: 0.5,
-    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, frontArcOnly: false,
+    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false, frontArcOnly: false,
     scale: 1.5,
   },
   witch: {
@@ -74,7 +75,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     ],
     bonusMaxHp: -15, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: -30,
     attackIntervalMult: 0.78, dashCooldownMult: 1.0, bonusDashDistance: 0,
-    bonusHpRegen: 0, startAura: 1, lifeDrain: 0, startLightning: false, frontArcOnly: false,
+    bonusHpRegen: 0, startAura: 1, lifeDrain: 0, startLightning: false, startBoomerang: false, frontArcOnly: false,
     scale: 1.5,
   },
   shade: {
@@ -90,7 +91,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     ],
     bonusMaxHp: 60, baseArmor: 2, mightMult: 0.85, bonusMoveSpeed: 0,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
-    bonusHpRegen: 0.2, startAura: 0, lifeDrain: 2, startLightning: false, frontArcOnly: false,
+    bonusHpRegen: 0.2, startAura: 0, lifeDrain: 2, startLightning: false, startBoomerang: false, frontArcOnly: false,
     scale: 1.5,
   },
   zeus: {
@@ -105,10 +106,27 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     ],
     bonusMaxHp: 10, baseArmor: 0, mightMult: 1.2, bonusMoveSpeed: -40,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
-    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: true, frontArcOnly: false,
+    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: true, startBoomerang: false, frontArcOnly: false,
     scale: 1.0,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 768 },
   },
+  poseidon: {
+    id: 'poseidon', name: 'Poseidon', trait: 'Trident of the Deep',
+    description: 'God of the Sea. Hurls his trident at enemies — it strikes on the way out and again on return.',
+    spriteKey: 'char_poseidon', color: '#1188dd',
+    statLines: [
+      { label: '+15% Might',            positive: true  },
+      { label: 'Starts with Boomerang', positive: true  },
+      { label: '+25 Max HP',            positive: true  },
+      { label: '1 Armor',               positive: true  },
+      { label: '-30 Move Speed',        positive: false },
+    ],
+    bonusMaxHp: 25, baseArmor: 1, mightMult: 1.15, bonusMoveSpeed: -30,
+    attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
+    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: true, frontArcOnly: false,
+    scale: 1.0,
+    menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
+  },
 }
 
-export const ALL_CHARACTERS: CharacterType[] = ['ares', 'rogue', 'witch', 'shade', 'zeus']
+export const ALL_CHARACTERS: CharacterType[] = ['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon']

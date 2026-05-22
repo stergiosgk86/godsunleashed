@@ -94,6 +94,7 @@ export class SummonerBoss implements AnyEnemy {
       if (this.invulnRemaining <= 0) {
         this.isInvulnerable = false
         this.invulnCountdown = INVULN_INTERVAL
+        useGameStore.getState().setBossInvulnerable(false)
         this.graphic.setAlpha(1)
         this.shield.clear()
         this.graphic.setTint(this.isPhase2 ? TINT_P2 : TINT_NORMAL)
@@ -118,6 +119,7 @@ export class SummonerBoss implements AnyEnemy {
   private activateShield() {
     this.isInvulnerable = true
     this.invulnRemaining = INVULN_DURATION
+    useGameStore.getState().setBossInvulnerable(true)
     // Summon a burst of minions when the shield goes up
     const count = this.isPhase2 ? SUMMON_COUNT_P2 : SUMMON_COUNT_P1
     this.callMinions(count)
@@ -155,6 +157,7 @@ export class SummonerBoss implements AnyEnemy {
   destroy() {
     this.active = false
     useGameStore.getState().setBossHp(null)
+    useGameStore.getState().setBossInvulnerable(false)
     this.shield.destroy()
     this.graphic.anims.stop()
     this.graphic.clearTint()

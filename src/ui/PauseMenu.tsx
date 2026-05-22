@@ -128,6 +128,7 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
 
 export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   const isPaused = useGameStore(s => s.isPaused)
+  const isLevelUpPending = useGameStore(s => s.isLevelUpPending)
   const togglePause = useGameStore(s => s.togglePause)
   const depositCoins = useProfileStore(s => s.depositCoins)
   const role = useAuthStore(s => s.role)
@@ -144,7 +145,7 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   useEffect(() => { if (!isPaused) setView('main') }, [isPaused])
 
 
-  if (!isPaused) return null
+  if (!isPaused || isLevelUpPending) return null
 
   const panel = (
     <div style={{

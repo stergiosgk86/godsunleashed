@@ -1,4 +1,4 @@
-export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'boss' | 'finalBoss'
+export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'summoner' | 'boss' | 'finalBoss'
 
 export interface EnemySnapshot {
   id: number
@@ -7,6 +7,7 @@ export interface EnemySnapshot {
   y: number
   hp: number
   maxHp: number
+  isCharging?: boolean
 }
 
 export interface PlayerSnapshot {
@@ -21,13 +22,15 @@ export interface PlayerSnapshot {
 
 // Client → Server
 export type C2SMessage =
-  | { type: 'join'; characterType: string; solo?: boolean }
+  | { type: 'join'; characterType: string; solo?: boolean; viewportW?: number; viewportH?: number }
   | { type: 'input'; x: number; y: number; aura: number; orbital: number }
   | { type: 'hit'; enemyId: number; damage: number }
   | { type: 'died' }
   | { type: 'startGame' }
   | { type: 'projectile'; x: number; y: number; vx: number; vy: number }
   | { type: 'chooseUpgrade'; upgradeId: string }
+  | { type: 'pause' }
+  | { type: 'resume' }
 
 // Server → Client
 export type S2CMessage =
@@ -36,7 +39,7 @@ export type S2CMessage =
   | { type: 'tick'; enemies: EnemySnapshot[]; players: PlayerSnapshot[]; elapsed: number }
   | { type: 'enemyDied'; enemyId: number; x: number; y: number; xpValue: number }
   | { type: 'bossWarning'; final: boolean }
-  | { type: 'bossSpawn'; bossId: number; maxHp: number; final: boolean }
+  | { type: 'bossSpawn'; bossId: number; maxHp: number; final: boolean; kind: string }
   | { type: 'bossHp'; bossId: number; hp: number }
   | { type: 'gameOver'; won: boolean }
   | { type: 'playerLeft' }
@@ -44,3 +47,6 @@ export type S2CMessage =
   | { type: 'bossProjectile'; enemyId: number; x: number; y: number; vx: number; vy: number }
   | { type: 'levelUp'; level: number; xp: number; xpToNext: number; choices: string[] }
   | { type: 'runSaved'; kills: number; timeSurvived: number; coins: number; won: boolean; newAchievements: string[] }
+  | { type: 'surge'; enemyType: string }
+  | { type: 'bossInvuln'; bossId: number; invulnerable: boolean }
+  | { type: 'exploderExplode'; x: number; y: number }

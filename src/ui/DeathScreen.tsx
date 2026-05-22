@@ -1,6 +1,16 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
+
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth <= 600)
+  useEffect(() => {
+    const fn = () => setMob(window.innerWidth <= 600)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return mob
+}
 
 const btnBase: React.CSSProperties = {
   width: '100%', padding: '12px 0',
@@ -16,6 +26,7 @@ export function DeathScreen({ onPlayAgain, onMainMenu }: {
   const isDead = useGameStore(s => s.isDead)
   const sessionCoins = useGameStore(s => s.sessionCoins)
   const depositCoins = useProfileStore(s => s.depositCoins)
+  const mob = useIsMobile()
 
   // Deposit coins into profile as soon as the death screen appears
   useEffect(() => {
@@ -30,19 +41,24 @@ export function DeathScreen({ onPlayAgain, onMainMenu }: {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0, 0, 0, 0.75)',
       zIndex: 60,
+      padding: 16,
+      boxSizing: 'border-box',
     }}>
       <div style={{
         background: '#0d0d1f',
         border: '2px solid #661111',
         borderRadius: 12,
-        padding: '40px 60px',
+        padding: mob ? '28px 24px' : '40px 60px',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
         boxShadow: '0 0 60px #44000088',
-        minWidth: 320,
+        width: mob ? '100%' : undefined,
+        maxWidth: mob ? 380 : undefined,
+        minWidth: mob ? undefined : 320,
+        boxSizing: 'border-box',
       }}>
         <div style={{
-          color: '#cc2222', fontSize: 36, fontFamily: 'monospace', fontWeight: 'bold',
-          letterSpacing: 4, textShadow: '0 0 20px #ff0000',
+          color: '#cc2222', fontSize: mob ? 28 : 36, fontFamily: 'monospace', fontWeight: 'bold',
+          letterSpacing: mob ? 3 : 4, textShadow: '0 0 20px #ff0000',
         }}>
           YOU DIED
         </div>

@@ -22,7 +22,7 @@ function emptyUpgrades(): MetaUpgrades {
 }
 
 // Characters that cost coins — must match server CHARACTER_UNLOCK_COSTS
-export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { rogue: 100, witch: 150, shade: 300, zeus: 1000 }
+export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { rogue: 100, witch: 150, shade: 300, zeus: 1000, poseidon: 500 }
 
 interface ProfileStore {
   coins: number

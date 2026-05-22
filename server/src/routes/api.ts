@@ -40,7 +40,7 @@ const MAX_UPGRADE_RANK = 5
 const VALID_UPGRADE_KEYS = new Set(['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed', 'armor', 'attackSpeed'])
 
 // Characters that require coins to unlock (others are free)
-const CHARACTER_UNLOCK_COSTS: Record<string, number> = { rogue: 100, witch: 150, shade: 300, zeus: 1000 }
+const CHARACTER_UNLOCK_COSTS: Record<string, number> = { rogue: 100, witch: 150, shade: 300, zeus: 1000, poseidon: 500 }
 const LOCKABLE_CHARACTERS = new Set(Object.keys(CHARACTER_UNLOCK_COSTS))
 
 const VALID_ACHIEVEMENT_IDS = new Set([
@@ -325,6 +325,33 @@ apiRouter.post('/admin/players/:id/reset', async (req: Request, res: Response) =
     res.json({ ok: true })
   } catch (err) {
     console.error('Admin reset error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+apiRouter.post('/admin/players/:id/coins', async (req: Request, res: Response) => {
+  try {
+    const userRes = await db.query('SELECT role FROM users WHERE id = $1', [req.userId])
+    if (userRes.rows[0]?.role !== 'super_admin') {
+      res.status(403).json({ error: 'Forbidden' }); return
+    }
+    const targetId = parseInt(req.params.id, 10)
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      res.status(400).json({ error: 'Invalid user id' }); return
+    }
+    const amount = parseInt(req.body.amount, 10)
+    if (!Number.isInteger(amount) || amount <= 0 || amount > MAX_PROFILE_COINS) {
+      res.status(400).json({ error: 'Invalid amount' }); return
+    }
+    const result = await db.query(
+      `UPDATE profiles SET coins = LEAST(coins + $1, $2), updated_at = NOW()
+       WHERE user_id = $3 RETURNING coins`,
+      [amount, MAX_PROFILE_COINS, targetId],
+    )
+    const newCoins = result.rows[0]?.coins ?? null
+    res.json({ ok: true, coins: newCoins })
+  } catch (err) {
+    console.error('Admin give coins error:', err)
     res.status(500).json({ error: 'Internal server error' })
   }
 })

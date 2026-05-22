@@ -12,7 +12,7 @@ import { apiRouter } from './routes/api.js'
 import { saveRunRecord } from './runSaver.js'
 import type { C2SMessage } from './protocol.js'
 
-const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus'])
+const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon'])
 
 const SECRET = process.env.JWT_SECRET!
 
@@ -54,7 +54,10 @@ app.get('/lobby/stream', (req, res) => {
   res.write(`data: ${JSON.stringify({ playersWaiting: names.length, names })}\n\n`)
 
   lobbyListeners.add(res)
-  req.on('close', () => lobbyListeners.delete(res))
+
+  // Keepalive ping every 20s — prevents QUIC/proxy from closing idle SSE connections
+  const heartbeat = setInterval(() => res.write(': ping\n\n'), 20_000)
+  req.on('close', () => { clearInterval(heartbeat); lobbyListeners.delete(res) })
 })
 
 // Serve the built React app for all non-API routes
@@ -162,7 +165,7 @@ wss.on('connection', (ws) => {
         room = openRoom
       }
 
-      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY)
+      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY, msg.viewportW ?? 1280, msg.viewportH ?? 720)
 
       if (!msg.solo && (room.isFull || room.isStarted)) {
         console.log(`[${label}] room full → game starting`)
@@ -190,6 +193,10 @@ wss.on('connection', (ws) => {
       room.relayProjectile(playerId, msg.x, msg.y, msg.vx, msg.vy)
     } else if (msg.type === 'chooseUpgrade') {
       room.handleChooseUpgrade(playerId, msg.upgradeId)
+    } else if (msg.type === 'pause') {
+      room.pausePlayer(playerId)
+    } else if (msg.type === 'resume') {
+      room.resumePlayer(playerId)
     }
   })
 

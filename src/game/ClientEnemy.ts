@@ -2,6 +2,7 @@ import Phaser, { TintModes } from 'phaser'
 import type { AnyEnemy, EnemyBullet } from './Enemy'
 import type { EnemySnapshot, EnemyKind } from '../net/protocol'
 import { type Direction, getDirection, playDir } from './spriteUtils'
+import { difficultyScale } from './difficultyScale'
 
 class BossProjectile implements EnemyBullet {
   x: number
@@ -48,6 +49,7 @@ const KIND_TO_SPRITE: Record<EnemyKind, string> = {
   ghost:       'enemy_ghost',
   charger:     'enemy_charger',
   necromancer: 'enemy_necromancer',
+  summoner:    'boss',
   boss:        'boss',
   finalBoss:   'boss',
 }
@@ -55,19 +57,19 @@ const KIND_TO_SPRITE: Record<EnemyKind, string> = {
 const KIND_SCALE: Record<EnemyKind, number> = {
   basic: 1.2, speeder: 0.9, tank: 1.8, ranged: 1.2,
   exploder: 1.1, ghost: 0.9, charger: 1.3, necromancer: 1.1,
-  boss: 1.5, finalBoss: 1.8,
+  summoner: 1.6, boss: 1.5, finalBoss: 1.8,
 }
 
 const KIND_CONTACT_DAMAGE: Record<EnemyKind, number> = {
   basic: 10, speeder: 8, tank: 20, ranged: 10,
   exploder: 0, ghost: 12, charger: 12, necromancer: 10,
-  boss: 40, finalBoss: 60,
+  summoner: 35, boss: 40, finalBoss: 60,
 }
 
 const KIND_XP: Record<EnemyKind, number> = {
   basic: 2, speeder: 1, tank: 6, ranged: 4,
   exploder: 4, ghost: 2, charger: 5, necromancer: 5,
-  boss: 80, finalBoss: 200,
+  summoner: 150, boss: 80, finalBoss: 200,
 }
 
 export class ClientEnemy implements AnyEnemy {
@@ -99,7 +101,7 @@ export class ClientEnemy implements AnyEnemy {
     this.hp = snap.hp
     this.contactDamage = KIND_CONTACT_DAMAGE[snap.kind]
     this.xpValue = KIND_XP[snap.kind]
-    this.isBoss = snap.kind === 'boss' || snap.kind === 'finalBoss'
+    this.isBoss = snap.kind === 'boss' || snap.kind === 'finalBoss' || snap.kind === 'summoner'
 
     this.spriteKey = KIND_TO_SPRITE[snap.kind]
     const scale = KIND_SCALE[snap.kind]
@@ -108,6 +110,7 @@ export class ClientEnemy implements AnyEnemy {
       .setScale(scale)
     this.sprite.play(`${this.spriteKey}_down`)
     if (snap.kind === 'finalBoss') this.sprite.setTint(0xff88ff)
+    if (snap.kind === 'summoner')  this.sprite.setTint(0x33dd77)
   }
 
   applySnapshot(snap: EnemySnapshot) {
@@ -117,6 +120,12 @@ export class ClientEnemy implements AnyEnemy {
     this.y = snap.y
     this.hp = snap.hp
     this.sprite.setPosition(snap.x, snap.y)
+    // Rescale contact damage every tick so it matches the server difficulty curve
+    if (this.kind === 'charger') {
+      this.contactDamage = Math.round((snap.isCharging ? 30 : 12) * difficultyScale.damage)
+    } else {
+      this.contactDamage = Math.round(KIND_CONTACT_DAMAGE[this.kind] * difficultyScale.damage)
+    }
 
     const dx = snap.x - this.prevX
     const dy = snap.y - this.prevY
@@ -142,6 +151,7 @@ export class ClientEnemy implements AnyEnemy {
   }
 
   addProjectile(x: number, y: number, vx: number, vy: number) {
+    if (!this.active || !this.sprite.scene) return
     this.projectiles.push(new BossProjectile(this.sprite.scene, x, y, vx, vy, this.kind))
   }
 

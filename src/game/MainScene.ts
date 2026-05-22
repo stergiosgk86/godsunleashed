@@ -13,6 +13,7 @@ import { useAuthStore } from '../store/authStore'
 import { CHARACTER_DEFS } from './characters'
 import { minimapData } from './minimapData'
 import { runData } from './runData'
+import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
 import { soundSystem } from './SoundSystem'
 import { activeNetClient } from '../net/netState'
 import type { EnemySnapshot, PlayerSnapshot } from '../net/protocol'
@@ -32,7 +33,6 @@ export class MainScene extends Phaser.Scene {
   private warningText!: Phaser.GameObjects.Text
   private finalWarningText!: Phaser.GameObjects.Text
   private surgeText!: Phaser.GameObjects.Text
-  private prevLevelUpPending = false
   private healPool = 0
 
   // Multiplayer
@@ -40,6 +40,11 @@ export class MainScene extends Phaser.Scene {
   private remotePlayers = new Map<string, RemotePlayer>()
   private remoteProjectiles: RemoteProjectile[] = []
   private netSendTimer = 0
+  // Net wave-label state (mirrors EnemySpawner fields for multiplayer HUD)
+  private netBossAlive = false
+  private netFinalBossAlive = false
+  private netBossIsSummoner = false
+  private netSurgeTimer = 0
   private saveTimer = 0
   private readonly SAVE_INTERVAL = 1000
   private joystick!: TouchJoystick
@@ -183,15 +188,12 @@ export class MainScene extends Phaser.Scene {
       (pending) => {
         if (pending) {
           soundSystem.levelUp()
-          soundSystem.duckMusic()
-          // Stay invulnerable for the entire level-up screen
-          useGameStore.setState({ invincibleUntil: Infinity })
+          // Reuse the pause machinery: unsubPause handles scene + music + server
+          useGameStore.setState({ isPaused: true, invincibleUntil: Infinity })
         } else {
           // 2-second grace period after resuming so enemies that walked
           // onto the player during the pause don't instantly deal damage
-          useGameStore.setState({ invincibleUntil: Date.now() + 2000 })
-          soundSystem.unduckMusic()
-          if (sceneAlive) this.scene.resume()
+          useGameStore.setState({ isPaused: false, invincibleUntil: Date.now() + 2000 })
         }
       }
     )
@@ -199,8 +201,13 @@ export class MainScene extends Phaser.Scene {
       s => s.isPaused,
       (paused) => {
         if (!sceneAlive) return
-        if (paused) { this.scene.pause(); soundSystem.pauseMusic() }
-        else { this.scene.resume(); soundSystem.resumeMusic() }
+        if (paused) {
+          this.scene.pause(); soundSystem.pauseMusic()
+          activeNetClient?.send({ type: 'pause' })
+        } else {
+          this.scene.resume(); soundSystem.resumeMusic()
+          activeNetClient?.send({ type: 'resume' })
+        }
       }
     )
     const unsubDamage = useGameStore.subscribe(
@@ -317,20 +324,49 @@ export class MainScene extends Phaser.Scene {
       else soundSystem.enemyDie()
     })
 
+    net.on('surge', (msg) => {
+      this.netSurgeTimer = 6000
+      if (!useGameStore.getState().isPaused) this.showSurgeWarning(msg.enemyType)
+    })
+
     net.on('bossWarning', (msg) => {
+      if (useGameStore.getState().isPaused) return
       if (msg.final) this.showFinalWarning(); else this.showWarning()
       soundSystem.bossWarning()
     })
 
     net.on('bossSpawn', (msg) => {
+      this.netBossAlive = true
+      this.netBossIsSummoner = msg.kind === 'summoner'
+      if (msg.final) this.netFinalBossAlive = true
+      if (useGameStore.getState().isPaused) return
       this.cameras.main.shake(msg.final ? 1000 : 600, msg.final ? 0.04 : 0.02)
       useGameStore.getState().setBossHp(msg.maxHp, msg.maxHp)
+      useGameStore.getState().setBossInvulnerable(false)
       this.warningText.setAlpha(0)
       this.finalWarningText.setAlpha(0)
     })
 
     net.on('bossHp', (msg) => {
+      if (msg.hp === 0) {
+        this.netBossAlive = false
+        this.netFinalBossAlive = false
+        useGameStore.getState().setBossInvulnerable(false)
+      }
       useGameStore.getState().setBossHp(msg.hp === 0 ? null : msg.hp)
+    })
+
+    net.on('bossInvuln', (msg) => {
+      useGameStore.getState().setBossInvulnerable(msg.invulnerable)
+    })
+
+    net.on('exploderExplode', (msg) => {
+      const dx = msg.x - this.player.x
+      const dy = msg.y - this.player.y
+      if (dx * dx + dy * dy < 120 * 120) {
+        useGameStore.getState().takeDamage(Math.round(30 * difficultyScale.damage))
+        this.effects.shakeCamera()
+      }
     })
 
     net.on('gameOver', (msg) => {
@@ -349,8 +385,9 @@ export class MainScene extends Phaser.Scene {
     })
 
     net.on('bossProjectile', (msg) => {
+      if (!this.sys.displayList) return
       const ce = this.clientEnemies.get(msg.enemyId)
-      if (ce) ce.addProjectile(msg.x, msg.y, msg.vx, msg.vy)
+      if (ce && ce.active) ce.addProjectile(msg.x, msg.y, msg.vx, msg.vy)
     })
   }
 
@@ -360,6 +397,8 @@ export class MainScene extends Phaser.Scene {
     elapsed: number,
   ) {
     if (!this.sys.displayList) return
+    const gs = useGameStore.getState()
+    if (gs.isPaused || gs.isLevelUpPending) return
     runData.elapsed = elapsed
 
     // Reconcile enemy map
@@ -408,6 +447,13 @@ export class MainScene extends Phaser.Scene {
 
     const net = activeNetClient
     if (net) {
+      // Keep difficulty curves in sync with server elapsed so scaling
+      // (projectile damage, XP bar fill) matches the singleplayer experience.
+      difficultyScale.speed  = computeSpeedScale(runData.elapsed)
+      difficultyScale.hp     = computeHpScale(runData.elapsed)
+      difficultyScale.damage = computeDamageScale(runData.elapsed)
+      difficultyScale.xp     = computeXpScale(runData.elapsed)
+
       // Multiplayer: server drives enemies and elapsed; we drive position
       this.netSendTimer += delta
       if (this.netSendTimer >= 50) {
@@ -486,15 +532,17 @@ export class MainScene extends Phaser.Scene {
       return
     }
 
-    if (state.isLevelUpPending && !this.prevLevelUpPending) {
-      this.prevLevelUpPending = true
-      this.scene.pause()
-      return
-    }
-    if (!state.isLevelUpPending) this.prevLevelUpPending = false
-
     const enemyCount = net ? this.clientEnemies.size : this.spawner.all.length
-    const waveLabel  = net ? this.spawner.waveLabel(runData.elapsed) : this.spawner.waveLabel()
+    let waveLabel: string
+    if (net) {
+      this.netSurgeTimer = Math.max(0, this.netSurgeTimer - delta)
+      if (this.netFinalBossAlive) waveLabel = '☠ THE DEATH'
+      else if (this.netBossAlive) waveLabel = this.netBossIsSummoner ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
+      else if (this.netSurgeTimer > 0) waveLabel = '⚡ SURGE!'
+      else waveLabel = this.spawner.waveLabel(runData.elapsed)
+    } else {
+      waveLabel = this.spawner.waveLabel()
+    }
     this.fpsText.setText(
       `FPS: ${Math.round(this.game.loop.actualFps)}  |  ${waveLabel}  |  Enemies: ${enemyCount}`
     )

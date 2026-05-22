@@ -1,7 +1,17 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { useProfileStore } from '../store/profileStore'
 import { RUN_DURATION } from '../game/runData'
+
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth <= 600)
+  useEffect(() => {
+    const fn = () => setMob(window.innerWidth <= 600)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return mob
+}
 
 function fmt(ms: number): string {
   const s = Math.floor(ms / 1000)
@@ -23,6 +33,7 @@ export function WinScreen({ onPlayAgain, onMainMenu }: {
   const sessionCoins = useGameStore(s => s.sessionCoins)
   const level = useGameStore(s => s.level)
   const depositCoins = useProfileStore(s => s.depositCoins)
+  const mob = useIsMobile()
 
   useEffect(() => {
     if (isWon) depositCoins(sessionCoins)
@@ -36,24 +47,30 @@ export function WinScreen({ onPlayAgain, onMainMenu }: {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0, 0, 0, 0.80)',
       zIndex: 60,
+      padding: 16,
+      boxSizing: 'border-box',
     }}>
       <div style={{
         background: '#0d0d1f',
         border: '2px solid #886600',
         borderRadius: 12,
-        padding: '40px 60px',
+        padding: mob ? '28px 24px' : '40px 60px',
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20,
         boxShadow: '0 0 80px #aa880044',
-        minWidth: 340,
+        width: mob ? '100%' : undefined,
+        maxWidth: mob ? 400 : undefined,
+        minWidth: mob ? undefined : 340,
+        boxSizing: 'border-box',
       }}>
         <div style={{
-          color: '#ffcc00', fontSize: 36, fontFamily: 'monospace', fontWeight: 'bold',
-          letterSpacing: 4, textShadow: '0 0 20px #ffaa00, 0 0 40px #884400',
+          color: '#ffcc00', fontSize: mob ? 26 : 36, fontFamily: 'monospace', fontWeight: 'bold',
+          letterSpacing: mob ? 3 : 4, textShadow: '0 0 20px #ffaa00, 0 0 40px #884400',
+          textAlign: 'center',
         }}>
           YOU SURVIVED
         </div>
 
-        <div style={{ color: '#886633', fontFamily: 'monospace', fontSize: 13, letterSpacing: 3 }}>
+        <div style={{ color: '#886633', fontFamily: 'monospace', fontSize: mob ? 11 : 13, letterSpacing: 3 }}>
           THE NIGHT HAS ENDED
         </div>
 

@@ -1,6 +1,16 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
+
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth <= 600)
+  useEffect(() => {
+    const fn = () => setMob(window.innerWidth <= 600)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return mob
+}
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 14px', boxSizing: 'border-box',
@@ -14,6 +24,7 @@ export function AuthScreen({ onAuthenticated }: { onAuthenticated: () => void })
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const mob = useIsMobile()
 
   const setAuth = useAuthStore(s => s.setAuth)
   const fetchProfile = useProfileStore(s => s.fetchProfile)
@@ -45,24 +56,29 @@ export function AuthScreen({ onAuthenticated }: { onAuthenticated: () => void })
       position: 'fixed', inset: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       background: 'radial-gradient(ellipse at center, #0d0d22 0%, #07070f 100%)',
+      padding: '16px',
+      boxSizing: 'border-box',
     }}>
       <div style={{
-        color: '#cc3333', fontSize: 48, fontFamily: 'monospace', fontWeight: 'bold',
-        letterSpacing: 8, textShadow: '0 0 30px #ff2222, 0 0 70px #880000',
-        marginBottom: 8,
+        color: '#cc3333', fontSize: mob ? 26 : 48, fontFamily: 'monospace', fontWeight: 'bold',
+        letterSpacing: mob ? 4 : 8, textShadow: '0 0 30px #ff2222, 0 0 70px #880000',
+        marginBottom: 8, textAlign: 'center',
       }}>
         GODS UNLEASHED
       </div>
       <div style={{
-        color: '#3a3a66', fontSize: 11, fontFamily: 'monospace', letterSpacing: 6,
-        marginBottom: 40,
+        color: '#3a3a66', fontSize: 11, fontFamily: 'monospace', letterSpacing: mob ? 4 : 6,
+        marginBottom: mob ? 24 : 40,
       }}>
         SURVIVE THE DIVINE
       </div>
 
       <div style={{
         background: '#0d0d1f', border: '2px solid #2a2a55', borderRadius: 12,
-        padding: '36px 48px', width: 360, boxSizing: 'border-box',
+        padding: mob ? '24px 20px' : '36px 48px',
+        width: mob ? '100%' : 360,
+        maxWidth: mob ? 400 : undefined,
+        boxSizing: 'border-box',
         display: 'flex', flexDirection: 'column', gap: 16,
         boxShadow: '0 0 40px #11115544',
       }}>
