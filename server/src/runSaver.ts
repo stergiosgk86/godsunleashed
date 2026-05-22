@@ -46,20 +46,39 @@ export async function saveRunRecord(data: PlayerRunData): Promise<string[]> {
   )
 
   const earned: string[] = []
+  // Survival
+  if (safeTime    >= 1  * 60 * 1000) earned.push('initiate')
   if (safeTime    >= 5  * 60 * 1000) earned.push('survivor_5')
+  if (safeTime    >= 15 * 60 * 1000) earned.push('survivor_15')
   if (safeTime    >= 30 * 60 * 1000) earned.push('veteran')
-  if (safeBossKills >= 1)             earned.push('boss_slayer')
+  // Kills
   if (safeKills   >= 100)             earned.push('hunter')
+  if (safeKills   >= 250)             earned.push('veteran_hunter')
   if (safeKills   >= 500)             earned.push('slaughterer')
+  if (safeKills   >= 1000)            earned.push('annihilator')
+  // Bosses
+  if (safeBossKills >= 1)             earned.push('boss_slayer')
+  if (safeBossKills >= 3)             earned.push('boss_hunter')
+  // Damage
   if (safeDamage  >= 10_000)          earned.push('destroyer')
+  if (safeDamage  >= 100_000)         earned.push('berserker')
+  if (safeDamage  >= 1_000_000)       earned.push('juggernaut')
+  // Coins
   if (safeCoins   >= 100)             earned.push('wealthy')
+  if (safeCoins   >= 500)             earned.push('coin_hoarder')
+  // Leveling
+  if (safeLevel   >= 5)               earned.push('quick_learner')
   if (safeLevel   >= 10)              earned.push('ascendant')
   if (safeLevel   >= 20)              earned.push('transcendent')
+  // Weapons
   if (safeWeapons >= 5)               earned.push('arsenal')
+  if (safeWeapons >= 8)               earned.push('all_weapons')
+  // Win conditions
   if (safeWon) {
     earned.push('god_slayer')
     if (safeMulti) earned.push('champions')
   }
+  // Multiplayer
   if (safeMulti && (safeWon || safeKills > 0)) earned.push('team_player')
 
   const achievementInserts = earned.map(id =>
