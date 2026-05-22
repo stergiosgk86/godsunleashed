@@ -3,6 +3,16 @@ import { NetClient } from '../net/NetClient'
 import { useAuthStore } from '../store/authStore'
 import type { PlayerSnapshot } from '../net/protocol'
 
+function useIsMobile() {
+  const [mob, setMob] = useState(() => window.innerWidth <= 600)
+  useEffect(() => {
+    const fn = () => setMob(window.innerWidth <= 600)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return mob
+}
+
 interface Props {
   characterType: string
   onReady: (net: NetClient, players: PlayerSnapshot[]) => void
@@ -25,6 +35,7 @@ export function MultiplayerLobby({ characterType, onReady, onCancel }: Props) {
   const [playerCount, setPlayerCount] = useState(0)
   const [isHost, setIsHost] = useState(false)
   const netRef = useRef<NetClient | null>(null)
+  const mob = useIsMobile()
 
   useEffect(() => {
     // handedOff: true once onReady is called; prevents cleanup from closing an
@@ -41,7 +52,7 @@ export function MultiplayerLobby({ characterType, onReady, onCancel }: Props) {
     }
 
     net.onOpen(() => {
-      net.send({ type: 'join', characterType })
+      net.send({ type: 'join', characterType, viewportW: window.innerWidth, viewportH: window.innerHeight })
     })
 
     net.on('waiting', (msg) => {
@@ -104,11 +115,13 @@ export function MultiplayerLobby({ characterType, onReady, onCancel }: Props) {
       position: 'fixed', inset: 0,
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       background: 'radial-gradient(ellipse at center, #0d0d22 0%, #07070f 100%)',
+      padding: 16,
+      boxSizing: 'border-box',
     }}>
       <div style={{
-        color: '#cc3333', fontSize: 40, fontFamily: 'monospace', fontWeight: 'bold',
-        letterSpacing: 10, textShadow: '0 0 30px #ff2222',
-        marginBottom: 48,
+        color: '#cc3333', fontSize: mob ? 24 : 40, fontFamily: 'monospace', fontWeight: 'bold',
+        letterSpacing: mob ? 4 : 10, textShadow: '0 0 30px #ff2222',
+        marginBottom: mob ? 24 : 48, textAlign: 'center',
       }}>
         MULTIPLAYER
       </div>
@@ -117,10 +130,13 @@ export function MultiplayerLobby({ characterType, onReady, onCancel }: Props) {
         background: '#0d0d1f',
         border: '2px solid #4444aa',
         borderRadius: 12,
-        padding: '40px 60px',
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 28,
+        padding: mob ? '28px 24px' : '40px 60px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mob ? 20 : 28,
         boxShadow: '0 0 40px #2222aa44',
-        minWidth: 360,
+        minWidth: mob ? undefined : 360,
+        width: mob ? '100%' : undefined,
+        maxWidth: mob ? 400 : undefined,
+        boxSizing: 'border-box',
       }}>
         {status === 'error' ? (
           <div style={{ color: '#cc4444', fontFamily: 'monospace', fontSize: 14, textAlign: 'center' }}>
