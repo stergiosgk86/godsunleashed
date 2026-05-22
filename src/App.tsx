@@ -17,7 +17,7 @@ import { ACHIEVEMENT_MAP } from './game/achievements'
 import { useProfileStore } from './store/profileStore'
 import { useAuthStore } from './store/authStore'
 import { useCharacterStore } from './store/characterStore'
-import { clearRun } from './game/runSave'
+import { clearRun, loadRun } from './game/runSave'
 import { CHARACTER_DEFS } from './game/characters'
 import { setNetClient, activeNetClient } from './net/netState'
 import { NetClient } from './net/NetClient'
@@ -168,7 +168,7 @@ function App() {
         await fetchProfile()
         // Restore singleplayer session after page reload (runs handlePlay path)
         if (shouldRestoreGame) {
-          void handlePlay()
+          void handlePlay(loadRun() !== null)
         }
       }
 
@@ -272,8 +272,8 @@ function App() {
     return unsub
   }, [inGame])
 
-  async function handlePlay() {
-    clearRun()
+  async function handlePlay(restore = false) {
+    if (!restore) clearRun()
     startRun()
     const authToken = useAuthStore.getState().token
     const charType = useCharacterStore.getState().selectedCharacter

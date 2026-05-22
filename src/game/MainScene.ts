@@ -79,11 +79,13 @@ export class MainScene extends Phaser.Scene {
     this.combat = new CombatSystem(this, this.effects, charDef.id === 'zeus', charDef.frontArcOnly)
     // Restore mid-run state after a page reload
     const savedRun = loadRun()
-    if (savedRun && !activeNetClient) {
-      this.spawner.restore(savedRun)
-      this.spawner.restoreEnemies(savedRun.enemies)
+    if (savedRun) {
+      if (!activeNetClient) {
+        this.spawner.restore(savedRun)
+        this.spawner.restoreEnemies(savedRun.enemies)
+        runData.elapsed = savedRun.elapsed
+      }
       this.player.respawnAt(savedRun.playerX, savedRun.playerY)
-      runData.elapsed = savedRun.elapsed
       useGameStore.setState({
         xp: savedRun.xp,
         xpNeeded: savedRun.xpNeeded,
@@ -506,6 +508,33 @@ export class MainScene extends Phaser.Scene {
         }
       }
       this.remoteProjectiles = this.remoteProjectiles.filter(rp => rp.active)
+
+      this.saveTimer += delta
+      if (this.saveTimer >= this.SAVE_INTERVAL) {
+        this.saveTimer = 0
+        const s = useGameStore.getState()
+        saveRun({
+          elapsed: runData.elapsed,
+          nextBossAt: 0,
+          warningFired: false,
+          finalBossWarningFired: false,
+          bossAlive: false,
+          finalBossAlive: false,
+          playerX: this.player.x,
+          playerY: this.player.y,
+          enemies: [],
+          kills: s.kills, bossKills: s.bossKills,
+          xp: s.xp, xpNeeded: s.xpNeeded, level: s.level,
+          hp: s.hp, maxHp: s.maxHp,
+          might: s.might, attackInterval: s.attackInterval, moveSpeed: s.moveSpeed,
+          dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
+          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick,
+          orbital: s.orbital, boomerang: s.boomerang, flameTrail: s.flameTrail,
+          bloodNova: s.bloodNova, vampiric: s.vampiric, lightning: s.lightning,
+          axe: s.axe, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
+          sessionCoins: s.sessionCoins,
+        })
+      }
     } else {
       // Singleplayer
       runData.elapsed += delta
