@@ -51,6 +51,15 @@ function emptyUpgrades(): PlayerUpgrades {
   }
 }
 
+// Characters that start the run with a weapon already unlocked.
+// These are pre-set so those weapons are never offered as level-up choices.
+function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
+  if (characterType === 'witch')    return { aura: true }
+  if (characterType === 'zeus')     return { lightning: true }
+  if (characterType === 'poseidon') return { boomerang: true }
+  return {}
+}
+
 function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
   const pool = ALL_UPGRADE_IDS.filter(id => {
     if (isMelee && (id === 'multiShot' || id === 'piercing')) return false
@@ -98,9 +107,12 @@ interface Player {
   ws: WebSocket
   x: number
   y: number
+  viewW: number
+  viewH: number
   characterType: string
   username: string
   dead: boolean
+  paused: boolean
   isHost: boolean
   aura: number
   orbital: number
@@ -131,12 +143,12 @@ export class GameRoom {
 
   constructor(isSolo = false) { this.isSolo = isSolo }
 
-  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number) {
+  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720) {
     if (this.started) return
     const isHost = this.players.length === 0
     this.players.push({
-      id, userId, ws, x, y, characterType, username, dead: false, isHost, aura: 0, orbital: 0,
-      xp: 0, level: 1, pendingChoices: null, upgrades: emptyUpgrades(),
+      id, userId, ws, x, y, viewW, viewH, characterType, username, dead: false, paused: false, isHost, aura: 0, orbital: 0,
+      xp: 0, level: 1, pendingChoices: null, upgrades: { ...emptyUpgrades(), ...startingUpgrades(characterType) },
       kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
     this.broadcastWaiting()
@@ -165,6 +177,25 @@ export class GameRoom {
       this.send(p.ws, { type: 'start', yourId: p.id, players: snaps })
     }
     this.startLoop()
+  }
+
+  pausePlayer(id: string) {
+    const p = this.players.find(p => p.id === id)
+    if (!p || p.dead) return
+    p.paused = true
+    if (this.isSolo && this.interval) {
+      clearInterval(this.interval)
+      this.interval = null
+    }
+  }
+
+  resumePlayer(id: string) {
+    const p = this.players.find(p => p.id === id)
+    if (!p) return
+    p.paused = false
+    if (this.isSolo && this.started && !this.finished && !this.interval) {
+      this.interval = setInterval(() => this.tick(), TICK_MS)
+    }
   }
 
   updatePlayerPos(id: string, x: number, y: number, aura: number, orbital: number) {
@@ -258,9 +289,13 @@ export class GameRoom {
   }
 
   private grantXP(xpValue: number) {
+    // Scale XP by the same curve used on the frontend (1× at t=0, 2× at t=1)
+    const RUN_DURATION = 30 * 60 * 1000
+    const xpScale = 1 + Math.min(this.spawner.runElapsed / RUN_DURATION, 1)
+    const scaled = Math.round(xpValue * xpScale)
     for (const p of this.players) {
       if (p.dead || p.pendingChoices !== null) continue
-      p.xp += xpValue
+      p.xp += scaled
       const needed = xpNeeded(p.level)
       if (p.xp >= needed) {
         p.xp -= needed
@@ -280,12 +315,13 @@ export class GameRoom {
 
   removePlayer(id: string): boolean {
     const leaving = this.players.find(p => p.id === id)
-    this.players = this.players.filter(p => p.id !== id)
     if (leaving && !leaving.dead) {
       this.broadcast({ type: 'playerLeft' })
-      // Solo: player rage-quit while alive — save whatever they earned
+      // finishGame reads this.players to build results — call it BEFORE filtering
+      // so the quitting player's coins/kills are included in the DB save.
       if (this.isSolo && this.started) this.finishGame(false)
     }
+    this.players = this.players.filter(p => p.id !== id)
     if (this.players.length === 0) {
       this.stop()
       return true  // room is empty, discard it
@@ -307,11 +343,20 @@ export class GameRoom {
     this.started = true
     this.startMs = Date.now()
     this.spawner.onBossWarning = (final) => {
-      this.broadcast({ type: 'bossWarning', final })
+      this.broadcast({ type: 'bossWarning', final }, true)
     }
     this.spawner.onBossSpawn = (e) => {
       this.bosses.set(e.id, e.maxHp)
-      this.broadcast({ type: 'bossSpawn', bossId: e.id, maxHp: e.maxHp, final: e.kind === 'finalBoss' })
+      this.broadcast({ type: 'bossSpawn', bossId: e.id, maxHp: e.maxHp, final: e.kind === 'finalBoss', kind: e.kind }, true)
+    }
+    this.spawner.onSurge = (enemyType) => {
+      this.broadcast({ type: 'surge', enemyType }, true)
+    }
+    this.spawner.onExploderExplode = (x, y) => {
+      this.broadcast({ type: 'exploderExplode', x, y }, true)
+    }
+    this.spawner.onBossInvuln = (bossId, invulnerable) => {
+      this.broadcast({ type: 'bossInvuln', bossId, invulnerable }, true)
     }
     this.spawner.onFinalBossDefeated = () => {
       this.broadcast({ type: 'gameOver', won: true })
@@ -357,9 +402,8 @@ export class GameRoom {
   private tick() {
     try {
       const alivePlayers = this.players.filter(p => !p.dead)
-      const positions = alivePlayers.length > 0
-        ? alivePlayers.map(p => ({ x: p.x, y: p.y }))
-        : this.players.map(p => ({ x: p.x, y: p.y }))
+      const src = alivePlayers.length > 0 ? alivePlayers : this.players
+      const positions = src.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH }))
       this.spawner.update(positions, TICK_MS)
 
       for (const e of this.spawner.all) {
@@ -392,9 +436,10 @@ export class GameRoom {
       .map(p => ({ id: p.id, x: p.x, y: p.y, characterType: p.characterType, username: p.username, aura: p.aura, orbital: p.orbital }))
   }
 
-  private broadcast(msg: S2CMessage) {
+  private broadcast(msg: S2CMessage, skipPaused = false) {
     const data = JSON.stringify(msg)
     for (const p of this.players) {
+      if (skipPaused && p.paused) continue
       if (p.ws.readyState === 1) p.ws.send(data)
     }
   }

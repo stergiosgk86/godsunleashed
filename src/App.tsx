@@ -138,6 +138,7 @@ function App() {
       dashDistance:   1 + char.bonusDashDistance,
       aura:           char.startAura,
       lightning:      char.startLightning,
+      boomerang:      char.startBoomerang,
       lifeDrain:      char.lifeDrain,
       armor:          char.baseArmor + (upgrades.armor ?? 0),
     })
@@ -281,7 +282,7 @@ function App() {
       registerRunSavedHandler(net)
       await new Promise<void>((resolve) => {
         net.on('start', (msg) => { net.playerId = msg.yourId; setNetClient(net); resolve() })
-        net.onOpen(() => net.send({ type: 'join', characterType: charType, solo: true }))
+        net.onOpen(() => net.send({ type: 'join', characterType: charType, solo: true, viewportW: window.innerWidth, viewportH: window.innerHeight }))
       })
     }
     setInGame(true)
@@ -309,6 +310,8 @@ function App() {
     setNetClient(null)
     useGameStore.getState().resetRun()
     setInGame(false)
+    // Sync profile after server has had time to process the WS close and save the run.
+    setTimeout(() => useProfileStore.getState().fetchProfile(), 2000)
   }
 
   function handlePlayAgain() {

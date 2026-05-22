@@ -909,17 +909,6 @@ export class CombatSystem {
     this.spawnDrops(e, coinDropChance)
     e.destroy()
 
-    if (!e.isBoss) {
-      const luckRank = useProfileStore.getState().upgrades.luck
-      const threshold = Math.floor(POTION_KILL_THRESHOLD / (1 + luckRank * 0.12))
-      this.potionKillCounter++
-      if (this.potionKillCounter >= threshold && this.potions.length < POTION_MAX) {
-        this.potionKillCounter = 0
-        const angle = Math.random() * Math.PI * 2
-        const dist = POTION_SPAWN_MIN + Math.random() * (POTION_SPAWN_MAX - POTION_SPAWN_MIN)
-        this.potions.push(new HealthPotion(this.scene, this.playerX + Math.cos(angle) * dist, this.playerY + Math.sin(angle) * dist))
-      }
-    }
   }
 
   private jitter(dmg: number): number {
@@ -940,6 +929,14 @@ export class CombatSystem {
       if (Math.random() < coinDropChance) {
         const a = Math.random() * Math.PI * 2
         this.coins.push(new CoinOrb(this.scene, x + Math.cos(a) * 20, y + Math.sin(a) * 20))
+      }
+      const threshold = Math.floor(POTION_KILL_THRESHOLD / (1 + luckRank * 0.12))
+      this.potionKillCounter++
+      if (this.potionKillCounter >= threshold && this.potions.length < POTION_MAX) {
+        this.potionKillCounter = 0
+        const angle = Math.random() * Math.PI * 2
+        const dist = POTION_SPAWN_MIN + Math.random() * (POTION_SPAWN_MAX - POTION_SPAWN_MIN)
+        this.potions.push(new HealthPotion(this.scene, this.playerX + Math.cos(angle) * dist, this.playerY + Math.sin(angle) * dist))
       }
     }
   }
