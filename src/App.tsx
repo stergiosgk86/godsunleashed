@@ -168,7 +168,7 @@ function App() {
         await fetchProfile()
         // Restore singleplayer session after page reload (runs handlePlay path)
         if (shouldRestoreGame) {
-          void handlePlay(loadRun() !== null)
+          await handlePlay(loadRun() !== null)
         }
       }
 
@@ -277,12 +277,24 @@ function App() {
     startRun()
     const authToken = useAuthStore.getState().token
     const charType = useCharacterStore.getState().selectedCharacter
+    const savedRun = restore ? loadRun() : null
     if (authToken) {
       const net = new NetClient(makeWsUrl(authToken))
       registerRunSavedHandler(net)
       await new Promise<void>((resolve) => {
         net.on('start', (msg) => { net.playerId = msg.yourId; setNetClient(net); resolve() })
-        net.onOpen(() => net.send({ type: 'join', characterType: charType, solo: true, viewportW: window.innerWidth, viewportH: window.innerHeight }))
+        net.onOpen(() => net.send({
+          type: 'join',
+          characterType: charType,
+          solo: true,
+          viewportW: window.innerWidth,
+          viewportH: window.innerHeight,
+          ...(savedRun && {
+            resumeElapsed: savedRun.elapsed,
+            resumeLevel: savedRun.level,
+            resumeXp: savedRun.xp,
+          }),
+        }))
       })
     }
     setInGame(true)

@@ -137,20 +137,22 @@ export class GameRoom {
   private finished = false
   private startMs = 0
   private readonly isSolo: boolean
+  private resumeElapsed = 0
 
   // Called once when the game ends (won or all dead). Set by the room creator.
   onGameEnd?: (results: PlayerRunData[]) => void
 
   constructor(isSolo = false) { this.isSolo = isSolo }
 
-  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720) {
+  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720, resumeLevel = 1, resumeXp = 0, resumeElapsed = 0) {
     if (this.started) return
     const isHost = this.players.length === 0
     this.players.push({
       id, userId, ws, x, y, viewW, viewH, characterType, username, dead: false, paused: false, isHost, aura: 0, orbital: 0,
-      xp: 0, level: 1, pendingChoices: null, upgrades: { ...emptyUpgrades(), ...startingUpgrades(characterType) },
+      xp: resumeXp, level: resumeLevel, pendingChoices: null, upgrades: { ...emptyUpgrades(), ...startingUpgrades(characterType) },
       kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
+    if (this.isSolo && resumeElapsed > 0) this.resumeElapsed = resumeElapsed
     this.broadcastWaiting()
     if (this.players.length >= MAX_PLAYERS || this.isSolo) {
       this.startGame()
@@ -172,6 +174,7 @@ export class GameRoom {
 
   private startGame() {
     if (this.started) return
+    if (this.resumeElapsed > 0) this.spawner.resumeFrom(this.resumeElapsed)
     const snaps = this.playerSnapshots()
     for (const p of this.players) {
       this.send(p.ws, { type: 'start', yourId: p.id, players: snaps })

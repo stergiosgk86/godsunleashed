@@ -105,6 +105,23 @@ export class ServerSpawner {
   get runElapsed(): number   { return this.elapsed }
   get isFinished(): boolean  { return this.elapsed >= RUN_DURATION && !this.finalBossAlive }
 
+  // Fast-forward to a mid-run point without firing any surge/boss events.
+  // Called when a solo player reconnects after a page refresh.
+  resumeFrom(ms: number) {
+    this.elapsed = ms
+    this.initialFillDone = true  // skip initial fill; server will re-populate naturally
+    for (const surge of SURGE_EVENTS) {
+      if (surge.triggerTime <= ms) this.surgesFired.add(surge.triggerTime)
+    }
+    // Advance nextBossAt past all boss cycles that would have completed
+    while (this.nextBossAt <= ms) {
+      this.nextBossAt += BOSS_REPEAT
+    }
+    // Mark warnings as already fired so they don't re-trigger on the first tick
+    if (ms >= this.nextBossAt - BOSS_REPEAT - BOSS_WARNING) this.warningFired = true
+    if (ms >= RUN_DURATION - BOSS_WARNING) this.finalWarningFired = true
+  }
+
   update(players: SpawnerPlayer[], delta: number) {
     this.elapsed += delta
 

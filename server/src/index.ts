@@ -166,7 +166,7 @@ wss.on('connection', (ws) => {
         room = openRoom
       }
 
-      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY, msg.viewportW ?? 1280, msg.viewportH ?? 720)
+      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY, msg.viewportW ?? 1280, msg.viewportH ?? 720, msg.resumeLevel ?? 1, msg.resumeXp ?? 0, msg.resumeElapsed ?? 0)
 
       if (!msg.solo && (room.isFull || room.isStarted)) {
         console.log(`[${label}] room full → game starting`)
