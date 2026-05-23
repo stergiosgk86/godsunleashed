@@ -11,7 +11,7 @@ const MAX_VEL     = 2_000   // max projectile velocity component
 
 // All upgrade IDs the server knows about (mirrors client UPGRADE_POOL)
 const ALL_UPGRADE_IDS = [
-  'dashCooldown', 'dashDistance', 'multiShot', 'piercing',
+  'dashCooldown', 'dashDistance', 'wand', 'multiShot', 'piercing',
   'aura', 'auraTick', 'auraRange', 'orbital',
   'boomerang', 'flameTrail', 'bloodNova', 'vampiric',
   'lightning', 'might', 'axe', 'divineShield',
@@ -26,6 +26,7 @@ function xpNeeded(level: number): number {
 }
 
 interface PlayerUpgrades {
+  wand: boolean
   piercing: boolean
   multiShot: number   // 0–4
   orbital: number     // 0–3
@@ -44,7 +45,7 @@ interface PlayerUpgrades {
 
 function emptyUpgrades(): PlayerUpgrades {
   return {
-    piercing: false, multiShot: 0, orbital: 0,
+    wand: false, piercing: false, multiShot: 0, orbital: 0,
     boomerang: false, flameTrail: false, bloodNova: false,
     vampiric: false, lightning: false, mightPicks: 0,
     axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false,
@@ -64,8 +65,11 @@ function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
 function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
   const pool = ALL_UPGRADE_IDS.filter(id => {
     if (isMelee && (id === 'multiShot' || id === 'piercing')) return false
-    if (id === 'piercing'    && u.piercing)          return false
+    if (id === 'wand'        && u.wand)              return false
+    if (id === 'multiShot'   && !u.wand)             return false
     if (id === 'multiShot'   && u.multiShot >= 4)    return false
+    if (id === 'piercing'    && !u.wand)             return false
+    if (id === 'piercing'    && u.piercing)          return false
     if (id === 'orbital'     && u.orbital >= 3)      return false
     if (id === 'boomerang'   && u.boomerang)         return false
     if (id === 'flameTrail'  && u.flameTrail)        return false
@@ -274,6 +278,7 @@ export class GameRoom {
 
     const u = p.upgrades
     switch (upgradeId as UpgradeId) {
+      case 'wand':        u.wand = true; break
       case 'piercing':    u.piercing = true; break
       case 'multiShot':   u.multiShot = Math.min(4, u.multiShot + 1); break
       case 'orbital':     u.orbital = Math.min(3, u.orbital + 1); p.orbital = u.orbital; break
