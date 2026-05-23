@@ -36,6 +36,7 @@ export interface RunSnapshot {
   auraTick: number
   auraRange: number
   orbital: number
+  wand: boolean
   boomerang: boolean
   flameTrail: boolean
   bloodNova: boolean

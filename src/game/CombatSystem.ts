@@ -72,6 +72,7 @@ export class CombatSystem {
   private vampiricPool = 0
   // Boomerang
   private boomerangs: Boomerang[] = []
+  private wandTimer = 0
   private boomerangTimer = 0
   // Axe
   private axes: Axe[] = []
@@ -269,7 +270,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe, divineShield, divineShieldActive, setDivineShield } = getValidatedCombatState()
+    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, wand, boomerang, flameTrail, bloodNova, vampiric, lightning, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -286,6 +287,29 @@ export class CombatSystem {
       if (this.fireTimer >= attackInterval) {
         this.fireTimer = 0
         this.fireSwordSwing(playerX, playerY, damage, enemies, coinDropChance, lifeDrain, vampiric)
+      }
+    }
+
+    // Arcane Wand: fires magic bolts at nearest enemy
+    if (wand) {
+      this.wandTimer += delta
+      if (this.wandTimer >= attackInterval) {
+        this.wandTimer = 0
+        const target = this.findNearest(playerX, playerY, enemies, 700)
+        if (target) {
+          const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
+          const spreadRad = 15 * (Math.PI / 180)
+          for (let i = 0; i <= multiShot; i++) {
+            const side = i % 2 === 1 ? 1 : -1
+            const offset = i === 0 ? 0 : Math.ceil(i / 2) * side * spreadRad
+            const angle = baseAngle + offset
+            const proj = new Projectile(this.scene, playerX, playerY,
+              playerX + Math.cos(angle) * 1000, playerY + Math.sin(angle) * 1000)
+            proj.piercing = isPiercing
+            this.projectiles.push(proj)
+          }
+          soundSystem.shoot()
+        }
       }
     }
 

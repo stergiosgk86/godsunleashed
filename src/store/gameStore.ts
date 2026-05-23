@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might' | 'axe' | 'divineShield'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might' | 'axe' | 'divineShield'
 
 export type AdminSpawnEntity =
   | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
@@ -24,6 +24,9 @@ export interface Upgrade {
 export const UPGRADE_POOL: Upgrade[] = [
   { id: 'dashCooldown',  label: 'Swift Dash',      description: '25% shorter dash cooldown' },
   { id: 'dashDistance',  label: 'Longer Dash',     description: '40% further dash distance' },
+  { id: 'wand',          label: 'Arcane Wand',     description: 'Fires a magic bolt at the nearest enemy' },
+  { id: 'multiShot',     label: 'Multi Shot',      description: 'Wand fires an extra bolt per attack (stackable, up to 4×)' },
+  { id: 'piercing',      label: 'Piercing',        description: 'Wand bolts pass through enemies' },
   { id: 'aura',          label: 'Aura',            description: 'Pulses damage to all enemies in range and knocks them back' },
   { id: 'auraTick',     label: 'Aura Tempo',      description: 'Aura pulses 250ms faster (stackable, up to 3×)' },
   { id: 'auraRange',    label: 'Aura Range',      description: 'Expands the aura radius (stackable, up to 3×)' },
@@ -45,9 +48,14 @@ function xpNeeded(level: number) {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-function pickChoices(state: { orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean }): Upgrade[] {
+function pickChoices(state: { wand: boolean; multiShot: number; piercing: boolean; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean }): Upgrade[] {
   const pool = UPGRADE_POOL.filter(u => {
-    if (u.id === 'orbital'    && state.orbital >= 3)   return false
+    if (u.id === 'wand'       && state.wand)            return false
+    if (u.id === 'multiShot'  && !state.wand)           return false
+    if (u.id === 'multiShot'  && state.multiShot >= 4)  return false
+    if (u.id === 'piercing'   && !state.wand)           return false
+    if (u.id === 'piercing'   && state.piercing)        return false
+    if (u.id === 'orbital'    && state.orbital >= 3)    return false
     if (u.id === 'boomerang'  && state.boomerang)      return false
     if (u.id === 'flameTrail' && state.flameTrail)     return false
     if (u.id === 'bloodNova'  && state.bloodNova)      return false
@@ -100,6 +108,7 @@ interface GameState {
   auraTick: number
   auraRange: number
   orbital: number
+  wand: boolean
   boomerang: boolean
   flameTrail: boolean
   bloodNova: boolean
@@ -177,6 +186,7 @@ export const useGameStore = create<GameState>()(
     auraTick: 0,
     auraRange: 0,
     orbital: 0,
+    wand: false,
     boomerang: false,
     flameTrail: false,
     bloodNova: false,
@@ -293,7 +303,7 @@ export const useGameStore = create<GameState>()(
       invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300, bossInvulnerable: false,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, auraRange: 0, orbital: 0,
-      boomerang: false, flameTrail: false, bloodNova: false, vampiric: false, lightning: false, axe: false, divineShield: false, divineShieldActive: false, armor: 0,
+      wand: false, boomerang: false, flameTrail: false, bloodNova: false, vampiric: false, lightning: false, axe: false, divineShield: false, divineShieldActive: false, armor: 0,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
     }),
@@ -311,6 +321,7 @@ export const useGameStore = create<GameState>()(
           case 'auraTick':     upgrade = { auraTick: s.auraTick + 1 }; break
           case 'auraRange':    upgrade = { auraRange: Math.min(3, s.auraRange + 1) }; break
           case 'orbital':      upgrade = { orbital: s.orbital + 1 }; break
+          case 'wand':         upgrade = { wand: true }; break
           case 'boomerang':    upgrade = { boomerang: true }; break
           case 'flameTrail':   upgrade = { flameTrail: true }; break
           case 'bloodNova':    upgrade = { bloodNova: true }; break
