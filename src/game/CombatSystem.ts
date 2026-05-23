@@ -889,10 +889,10 @@ export class CombatSystem {
     }
     if (net && 'serverId' in e) {
       // Multiplayer: report hit to server, server decides outcome
-      net.send({ type: 'hit', enemyId: (e as ClientEnemy).serverId, damage })
-      e.takeDamage(damage)  // visual flash only
+      net.send({ type: 'hit', enemyId: (e as ClientEnemy).serverId, damage: actual })
+      e.takeDamage(actual)  // visual flash only
     } else {
-      e.takeDamage(damage)
+      e.takeDamage(actual)
       if (e.hp <= 0) this.killEnemy(e, coinDropChance, lifeDrain)
     }
   }

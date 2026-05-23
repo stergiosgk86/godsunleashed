@@ -13,7 +13,7 @@ export type AdminSpawnEntity =
   | 'potion' | 'xporb' | 'coin'
 
 export function weaponBaseDamage(level: number): number {
-  return 5 + Math.floor(level * 0.5)
+  return 8 + Math.floor(level * 0.7)
 }
 
 export interface Upgrade {

@@ -38,8 +38,8 @@ interface EnemyConfig {
 }
 
 const CONFIGS: Record<EnemyType, EnemyConfig> = {
-  basic:    { speed: 80,  maxHp: 3,  textureKey: 'enemy_basic',    contactDamage: 10, xpValue: 2,  scale: 1.2, frameRate: 8  },
-  speeder:  { speed: 190, maxHp: 2,  textureKey: 'enemy_speeder',   contactDamage: 8,  xpValue: 1,  scale: 0.9, frameRate: 12 },
+  basic:    { speed: 80,  maxHp: 1,  textureKey: 'enemy_basic',    contactDamage: 10, xpValue: 2,  scale: 1.2, frameRate: 8  },
+  speeder:  { speed: 190, maxHp: 1,  textureKey: 'enemy_speeder',   contactDamage: 8,  xpValue: 1,  scale: 0.9, frameRate: 12 },
   tank:     { speed: 35,  maxHp: 20, textureKey: 'enemy_tank',      contactDamage: 20, xpValue: 6,  scale: 1.8, frameRate: 5  },
   veteran:  { speed: 110, maxHp: 12, textureKey: 'enemy_veteran',   contactDamage: 14, xpValue: 3,  scale: 1.3, frameRate: 10 },
   brute:    { speed: 28,  maxHp: 25, textureKey: 'enemy_brute',     contactDamage: 25, xpValue: 8,  scale: 2.1, frameRate: 4  },
