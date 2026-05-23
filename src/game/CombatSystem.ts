@@ -22,7 +22,7 @@ const BOOMERANG_INTERVAL = 3000
 const AXE_INTERVAL = 3000
 const AXE_HIT_R = 20
 const AXE_DAMAGE_MULT = 2.5
-const BOOMERANG_HIT_R = 22
+const BOOMERANG_HIT_R = 28
 const FLAME_SPAWN_DIST = 55
 const FLAME_RADIUS = 50
 const FLAME_DURATION = 3000
@@ -629,8 +629,7 @@ export class CombatSystem {
           const dy = b.y - e.y
           if (dx * dx + dy * dy < BOOMERANG_HIT_R * BOOMERANG_HIT_R) {
             hitTargets.add(e)
-            const bmgDamage = b.returning ? damage : Math.floor(damage * 1.5)
-            this.applyHit(e, bmgDamage, coinDropChance, lifeDrain, vampiric)
+            this.applyHit(e, Math.floor(damage * 1.5), coinDropChance, lifeDrain, vampiric)
           }
         }
       }
