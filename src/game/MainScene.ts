@@ -175,10 +175,15 @@ export class MainScene extends Phaser.Scene {
 
     this.setupMultiplayer()
 
+    // sceneAlive must be declared before onEsc so the closure can guard against
+    // the teardown race where resetRun() clears isDead before Phaser is destroyed.
+    let sceneAlive = true
+
     // Capture-phase listener fires before Phaser processes the event — reliable
     // regardless of canvas focus. Resuming is in PauseMenu (same mechanism).
     const onEsc = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      if (!sceneAlive) return
       const gs = useGameStore.getState()
       if (!gs.isDead && !gs.isWon && !gs.isLevelUpPending) gs.togglePause()
     }
@@ -189,7 +194,6 @@ export class MainScene extends Phaser.Scene {
     // calling scene.pause() from within a zustand subscriber mid-update-loop.
     soundSystem.startMusic()
 
-    let sceneAlive = true
     const unsubLevelUp = useGameStore.subscribe(
       s => s.isLevelUpPending,
       (pending) => {
@@ -208,13 +212,15 @@ export class MainScene extends Phaser.Scene {
       s => s.isPaused,
       (paused) => {
         if (!sceneAlive) return
-        if (paused) {
-          this.scene.pause(); soundSystem.pauseMusic()
-          activeNetClient?.send({ type: 'pause' })
-        } else {
-          this.scene.resume(); soundSystem.resumeMusic()
-          activeNetClient?.send({ type: 'resume' })
-        }
+        try {
+          if (paused) {
+            this.scene.pause(); soundSystem.pauseMusic()
+            activeNetClient?.send({ type: 'pause' })
+          } else {
+            this.scene.resume(); soundSystem.resumeMusic()
+            activeNetClient?.send({ type: 'resume' })
+          }
+        } catch { /* scene is being torn down — ignore */ }
       }
     )
     const unsubDamage = useGameStore.subscribe(
