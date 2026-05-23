@@ -420,7 +420,7 @@ export class CombatSystem {
     this.orbs = this.orbs.filter(o => o.active)
     this.coins = this.coins.filter(c => c.active)
 
-    // Aura
+    // Aura (Garlic-style: always-visible field + knockback on damage pulse)
     this.auraGraphic.clear()
     if (aura > 0) {
       const radius = 60 + auraRange * 30
@@ -436,13 +436,39 @@ export class CombatSystem {
           if (!e.active || !this.isOnScreen(e.x, e.y)) continue
           const dx = e.x - playerX
           const dy = e.y - playerY
-          if (dx * dx + dy * dy < radius * radius) {
+          const dist2 = dx * dx + dy * dy
+          if (dist2 < radius * radius) {
             this.applyHit(e, auraDmg, coinDropChance, lifeDrain, vampiric)
+            // Knockback: push away from player
+            const dist = Math.sqrt(dist2) || 1
+            e.x += (dx / dist) * 100
+            e.y += (dy / dist) * 100
           }
         }
       }
 
-      // All visuals only during the flash window (500ms after each damage tick)
+      // Always-visible base: soft pulsing field
+      const pulse = 0.5 + 0.5 * Math.sin(this.auraAngle * 4)
+      this.auraGraphic.fillStyle(0x4411cc, 0.04 + 0.03 * pulse)
+      this.auraGraphic.fillCircle(playerX, playerY, radius)
+      this.auraGraphic.lineStyle(2.5, 0x9944ff, 0.25 + 0.15 * pulse)
+      this.auraGraphic.strokeCircle(playerX, playerY, radius)
+
+      // Rotating arc segments (always visible)
+      const numArcs = 3 + aura
+      const arcLen = (Math.PI * 2 / numArcs) * 0.55
+      for (let i = 0; i < numArcs; i++) {
+        const start = this.auraAngle + (i / numArcs) * Math.PI * 2
+        this.auraGraphic.lineStyle(1.5, 0xcc77ff, 0.35)
+        this.auraGraphic.beginPath()
+        this.auraGraphic.arc(playerX, playerY, radius, start, start + arcLen, false)
+        this.auraGraphic.strokePath()
+        const tipAngle = start + arcLen
+        this.auraGraphic.fillStyle(0xffffff, 0.45)
+        this.auraGraphic.fillCircle(playerX + Math.cos(tipAngle) * radius, playerY + Math.sin(tipAngle) * radius, 2)
+      }
+
+      // Damage pulse flash (500ms window on top of base)
       if (this.auraFlashTimer >= 0) {
         this.auraFlashTimer += delta
         const t = Math.min(this.auraFlashTimer / 500, 1)
@@ -466,9 +492,7 @@ export class CombatSystem {
           this.auraGraphic.lineStyle(5, 0x9944ff, 0.6 * fade)
           this.auraGraphic.strokeCircle(playerX, playerY, radius)
 
-          // Rotating arc segments with bright tips
-          const numArcs = 3 + aura
-          const arcLen = (Math.PI * 2 / numArcs) * 0.55
+          // Arc segments bright on pulse
           for (let i = 0; i < numArcs; i++) {
             const start = this.auraAngle + (i / numArcs) * Math.PI * 2
             this.auraGraphic.lineStyle(2.5, 0xcc77ff, 0.9 * fade)
