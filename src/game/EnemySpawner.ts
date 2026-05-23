@@ -237,6 +237,14 @@ export class EnemySpawner {
   }
 
   update(playerX: number, playerY: number, delta: number) {
+    // Update scale BEFORE spawning so enemies always use the current run's values,
+    // not stale values carried over from a previous run in the same session.
+    this.elapsed += delta
+    difficultyScale.speed  = computeSpeedScale(this.elapsed)
+    difficultyScale.hp     = computeHpScale(this.elapsed)
+    difficultyScale.damage = computeDamageScale(this.elapsed)
+    difficultyScale.xp     = computeXpScale(this.elapsed)
+
     if (!this.initialFillDone) {
       this.initialFillDone = true
       for (let edge = 0; edge < 4; edge++) {
@@ -246,12 +254,6 @@ export class EnemySpawner {
         }
       }
     }
-
-    this.elapsed += delta
-    difficultyScale.speed  = computeSpeedScale(this.elapsed)
-    difficultyScale.hp     = computeHpScale(this.elapsed)
-    difficultyScale.damage = computeDamageScale(this.elapsed)
-    difficultyScale.xp     = computeXpScale(this.elapsed)
 
     const inFinalPhase = this.finalBossAlive || this.elapsed >= FINAL_BOSS_LOCK
 
