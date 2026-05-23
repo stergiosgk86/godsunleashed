@@ -56,7 +56,8 @@ function emptyUpgrades(): PlayerUpgrades {
 function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
   if (characterType === 'witch')    return { aura: true }
   if (characterType === 'zeus')     return { lightning: true }
-  if (characterType === 'poseidon') return { boomerang: true }
+  if (characterType === 'rogue')    return { boomerang: true }
+  if (characterType === 'shade')    return { flameTrail: true }
   return {}
 }
 
