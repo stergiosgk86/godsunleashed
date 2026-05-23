@@ -18,6 +18,11 @@ const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight:
   { key: 'enemy_ghost',       url: SPRITE_URLS.enemyGhost,       frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_charger',     url: SPRITE_URLS.enemyCharger,     frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_necromancer', url: SPRITE_URLS.enemyNecromancer, frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_veteran',     url: SPRITE_URLS.enemyVeteran,    frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_brute',       url: SPRITE_URLS.enemyBrute,      frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_revenant',    url: SPRITE_URLS.enemyRevenant,   frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_warlord',     url: SPRITE_URLS.enemyWarlord,    frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_titan',       url: SPRITE_URLS.enemyTitan,      frameWidth: 32, frameHeight: 32 },
   { key: 'boss',              url: SPRITE_URLS.boss,             frameWidth: 96, frameHeight: 96, frameRate: 6 },
 ]
 

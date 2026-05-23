@@ -6,11 +6,12 @@ import { ExploderEnemy } from './ExploderEnemy'
 import { GhostEnemy } from './GhostEnemy'
 import { ChargerEnemy } from './ChargerEnemy'
 import { NecromancerEnemy } from './NecromancerEnemy'
+import { WarlordEnemy } from './WarlordEnemy'
 import { BossEnemy } from './BossEnemy'
 import { FinalBossEnemy } from './FinalBossEnemy'
 import { SummonerBoss } from './SummonerBoss'
 
-export type SavedEnemyType = EnemyType | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'boss' | 'summoner' | 'finalBoss'
+export type SavedEnemyType = EnemyType | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'warlord' | 'boss' | 'summoner' | 'finalBoss'
 export interface EnemySave { type: SavedEnemyType; x: number; y: number; hp: number }
 import { RUN_DURATION } from './runData'
 import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
@@ -25,7 +26,7 @@ const BOSS_REPEAT = 120_000
 const BOSS_WARNING = 5_000
 const FINAL_BOSS_LOCK = RUN_DURATION - 30_000  // stop regular boss cycle 30s before end
 
-type SpawnType = EnemyType | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
+type SpawnType = EnemyType | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'warlord'
 
 interface LaneDef {
   type: SpawnType
@@ -45,6 +46,11 @@ const LANE_DEFS: LaneDef[] = [
   { type: 'ranged',      startTime: 210_000,  intervalStart: 2500,  intervalEnd: 600,  burstStart: 1, burstEnd: 2 },
   { type: 'charger',     startTime: 480_000,  intervalStart: 4000,  intervalEnd: 1200, burstStart: 1, burstEnd: 2 },
   { type: 'necromancer', startTime: 780_000,  intervalStart: 6000,  intervalEnd: 2000, burstStart: 1, burstEnd: 1 },
+  { type: 'veteran',    startTime: 300_000,  intervalStart: 2500,  intervalEnd: 500,  burstStart: 1, burstEnd: 3 },
+  { type: 'brute',      startTime: 600_000,  intervalStart: 4000,  intervalEnd: 1200, burstStart: 1, burstEnd: 2 },
+  { type: 'revenant',   startTime: 900_000,  intervalStart: 3500,  intervalEnd: 900,  burstStart: 1, burstEnd: 2 },
+  { type: 'warlord',    startTime: 1200_000, intervalStart: 5000,  intervalEnd: 1800, burstStart: 1, burstEnd: 2 },
+  { type: 'titan',      startTime: 1500_000, intervalStart: 8000,  intervalEnd: 3000, burstStart: 1, burstEnd: 1 },
 ]
 
 interface SurgeDef {
@@ -159,6 +165,8 @@ export class EnemySpawner {
         result.push({ type: 'charger', x: e.x, y: e.y, hp: e.hp })
       } else if (e instanceof NecromancerEnemy) {
         result.push({ type: 'necromancer', x: e.x, y: e.y, hp: e.hp })
+      } else if (e instanceof WarlordEnemy) {
+        result.push({ type: 'warlord', x: e.x, y: e.y, hp: e.hp })
       } else if (e instanceof Enemy) {
         result.push({ type: e.type, x: e.x, y: e.y, hp: e.hp })
       }
@@ -210,6 +218,10 @@ export class EnemySpawner {
         this.enemies.push(e)
       } else if (save.type === 'necromancer') {
         e = new NecromancerEnemy(this.scene, save.x, save.y)
+        e.hp = save.hp
+        this.enemies.push(e)
+      } else if (save.type === 'warlord') {
+        e = new WarlordEnemy(this.scene, save.x, save.y)
         e.hp = save.hp
         this.enemies.push(e)
       } else {
@@ -421,6 +433,8 @@ export class EnemySpawner {
       e = new ChargerEnemy(this.scene, x, y)
     } else if (type === 'necromancer') {
       e = new NecromancerEnemy(this.scene, x, y)
+    } else if (type === 'warlord') {
+      e = new WarlordEnemy(this.scene, x, y)
     } else {
       e = new Enemy(this.scene, x, y, type)
     }
@@ -496,13 +510,18 @@ export class EnemySpawner {
     if (this.bossAlive) return this.enemies.some(e => e instanceof SummonerBoss && e.active) ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
     if (this.surgeActive) return '⚡ SURGE!'
     const t = overrideElapsed ?? this.elapsed
-    if (t < 50_000)  return 'Wave 1 — Basic'
-    if (t < 90_000)  return 'Wave 2 — + Speeders'
-    if (t < 120_000) return 'Wave 3 — + Tanks'
-    if (t < 150_000) return 'Wave 4 — + Exploders'
-    if (t < 210_000) return 'Wave 5 — + Ghosts'
-    if (t < 480_000) return 'Wave 6 — + Ranged'
-    if (t < 780_000) return 'Wave 7 — + Chargers'
-    return 'Wave 8 — + Necromancers'
+    if (t < 50_000)    return 'Wave 1 — Basic'
+    if (t < 90_000)    return 'Wave 2 — + Speeders'
+    if (t < 120_000)   return 'Wave 3 — + Tanks'
+    if (t < 150_000)   return 'Wave 4 — + Exploders'
+    if (t < 210_000)   return 'Wave 5 — + Ghosts'
+    if (t < 300_000)   return 'Wave 6 — + Ranged'
+    if (t < 480_000)   return 'Wave 7 — + Veterans'
+    if (t < 600_000)   return 'Wave 8 — + Chargers'
+    if (t < 780_000)   return 'Wave 9 — + Brutes'
+    if (t < 900_000)   return 'Wave 10 — + Necromancers'
+    if (t < 1200_000)  return 'Wave 11 — + Revenants'
+    if (t < 1500_000)  return 'Wave 12 — + Warlords'
+    return 'Wave 13 — + Titans'
   }
 }

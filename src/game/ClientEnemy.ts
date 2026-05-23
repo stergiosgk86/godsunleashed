@@ -49,6 +49,11 @@ const KIND_TO_SPRITE: Record<EnemyKind, string> = {
   ghost:       'enemy_ghost',
   charger:     'enemy_charger',
   necromancer: 'enemy_necromancer',
+  veteran:     'enemy_veteran',
+  brute:       'enemy_brute',
+  revenant:    'enemy_revenant',
+  warlord:     'enemy_warlord',
+  titan:       'enemy_titan',
   summoner:    'boss',
   boss:        'boss',
   finalBoss:   'boss',
@@ -57,18 +62,21 @@ const KIND_TO_SPRITE: Record<EnemyKind, string> = {
 const KIND_SCALE: Record<EnemyKind, number> = {
   basic: 1.2, speeder: 0.9, tank: 1.8, ranged: 1.2,
   exploder: 1.1, ghost: 0.9, charger: 1.3, necromancer: 1.1,
+  veteran: 1.3, brute: 2.1, revenant: 1.0, warlord: 1.5, titan: 2.8,
   summoner: 1.6, boss: 1.5, finalBoss: 1.8,
 }
 
 const KIND_CONTACT_DAMAGE: Record<EnemyKind, number> = {
   basic: 10, speeder: 8, tank: 20, ranged: 10,
   exploder: 0, ghost: 12, charger: 12, necromancer: 10,
+  veteran: 14, brute: 25, revenant: 15, warlord: 18, titan: 35,
   summoner: 35, boss: 40, finalBoss: 60,
 }
 
 const KIND_XP: Record<EnemyKind, number> = {
   basic: 2, speeder: 1, tank: 6, ranged: 4,
   exploder: 4, ghost: 2, charger: 5, necromancer: 5,
+  veteran: 3, brute: 8, revenant: 10, warlord: 12, titan: 15,
   summoner: 150, boss: 80, finalBoss: 200,
 }
 

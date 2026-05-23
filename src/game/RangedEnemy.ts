@@ -66,7 +66,7 @@ export class RangedEnemy implements AnyEnemy {
     this.scene = scene
     this.x = x
     this.y = y
-    this.hp = Math.round(30 * difficultyScale.hp)
+    this.hp = Math.round(8 * difficultyScale.hp)
     this.contactDamage = Math.round(10 * difficultyScale.damage)
     this.graphic = scene.add.sprite(x, y, 'enemy_ranged')
       .setDepth(2)

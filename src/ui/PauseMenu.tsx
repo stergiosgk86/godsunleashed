@@ -81,6 +81,11 @@ const SPAWN_GROUPS: { label: string; color: string; items: { label: string; enti
       { label: 'Ghost',       entity: 'ghost' },
       { label: 'Charger',     entity: 'charger' },
       { label: 'Necromancer', entity: 'necromancer' },
+      { label: 'Veteran',     entity: 'veteran' },
+      { label: 'Brute',       entity: 'brute' },
+      { label: 'Revenant',    entity: 'revenant' },
+      { label: 'Warlord',     entity: 'warlord' },
+      { label: 'Titan',       entity: 'titan' },
     ],
   },
   {

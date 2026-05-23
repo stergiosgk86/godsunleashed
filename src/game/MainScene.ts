@@ -17,7 +17,8 @@ import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale,
 import { soundSystem } from './SoundSystem'
 import { activeNetClient } from '../net/netState'
 import type { EnemySnapshot, PlayerSnapshot } from '../net/protocol'
-import { saveRun, loadRun, clearRun } from './runSave'
+import { saveRun, clearRun } from './runSave'
+import { consumePendingRunRestore } from './pendingRunRestore'
 import { TouchJoystick } from './TouchJoystick'
 import { TouchDashButton } from './TouchDashButton'
 import { ChunkManager } from './ChunkManager'
@@ -46,7 +47,8 @@ export class MainScene extends Phaser.Scene {
   private netBossIsSummoner = false
   private netSurgeTimer = 0
   private saveTimer = 0
-  private readonly SAVE_INTERVAL = 1000
+  private readonly SAVE_INTERVAL = 10_000
+  private charType = ''
   private joystick!: TouchJoystick
   private dashButton: TouchDashButton | null = null
   private chunkManager!: ChunkManager
@@ -70,6 +72,7 @@ export class MainScene extends Phaser.Scene {
 
     this.effects = new EffectsSystem(this)
     const charType = useCharacterStore.getState().selectedCharacter
+    this.charType = charType
     const charDef = CHARACTER_DEFS[charType]
     const username = useAuthStore.getState().username ?? ''
     this.player = new Player(this, SPAWN_X, SPAWN_Y, charDef.spriteKey, username, charDef.scale)
@@ -77,9 +80,9 @@ export class MainScene extends Phaser.Scene {
     if (window.innerWidth <= 768) this.dashButton = new TouchDashButton(this)
     this.spawner = new EnemySpawner(this)
     this.combat = new CombatSystem(this, this.effects, charDef.id === 'zeus', charDef.frontArcOnly)
-    // Restore mid-run state after a page reload
-    const savedRun = loadRun()
-    if (savedRun) {
+    // Restore mid-run state after a page reload (pre-fetched in App.tsx init)
+    const savedRun = consumePendingRunRestore()
+    if (savedRun && (!savedRun.character || savedRun.character === charType)) {
       if (!activeNetClient) {
         this.spawner.restore(savedRun)
         this.spawner.restoreEnemies(savedRun.enemies)
@@ -101,6 +104,7 @@ export class MainScene extends Phaser.Scene {
         piercing: savedRun.piercing,
         aura: savedRun.aura,
         auraTick: savedRun.auraTick ?? 0,
+        auraRange: savedRun.auraRange ?? 0,
         orbital: savedRun.orbital,
         boomerang: savedRun.boomerang,
         flameTrail: savedRun.flameTrail,
@@ -108,6 +112,7 @@ export class MainScene extends Phaser.Scene {
         vampiric: savedRun.vampiric ?? false,
         lightning: savedRun.lightning ?? false,
         axe: savedRun.axe ?? false,
+        divineShield: savedRun.divineShield ?? false,
         armor: savedRun.armor ?? 0,
         hpRegen: savedRun.hpRegen,
         lifeDrain: savedRun.lifeDrain,
@@ -514,6 +519,7 @@ export class MainScene extends Phaser.Scene {
         this.saveTimer = 0
         const s = useGameStore.getState()
         saveRun({
+          character: this.charType,
           elapsed: runData.elapsed,
           nextBossAt: 0,
           warningFired: false,
@@ -528,10 +534,10 @@ export class MainScene extends Phaser.Scene {
           hp: s.hp, maxHp: s.maxHp,
           might: s.might, attackInterval: s.attackInterval, moveSpeed: s.moveSpeed,
           dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
-          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick,
+          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick, auraRange: s.auraRange,
           orbital: s.orbital, boomerang: s.boomerang, flameTrail: s.flameTrail,
           bloodNova: s.bloodNova, vampiric: s.vampiric, lightning: s.lightning,
-          axe: s.axe, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
+          axe: s.axe, divineShield: s.divineShield, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
           sessionCoins: s.sessionCoins,
         })
       }
@@ -547,6 +553,7 @@ export class MainScene extends Phaser.Scene {
         const s = useGameStore.getState()
         const sp = this.spawner.getSnapshot()
         saveRun({
+          character: this.charType,
           elapsed: runData.elapsed,
           nextBossAt: sp.nextBossAt,
           warningFired: sp.warningFired,
@@ -561,9 +568,9 @@ export class MainScene extends Phaser.Scene {
           hp: s.hp, maxHp: s.maxHp,
           might: s.might, attackInterval: s.attackInterval, moveSpeed: s.moveSpeed,
           dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
-          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick,
+          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick, auraRange: s.auraRange,
           orbital: s.orbital, boomerang: s.boomerang, flameTrail: s.flameTrail,
-          bloodNova: s.bloodNova, vampiric: s.vampiric, lightning: s.lightning, axe: s.axe, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
+          bloodNova: s.bloodNova, vampiric: s.vampiric, lightning: s.lightning, axe: s.axe, divineShield: s.divineShield, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
           sessionCoins: s.sessionCoins,
         })
       }

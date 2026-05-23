@@ -24,6 +24,9 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- Migration: add unlocked_characters if upgrading existing DB
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_characters TEXT[] NOT NULL DEFAULT '{}';
 
+-- Migration: active run snapshot for page-refresh restore
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS run_snapshot JSONB;
+
 -- One profile per user
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_user_id_idx ON profiles(user_id);
 

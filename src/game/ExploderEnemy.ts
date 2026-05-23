@@ -5,7 +5,7 @@ import { useGameStore } from '../store/gameStore'
 import { difficultyScale } from './difficultyScale'
 
 const SPEED = 65
-const MAX_HP = 40
+const MAX_HP = 8
 const XP_VALUE = 4
 const TRIGGER_RADIUS = 110   // arms the bomb when player is this close
 const COUNTDOWN_MS = 1200    // ms from trigger to detonation

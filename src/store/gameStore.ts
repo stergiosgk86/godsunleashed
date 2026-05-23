@@ -8,11 +8,12 @@ export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'multiSh
 
 export type AdminSpawnEntity =
   | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
+  | 'veteran' | 'brute' | 'revenant' | 'warlord' | 'titan'
   | 'boss' | 'summoner' | 'finalBoss'
   | 'potion' | 'xporb' | 'coin'
 
-export function weaponBaseDamage(_level: number): number {
-  return 15
+export function weaponBaseDamage(level: number): number {
+  return 5 + Math.floor(level * 0.5)
 }
 
 export interface Upgrade {
@@ -35,7 +36,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'bloodNova',   label: 'Blood Nova',       description: 'Every 7s releases a massive red ring — costs 8% of your max HP' },
   { id: 'vampiric',   label: 'Soul Drain',       description: 'Each hit restores 8% of damage dealt as HP' },
   { id: 'lightning',  label: 'Thunder Strike',   description: 'Every 4s lightning bolts strike 2 random enemies for heavy damage' },
-  { id: 'might',     label: 'Power',            description: '+10% weapon damage (stackable, up to 5×)' },
+  { id: 'might',     label: 'Power',            description: '+20% weapon damage (stackable, up to 3×)' },
   { id: 'axe',      label: 'War Axe',          description: 'Hurls a spinning axe in an arc — hits on the way up and again on the way down' },
   { id: 'divineShield', label: 'Divine Shield', description: 'Grants a shield that blocks the next hit. After absorbing a hit you are briefly immune, then the shield recharges in 7s' },
 ]
@@ -60,7 +61,7 @@ function pickChoices(state: { piercing: boolean; multiShot: number; orbital: num
     if (u.id === 'bloodNova'  && state.bloodNova)      return false
     if (u.id === 'vampiric'   && state.vampiric)       return false
     if (u.id === 'lightning'  && state.lightning)      return false
-    if (u.id === 'might'      && state.might >= 1.5)    return false
+    if (u.id === 'might'      && state.might >= 3.0)    return false
     if (u.id === 'axe'        && state.axe)            return false
     if (u.id === 'divineShield' && state.divineShield)  return false
     if (u.id === 'aura'       && state.aura >= 1)       return false
@@ -325,7 +326,7 @@ export const useGameStore = create<GameState>()(
           case 'lightning':    upgrade = { lightning: true }; break
           case 'axe':          upgrade = { axe: true }; break
           case 'divineShield': upgrade = { divineShield: true }; break
-          case 'might':        upgrade = { might: Math.min(1.5, s.might + 0.1) }; break
+          case 'might':        upgrade = { might: Math.min(3.0, s.might + 0.2) }; break
           default:             upgrade = {}
         }
         return { ...upgrade, isLevelUpPending: false, chosenUpgrade: id }
@@ -340,7 +341,7 @@ export function getValidatedCombatState() {
   const s = useGameStore.getState()
   return {
     ...s,
-    might:          Math.min(2.0, Math.max(1.0, s.might)),
+    might:          Math.min(4.0, Math.max(1.0, s.might)),
     attackInterval: Math.max(250, s.attackInterval),
     multiShot:      Math.min(4, Math.max(0, Math.floor(s.multiShot))),
     aura:           Math.min(1, Math.max(0, Math.floor(s.aura))),

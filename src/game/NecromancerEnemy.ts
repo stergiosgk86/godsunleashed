@@ -4,7 +4,7 @@ import { type Direction, getDirection, playDir } from './spriteUtils'
 import { difficultyScale } from './difficultyScale'
 
 const MOVE_SPEED      = 40
-const MAX_HP          = 40
+const MAX_HP          = 10
 const CONTACT_DAMAGE  = 10
 const XP_VALUE        = 5
 const PREFERRED_DIST  = 200

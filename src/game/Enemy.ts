@@ -2,7 +2,7 @@ import Phaser, { TintModes } from 'phaser'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 import { difficultyScale } from './difficultyScale'
 
-export type EnemyType = 'basic' | 'speeder' | 'tank'
+export type EnemyType = 'basic' | 'speeder' | 'tank' | 'veteran' | 'brute' | 'revenant' | 'titan'
 
 export interface EnemyBullet {
   x: number
@@ -33,12 +33,18 @@ interface EnemyConfig {
   xpValue: number
   scale: number
   frameRate: number
+  tint?: number
+  alpha?: number
 }
 
 const CONFIGS: Record<EnemyType, EnemyConfig> = {
-  basic:   { speed: 80,  maxHp: 25,  textureKey: 'enemy_basic',   contactDamage: 10, xpValue: 2, scale: 1.2, frameRate: 8  },
-  speeder: { speed: 190, maxHp: 10,  textureKey: 'enemy_speeder',  contactDamage: 8,  xpValue: 1, scale: 0.9, frameRate: 12 },
-  tank:    { speed: 35,  maxHp: 100, textureKey: 'enemy_tank',     contactDamage: 20, xpValue: 6, scale: 1.8, frameRate: 5  },
+  basic:    { speed: 80,  maxHp: 3,  textureKey: 'enemy_basic',    contactDamage: 10, xpValue: 2,  scale: 1.2, frameRate: 8  },
+  speeder:  { speed: 190, maxHp: 2,  textureKey: 'enemy_speeder',   contactDamage: 8,  xpValue: 1,  scale: 0.9, frameRate: 12 },
+  tank:     { speed: 35,  maxHp: 20, textureKey: 'enemy_tank',      contactDamage: 20, xpValue: 6,  scale: 1.8, frameRate: 5  },
+  veteran:  { speed: 110, maxHp: 12, textureKey: 'enemy_veteran',   contactDamage: 14, xpValue: 3,  scale: 1.3, frameRate: 10 },
+  brute:    { speed: 28,  maxHp: 25, textureKey: 'enemy_brute',     contactDamage: 25, xpValue: 8,  scale: 2.1, frameRate: 4  },
+  revenant: { speed: 140, maxHp: 35, textureKey: 'enemy_revenant',  contactDamage: 15, xpValue: 10, scale: 1.0, frameRate: 8,  alpha: 0.75 },
+  titan:    { speed: 18,  maxHp: 80, textureKey: 'enemy_titan',     contactDamage: 35, xpValue: 15, scale: 2.8, frameRate: 3  },
 }
 
 export class Enemy implements AnyEnemy {
@@ -57,6 +63,8 @@ export class Enemy implements AnyEnemy {
   private textureKey: string
   private lastDir: Direction = 'down'
   private hitFlashTimer = 0
+  private baseTint: number | undefined
+  private baseAlpha: number
 
   constructor(scene: Phaser.Scene, x: number, y: number, type: EnemyType = 'basic') {
     const cfg = CONFIGS[type]
@@ -70,9 +78,13 @@ export class Enemy implements AnyEnemy {
     this.xpValue = cfg.xpValue
     this.textureKey = cfg.textureKey
     this.baseScale = cfg.scale
+    this.baseTint  = cfg.tint
+    this.baseAlpha = cfg.alpha ?? 1
     this.graphic = scene.add.sprite(x, y, cfg.textureKey)
       .setDepth(2)
       .setScale(cfg.scale)
+    if (cfg.tint  !== undefined) this.graphic.setTint(cfg.tint)
+    if (cfg.alpha !== undefined) this.graphic.setAlpha(cfg.alpha)
     this.graphic.play(`${cfg.textureKey}_down`)
   }
 
@@ -85,7 +97,11 @@ export class Enemy implements AnyEnemy {
   update(targetX: number, targetY: number, delta: number) {
     if (this.hitFlashTimer > 0) {
       this.hitFlashTimer -= delta
-      if (this.hitFlashTimer <= 0) this.graphic.clearTint()
+      if (this.hitFlashTimer <= 0) {
+        if (this.baseTint !== undefined) this.graphic.setTint(this.baseTint)
+        else this.graphic.clearTint()
+        this.graphic.setAlpha(this.baseAlpha)
+      }
     }
 
     const dt = delta / 1000

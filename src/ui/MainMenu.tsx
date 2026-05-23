@@ -35,10 +35,11 @@ const FRAME_H = 32 * SCALE
 const SHEET_W = 96 * SCALE
 const SHEET_H = 128 * SCALE
 
-function CharSprite({ spriteKey, color, menuFrame }: {
+function CharSprite({ spriteKey, color, menuFrame, compact }: {
   spriteKey: string
   color: string
   menuFrame?: { fw: number; fh: number; sw: number; sh: number }
+  compact?: boolean
 }) {
   const [frame, setFrame] = useState(0)
   const url = CHAR_SPRITE_URL[spriteKey]
@@ -52,20 +53,27 @@ function CharSprite({ spriteKey, color, menuFrame }: {
     return () => clearInterval(id)
   }, [])
 
+  const sf = compact ? 0.65 : 1
+  const dfw = Math.round(fw * sf)
+  const dfh = Math.round(fh * sf)
+  const dsw = Math.round(sw * sf)
+  const dsh = Math.round(sh * sf)
+  const pad = Math.round(16 * sf)
+
   return (
     <div style={{
-      width: fw + 16, height: fh + 16,
+      width: dfw + pad, height: dfh + pad,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0,0,0,0.3)',
       border: `1px solid ${color}44`,
-      borderRadius: 10,
+      borderRadius: compact ? 7 : 10,
       flexShrink: 0,
     }}>
       <div style={{
-        width: fw, height: fh,
+        width: dfw, height: dfh,
         backgroundImage: `url(${url})`,
-        backgroundPosition: `-${frame * fw}px 0px`,
-        backgroundSize: `${sw}px ${sh}px`,
+        backgroundPosition: `-${frame * dfw}px 0px`,
+        backgroundSize: `${dsw}px ${dsh}px`,
         backgroundRepeat: 'no-repeat',
         imageRendering: 'pixelated',
         filter: `drop-shadow(0 0 6px ${color}bb)`,
@@ -666,14 +674,14 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '4px 14px', borderRadius: 20,
               background: 'rgba(60,50,0,0.35)', border: '1px solid rgba(160,120,0,0.35)',
-              color: '#ccaa22', fontFamily: 'monospace', fontSize: 16, fontWeight: 'bold',
+              color: '#ccaa22', fontFamily: 'monospace', fontSize: mob ? 14 : 16, fontWeight: 'bold',
               textShadow: '0 0 10px #886600',
             }}>
               ◈ {coins}
             </div>
           </div>
 
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 7, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: mob ? 5 : 7, overflowY: 'auto', flex: 1, minHeight: 0 }}>
             {ALL_CHARACTERS.map((id, i) => {
               const def = CHARACTER_DEFS[id]
               const isSelected = selectedCharacter === id
@@ -689,10 +697,10 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                     background: isSelected ? 'rgba(20,20,50,0.8)' : 'rgba(10,10,28,0.6)',
                     border: `1px solid ${isLocked ? 'rgba(60,30,80,0.4)' : isSelected ? def.color + '66' : 'rgba(40,40,90,0.5)'}`,
                     borderLeft: `4px solid ${isLocked ? '#44224466' : def.color}`,
-                    borderRadius: 10, padding: '10px 14px',
+                    borderRadius: mob ? 8 : 10, padding: mob ? '8px 10px' : '10px 14px',
                     cursor: isLocked ? 'default' : 'pointer',
                     transition: 'border-color 0.15s, background 0.15s',
-                    display: 'flex', flexDirection: 'row', gap: 12, alignItems: 'center',
+                    display: 'flex', flexDirection: 'row', gap: mob ? 8 : 12, alignItems: 'center',
                     boxShadow: isSelected ? `0 0 20px ${def.color}22` : 'none',
                   }}
                 >
@@ -715,7 +723,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
 
                   <div style={{ position: 'relative', flexShrink: 0 }}>
                     <div style={{ opacity: isLocked ? 0.4 : 1 }}>
-                      <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} />
+                      <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} compact={mob} />
                     </div>
                     {isLocked && (
                       <div style={{
@@ -729,22 +737,22 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, position: 'relative' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: mob ? 6 : 10, flexWrap: mob ? 'wrap' : 'nowrap' }}>
                       {isSelected && <span style={{ color: def.color, fontSize: 9 }}>▶</span>}
-                      <span style={{ color: isLocked ? '#776688' : '#ddddff', fontFamily: 'monospace', fontSize: 14, fontWeight: 'bold' }}>
+                      <span style={{ color: isLocked ? '#776688' : '#ddddff', fontFamily: 'monospace', fontSize: mob ? 12 : 14, fontWeight: 'bold' }}>
                         {def.name.toUpperCase()}
                       </span>
-                      <span style={{ color: isLocked ? '#443355' : def.color + 'cc', fontFamily: 'monospace', fontSize: 11, fontStyle: 'italic' }}>
+                      <span style={{ color: isLocked ? '#443355' : def.color + 'cc', fontFamily: 'monospace', fontSize: mob ? 10 : 11, fontStyle: 'italic' }}>
                         {def.trait}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: mob ? '2px 6px' : '2px 10px' }}>
                       {def.statLines.map(line => (
                         <span key={line.label} style={{
                           color: isLocked
                             ? (line.positive ? '#1e4430' : '#441818')
                             : (line.positive ? '#44cc66' : '#cc4444'),
-                          fontFamily: 'monospace', fontSize: 11,
+                          fontFamily: 'monospace', fontSize: mob ? 10 : 11,
                         }}>
                           {line.positive ? '▲' : '▼'} {line.label}
                         </span>
@@ -759,7 +767,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       style={{
                         flexShrink: 0, position: 'relative', zIndex: 1,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-                        width: 72, height: 52,
+                        width: mob ? 58 : 72, height: mob ? 44 : 52,
                         background: canAfford ? 'rgba(30,15,50,0.8)' : 'rgba(15,10,22,0.8)',
                         border: `1px solid ${canAfford ? def.color + '55' : 'rgba(50,25,70,0.5)'}`,
                         borderRadius: 8,
@@ -769,13 +777,13 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       onMouseLeave={e => { e.currentTarget.style.background = canAfford ? 'rgba(30,15,50,0.8)' : 'rgba(15,10,22,0.8)' }}
                     >
                       <span style={{
-                        fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                        fontFamily: 'monospace', fontSize: mob ? 10 : 11, fontWeight: 'bold',
                         color: canAfford ? '#ccaa22' : '#443322', letterSpacing: 1,
                       }}>
                         ◈ {unlockCost}
                       </span>
                       <span style={{
-                        fontFamily: 'monospace', fontSize: 10, fontWeight: 'bold',
+                        fontFamily: 'monospace', fontSize: mob ? 9 : 10, fontWeight: 'bold',
                         color: canAfford ? '#44ff88' : '#1a4433', letterSpacing: 1,
                       }}>
                         UNLOCK

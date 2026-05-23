@@ -16,6 +16,11 @@ import enemyExploder from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Ene
 import enemyGhost from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 02-1.png'
 import enemyCharger from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 07-1.png'
 import enemyNecromancer from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 04-1.png'
+import enemyVeteran  from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 08-1.png'
+import enemyBrute    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 10-1.png'
+import enemyRevenant from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 11-1.png'
+import enemyWarlord  from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 12-1.png'
+import enemyTitan    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 13-1.png'
 import boss from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Boss/Boss 01.png'
 import boomerangSprite from '../assets/Sprites/Weapons/Boomerang.png'
 import axeSprite from '../assets/Sprites/Weapons/Axe.png'
@@ -33,6 +38,11 @@ export const SPRITE_URLS = {
   enemyGhost,
   enemyCharger,
   enemyNecromancer,
+  enemyVeteran,
+  enemyBrute,
+  enemyRevenant,
+  enemyWarlord,
+  enemyTitan,
   boss,
   boomerangSprite,
   axeSprite,

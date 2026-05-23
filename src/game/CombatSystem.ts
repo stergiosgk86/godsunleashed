@@ -912,7 +912,7 @@ export class CombatSystem {
   }
 
   private jitter(dmg: number): number {
-    return Math.max(1, dmg + Math.floor(Math.random() * 5) - 2)
+    return Math.max(1, dmg + Math.floor(Math.random() * 3) - 1)
   }
 
   adminSpawnItem(type: 'potion' | 'xporb' | 'coin', x: number, y: number): void {

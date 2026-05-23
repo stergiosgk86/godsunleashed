@@ -1,8 +1,9 @@
 import type { EnemySave } from './EnemySpawner'
-
-const KEY = 'gods_run'
+import { useAuthStore } from '../store/authStore'
 
 export interface RunSnapshot {
+  // character that saved this run — used to reject cross-character restores
+  character?: string
   // time
   elapsed: number
   nextBossAt: number
@@ -33,6 +34,7 @@ export interface RunSnapshot {
   piercing: boolean
   aura: number
   auraTick: number
+  auraRange: number
   orbital: number
   boomerang: boolean
   flameTrail: boolean
@@ -40,22 +42,44 @@ export interface RunSnapshot {
   vampiric: boolean
   lightning: boolean
   axe: boolean
+  divineShield: boolean
   armor: number
   hpRegen: number
   lifeDrain: number
   sessionCoins: number
 }
 
-export function saveRun(snap: RunSnapshot) {
-  sessionStorage.setItem(KEY, JSON.stringify(snap))
+function authHeader(): HeadersInit {
+  const token = useAuthStore.getState().token
+  return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
-export function loadRun(): RunSnapshot | null {
-  const raw = sessionStorage.getItem(KEY)
-  if (!raw) return null
-  try { return JSON.parse(raw) as RunSnapshot } catch { return null }
+export function saveRun(snap: RunSnapshot): void {
+  const token = useAuthStore.getState().token
+  if (!token) return
+  fetch('/api/run-snapshot', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ snapshot: snap }),
+  }).catch(() => {})
 }
 
-export function clearRun() {
-  sessionStorage.removeItem(KEY)
+export async function loadRun(): Promise<RunSnapshot | null> {
+  try {
+    const r = await fetch('/api/run-snapshot', { headers: authHeader() })
+    if (!r.ok) return null
+    const data = await r.json() as { snapshot: RunSnapshot | null }
+    return data.snapshot ?? null
+  } catch {
+    return null
+  }
+}
+
+export function clearRun(): void {
+  const token = useAuthStore.getState().token
+  if (!token) return
+  fetch('/api/run-snapshot', {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => {})
 }

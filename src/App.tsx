@@ -18,6 +18,7 @@ import { useProfileStore } from './store/profileStore'
 import { useAuthStore } from './store/authStore'
 import { useCharacterStore } from './store/characterStore'
 import { clearRun, loadRun } from './game/runSave'
+import { setPendingRunRestore, peekPendingRunRestore } from './game/pendingRunRestore'
 import { CHARACTER_DEFS } from './game/characters'
 import { setNetClient, activeNetClient } from './net/netState'
 import { NetClient } from './net/NetClient'
@@ -160,15 +161,14 @@ function App() {
         window.history.replaceState({}, '', '/')
       }
 
-      // Load profile if authenticated
+      // Load profile if authenticated, then check for a mid-run snapshot to restore
       const currentToken = useAuthStore.getState().token
-      // Read gods_screen before any await — a later effect overwrites it with 'menu'
-      const shouldRestoreGame = sessionStorage.getItem('gods_screen') === 'game'
       if (currentToken) {
         await fetchProfile()
-        // Restore singleplayer session after page reload (runs handlePlay path)
-        if (shouldRestoreGame) {
-          await handlePlay(loadRun() !== null)
+        const snap = await loadRun()
+        if (snap) {
+          setPendingRunRestore(snap)
+          await handlePlay(true)
         }
       }
 
@@ -176,10 +176,6 @@ function App() {
     }
     init()
   }, [])
-
-  useEffect(() => {
-    sessionStorage.setItem('gods_screen', inGame ? 'game' : 'menu')
-  }, [inGame])
 
   useEffect(() => {
     inLobbyRef.current = inLobby
@@ -277,7 +273,7 @@ function App() {
     startRun()
     const authToken = useAuthStore.getState().token
     const charType = useCharacterStore.getState().selectedCharacter
-    const savedRun = restore ? loadRun() : null
+    const savedRun = restore ? peekPendingRunRestore() : null
     if (authToken) {
       const net = new NetClient(makeWsUrl(authToken))
       registerRunSavedHandler(net)
@@ -318,6 +314,7 @@ function App() {
 
   function handleQuit() {
     submitRun()
+    clearRun()
     soundSystem.stopMusic()
     setNetClient(null)
     useGameStore.getState().resetRun()

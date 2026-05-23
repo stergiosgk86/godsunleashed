@@ -3,7 +3,7 @@ import type { AnyEnemy, EnemyBullet } from './Enemy'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 import { useGameStore } from '../store/gameStore'
 
-const BOSS_MAX_HP = 2500
+const BOSS_MAX_HP = 600
 const BOSS_SPEED = 55
 const CHARGE_SPEED = 420
 const CHARGE_WINDUP = 500   // ms pause before dash

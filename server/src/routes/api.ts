@@ -547,6 +547,53 @@ apiRouter.post('/runs', writeRateLimit, async (req: Request, res: Response) => {
   res.json({ ok: true, newAchievements: newlyUnlocked })
 })
 
+// ── Active run snapshot (page-refresh restore) ────────────────────────────────
+
+apiRouter.put('/run-snapshot', writeRateLimit, async (req: Request, res: Response) => {
+  try {
+    const { snapshot } = req.body ?? {}
+    if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) {
+      res.status(400).json({ error: 'Invalid snapshot' }); return
+    }
+    const json = JSON.stringify(snapshot)
+    if (json.length > 131_072) { res.status(413).json({ error: 'Snapshot too large' }); return }
+    await db.query(
+      'UPDATE profiles SET run_snapshot = $1::jsonb WHERE user_id = $2',
+      [json, req.userId],
+    )
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('run-snapshot save error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+apiRouter.get('/run-snapshot', readRateLimit, async (req: Request, res: Response) => {
+  try {
+    const result = await db.query(
+      'SELECT run_snapshot FROM profiles WHERE user_id = $1',
+      [req.userId],
+    )
+    res.json({ snapshot: result.rows[0]?.run_snapshot ?? null })
+  } catch (err) {
+    console.error('run-snapshot load error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+apiRouter.delete('/run-snapshot', async (req: Request, res: Response) => {
+  try {
+    await db.query(
+      'UPDATE profiles SET run_snapshot = NULL WHERE user_id = $1',
+      [req.userId],
+    )
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('run-snapshot clear error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // ── Achievements ──────────────────────────────────────────────────────────────
 
 apiRouter.get('/achievements', async (req: Request, res: Response) => {
