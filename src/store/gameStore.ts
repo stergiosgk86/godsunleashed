@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { subscribeWithSelector } from 'zustand/middleware'
-import { useCharacterStore } from './characterStore'
 
 export const DASH_COOLDOWN_MS = 5000
 
@@ -25,9 +24,7 @@ export interface Upgrade {
 export const UPGRADE_POOL: Upgrade[] = [
   { id: 'dashCooldown',  label: 'Swift Dash',      description: '25% shorter dash cooldown' },
   { id: 'dashDistance',  label: 'Longer Dash',     description: '40% further dash distance' },
-  { id: 'multiShot',     label: 'Multi Shot',      description: 'Fire an extra projectile per attack' },
-  { id: 'piercing',      label: 'Piercing',        description: 'Shots pass through enemies' },
-  { id: 'aura',          label: 'Aura',            description: 'Pulses damage to all enemies in range' },
+  { id: 'aura',          label: 'Aura',            description: 'Pulses damage to all enemies in range and knocks them back' },
   { id: 'auraTick',     label: 'Aura Tempo',      description: 'Aura pulses 250ms faster (stackable, up to 3×)' },
   { id: 'auraRange',    label: 'Aura Range',      description: 'Expands the aura radius (stackable, up to 3×)' },
   { id: 'orbital',      label: 'Spirit Orb',      description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 3)' },
@@ -48,13 +45,8 @@ function xpNeeded(level: number) {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-function pickChoices(state: { piercing: boolean; multiShot: number; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean }): Upgrade[] {
-  const isMelee = useCharacterStore.getState().selectedCharacter === 'ares'
+function pickChoices(state: { orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean }): Upgrade[] {
   const pool = UPGRADE_POOL.filter(u => {
-    if (isMelee && u.id === 'multiShot')               return false
-    if (isMelee && u.id === 'piercing')                return false
-    if (u.id === 'piercing'   && state.piercing)       return false
-    if (u.id === 'multiShot'  && state.multiShot >= 4) return false
     if (u.id === 'orbital'    && state.orbital >= 3)   return false
     if (u.id === 'boomerang'  && state.boomerang)      return false
     if (u.id === 'flameTrail' && state.flameTrail)     return false

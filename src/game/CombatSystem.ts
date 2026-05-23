@@ -2,7 +2,6 @@ import Phaser from 'phaser'
 import type { AnyEnemy } from './Enemy'
 import type { ClientEnemy } from './ClientEnemy'
 import { Projectile } from './Projectile'
-import { ThunderboltProjectile } from './ThunderboltProjectile'
 import { Boomerang } from './Boomerang'
 import { Axe } from './Axe'
 import { XPOrb } from './XPOrb'
@@ -87,7 +86,6 @@ export class CombatSystem {
   private bloodNovaTimer = 0
   // Lightning
   private lightningTimer = 0
-  private useThunderbolts: boolean
   private frontArcOnly: boolean
   private facingVx = 0
   private facingVy = 1
@@ -99,8 +97,7 @@ export class CombatSystem {
   private divineGraphic: Phaser.GameObjects.Graphics
   private divineAngle = 0
 
-  constructor(scene: Phaser.Scene, effects: EffectsSystem, useThunderbolts = false, frontArcOnly = false) {
-    this.useThunderbolts = useThunderbolts
+  constructor(scene: Phaser.Scene, effects: EffectsSystem, frontArcOnly = false) {
     this.frontArcOnly = frontArcOnly
     this.arcGraphic = scene.add.graphics().setDepth(3)
     this.scene = scene
@@ -272,7 +269,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing } = getValidatedCombatState()
+    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, boomerang, flameTrail, bloodNova, vampiric, lightning, axe, divineShield, divineShieldActive, setDivineShield } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -283,34 +280,12 @@ export class CombatSystem {
 
     this.drawSwordIndicator(playerX, playerY)
 
-    // Auto-fire / melee sweep
-    const net = activeNetClient
-    this.fireTimer += delta
-    if (this.fireTimer >= attackInterval) {
-      this.fireTimer = 0
-      if (this.frontArcOnly) {
-        // Ares: melee arc sweep — no projectile, direct damage in front cone
+    // Ares primary weapon: melee arc sweep (front-arc only)
+    if (this.frontArcOnly) {
+      this.fireTimer += delta
+      if (this.fireTimer >= attackInterval) {
+        this.fireTimer = 0
         this.fireSwordSwing(playerX, playerY, damage, enemies, coinDropChance, lifeDrain, vampiric)
-      } else {
-        const target = this.findNearest(playerX, playerY, enemies, 600)
-        if (target) {
-          const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
-          const spreadRad = 15 * (Math.PI / 180)
-          for (let i = 0; i <= multiShot; i++) {
-            const side = i % 2 === 1 ? 1 : -1
-            const offset = i === 0 ? 0 : Math.ceil(i / 2) * side * spreadRad
-            const angle = baseAngle + offset
-            const tx = playerX + Math.cos(angle) * 1000
-            const ty = playerY + Math.sin(angle) * 1000
-            const proj = this.useThunderbolts
-              ? new ThunderboltProjectile(this.scene, playerX, playerY, tx, ty)
-              : new Projectile(this.scene, playerX, playerY, tx, ty)
-            proj.piercing = isPiercing
-            this.projectiles.push(proj)
-            if (net) net.send({ type: 'projectile', x: playerX, y: playerY, vx: proj.vx, vy: proj.vy })
-          }
-          soundSystem.shoot()
-        }
       }
     }
 

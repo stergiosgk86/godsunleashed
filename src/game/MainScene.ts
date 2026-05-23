@@ -79,7 +79,7 @@ export class MainScene extends Phaser.Scene {
     this.joystick = new TouchJoystick(this)
     if (window.innerWidth <= 768) this.dashButton = new TouchDashButton(this)
     this.spawner = new EnemySpawner(this)
-    this.combat = new CombatSystem(this, this.effects, charDef.id === 'zeus', charDef.frontArcOnly)
+    this.combat = new CombatSystem(this, this.effects, charDef.frontArcOnly)
     // Restore mid-run state after a page reload (pre-fetched in App.tsx init)
     const savedRun = consumePendingRunRestore()
     if (savedRun && (!savedRun.character || savedRun.character === charType)) {

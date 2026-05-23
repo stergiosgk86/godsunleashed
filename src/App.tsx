@@ -140,6 +140,8 @@ function App() {
       aura:           char.startAura,
       lightning:      char.startLightning,
       boomerang:      char.startBoomerang,
+      flameTrail:     char.startFlameTrail,
+      orbital:        char.startOrbital,
       lifeDrain:      char.lifeDrain,
       armor:          char.baseArmor + (upgrades.armor ?? 0),
     })
