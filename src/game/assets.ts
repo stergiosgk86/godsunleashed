@@ -5,6 +5,8 @@ import charShade from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Ma
 import charAres     from '../assets/Sprites/Characters/ares_sheet.png'
 import charZeus     from '../assets/Sprites/Characters/zeus_sheet.png'
 import charPoseidon from '../assets/Sprites/Characters/poseidon_sheet.png'
+import charApollo   from '../assets/Sprites/Characters/apollo_sheet.png'
+import charHades    from '../assets/Sprites/Characters/hades_sheet.png'
 import xpOrbSprite from '../assets/Sprites/Items/xp_orb_sprite.png'
 import healthPotionSprite from '../assets/Sprites/Items/health_potion_sprite.png'
 import coinSprite from '../assets/Sprites/Items/coin_sprite.png'
@@ -24,11 +26,12 @@ import enemyTitan    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Ene
 import boss from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Boss/Boss 01.png'
 import boomerangSprite from '../assets/Sprites/Weapons/Boomerang.png'
 import axeSprite from '../assets/Sprites/Weapons/Axe.png'
-import grassTileset from '../assets/grass_tileset.png'
+import grassTileset from '../assets/Sprites/Background/Grass1.png'
 import treeSprite from '../assets/Sprites/Background/Tree.png'
+import rockSprite from '../assets/Sprites/Background/Rocks.png'
 
 export const SPRITE_URLS = {
-  player, charRogue, charWitch, charShade, charZeus, charAres, charPoseidon,
+  player, charRogue, charWitch, charShade, charZeus, charAres, charPoseidon, charApollo, charHades,
   xpOrbSprite, healthPotionSprite, coinSprite,
   enemyBasic,
   enemySpeeder,
@@ -48,4 +51,5 @@ export const SPRITE_URLS = {
   axeSprite,
   grassTileset,
   treeSprite,
+  rockSprite,
 }

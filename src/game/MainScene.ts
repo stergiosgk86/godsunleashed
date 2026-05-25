@@ -66,6 +66,7 @@ export class MainScene extends Phaser.Scene {
     // Large world-space TileSprite — same coordinate system as trees, no parallax drift
     this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'ground_tiles')
       .setOrigin(0.5, 0.5)
+      .setTileScale(0.1, 0.1)
       .setDepth(-10)
 
     this.chunkManager = new ChunkManager(this)
@@ -75,7 +76,7 @@ export class MainScene extends Phaser.Scene {
     this.charType = charType
     const charDef = CHARACTER_DEFS[charType]
     const username = useAuthStore.getState().username ?? ''
-    this.player = new Player(this, SPAWN_X, SPAWN_Y, charDef.spriteKey, username, charDef.scale)
+    this.player = new Player(this, SPAWN_X, SPAWN_Y, charDef.spriteKey, username, charDef.scale, charDef.staticSprite ?? false)
     this.joystick = new TouchJoystick(this)
     if (window.innerWidth <= 768) this.dashButton = new TouchDashButton(this)
     this.spawner = new EnemySpawner(this)
@@ -110,8 +111,11 @@ export class MainScene extends Phaser.Scene {
         boomerang: savedRun.boomerang,
         flameTrail: savedRun.flameTrail,
         bloodNova: savedRun.bloodNova,
+        bloodNovaCD: savedRun.bloodNovaCD ?? 0,
         vampiric: savedRun.vampiric ?? false,
         lightning: savedRun.lightning ?? false,
+        lightningTargets: savedRun.lightningTargets ?? 0,
+        lightningCooldown: savedRun.lightningCooldown ?? 0,
         axe: savedRun.axe ?? false,
         divineShield: savedRun.divineShield ?? false,
         armor: savedRun.armor ?? 0,
@@ -253,6 +257,14 @@ export class MainScene extends Phaser.Scene {
   }
 
   private handleAdminSpawn(entity: AdminSpawnEntity) {
+    const net = activeNetClient
+    if (net) {
+      // Multiplayer: server handles all spawn logic
+      net.send({ type: 'adminSpawn', entity })
+      return
+    }
+
+    // Solo: handle locally
     const px = this.player.x
     const py = this.player.y
     const ITEM_DIST = 220 + Math.random() * 80
@@ -262,6 +274,8 @@ export class MainScene extends Phaser.Scene {
 
     if (entity === 'potion' || entity === 'xporb' || entity === 'coin') {
       this.combat.adminSpawnItem(entity, ix, iy)
+    } else if (entity.startsWith('weapon:')) {
+      useGameStore.getState().chooseUpgrade(entity.slice(7) as any)
     } else {
       this.spawner.adminSpawnEnemy(entity, px, py)
     }
@@ -394,6 +408,10 @@ export class MainScene extends Phaser.Scene {
       this.combat.adminSpawnItem(msg.entity as 'potion' | 'xporb' | 'coin', msg.x, msg.y)
     })
 
+    net.on('adminGrantUpgrade', (msg) => {
+      useGameStore.getState().chooseUpgrade(msg.upgradeId as any)
+    })
+
     net.on('exploderExplode', (msg) => {
       const dx = msg.x - this.player.x
       const dy = msg.y - this.player.y
@@ -404,14 +422,14 @@ export class MainScene extends Phaser.Scene {
     })
 
     net.on('gameOver', (msg) => {
-      if (msg.won) { soundSystem.bossDie(); useGameStore.getState().win() }
-      else useGameStore.getState().die()
-      this.scene.pause()
+      if (!this.sys.displayList) return
+      if (msg.won) { soundSystem.bossDie(); useGameStore.getState().win(); this.scene.pause() }
+      else useGameStore.getState().die()  // die() sets isPaused:true → subscriber handles scene.pause()
     })
 
     net.on('playerLeft', () => {
-      useGameStore.getState().die()
-      this.scene.pause()
+      if (!this.sys.displayList) return
+      useGameStore.getState().die()  // die() sets isPaused:true → subscriber handles scene.pause()
     })
 
     net.on('projectile', (msg) => {
@@ -482,7 +500,8 @@ export class MainScene extends Phaser.Scene {
       this.dashButton.update()
       if (this.dashButton.consumePress()) this.player.touchDashPressed = true
     }
-    this.player.update(delta, this.effects)
+    const novaPaused = this.combat.novaPaused
+    if (!novaPaused) this.player.update(delta, this.effects)
     this.combat.setFacing(this.player.facingVx, this.player.facingVy)
     this.effects.update(delta)
 
@@ -503,11 +522,13 @@ export class MainScene extends Phaser.Scene {
         net.send({ type: 'input', x: this.player.x, y: this.player.y, aura, orbital })
       }
       const allClientEnemies = Array.from(this.clientEnemies.values())
-      for (const ce of allClientEnemies) ce.update(0, 0, delta)
-      for (const e of this.spawner.all) e.update(this.player.x, this.player.y, delta)
-      this.spawner.cleanupDead()
-      const allEnemies: import('./Enemy').AnyEnemy[] = [...allClientEnemies, ...this.spawner.all]
-      this.combat.update(this.player.x, this.player.y, allEnemies, delta)
+      if (!novaPaused) {
+        for (const ce of allClientEnemies) ce.update(0, 0, delta)
+        for (const e of this.spawner.all) e.update(this.player.x, this.player.y, delta)
+        this.spawner.cleanupDead()
+        const allEnemies: import('./Enemy').AnyEnemy[] = [...allClientEnemies, ...this.spawner.all]
+        this.combat.update(this.player.x, this.player.y, allEnemies, delta)
+      }
       for (const rp of this.remotePlayers.values()) rp.tick(delta)
       const REMOTE_HIT_R = 25 * 25
       for (const rp of this.remoteProjectiles) {
@@ -543,16 +564,19 @@ export class MainScene extends Phaser.Scene {
           dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
           multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick, auraRange: s.auraRange,
           orbital: s.orbital, wand: s.wand, boomerang: s.boomerang, flameTrail: s.flameTrail,
-          bloodNova: s.bloodNova, vampiric: s.vampiric, lightning: s.lightning,
+          bloodNova: s.bloodNova, bloodNovaCD: s.bloodNovaCD, vampiric: s.vampiric, lightning: s.lightning,
+          lightningTargets: s.lightningTargets, lightningCooldown: s.lightningCooldown,
           axe: s.axe, divineShield: s.divineShield, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
           sessionCoins: s.sessionCoins,
         })
       }
     } else {
       // Singleplayer
-      runData.elapsed += delta
-      this.spawner.update(this.player.x, this.player.y, delta)
-      this.combat.update(this.player.x, this.player.y, this.spawner.all, delta)
+      if (!novaPaused) {
+        runData.elapsed += delta
+        this.spawner.update(this.player.x, this.player.y, delta)
+        this.combat.update(this.player.x, this.player.y, this.spawner.all, delta)
+      }
 
       this.saveTimer += delta
       if (this.saveTimer >= this.SAVE_INTERVAL) {
@@ -577,7 +601,9 @@ export class MainScene extends Phaser.Scene {
           dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
           multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick, auraRange: s.auraRange,
           orbital: s.orbital, wand: s.wand, boomerang: s.boomerang, flameTrail: s.flameTrail,
-          bloodNova: s.bloodNova, vampiric: s.vampiric, lightning: s.lightning, axe: s.axe, divineShield: s.divineShield, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
+          bloodNova: s.bloodNova, bloodNovaCD: s.bloodNovaCD, vampiric: s.vampiric, lightning: s.lightning,
+          lightningTargets: s.lightningTargets, lightningCooldown: s.lightningCooldown,
+          axe: s.axe, divineShield: s.divineShield, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
           sessionCoins: s.sessionCoins,
         })
       }
@@ -597,11 +623,9 @@ export class MainScene extends Phaser.Scene {
     if (state.hp <= 0 && !state.isDead) {
       state.die()
       if (net) net.send({ type: 'died' })
-      this.scene.pause()
       return
     }
     if (state.isDead) {
-      this.scene.pause()
       return
     }
 
