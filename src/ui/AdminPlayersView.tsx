@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAuthStore } from '../store/authStore'
+import { useProfileStore } from '../store/profileStore'
 
 export interface PlayerRow {
   id: number
@@ -300,6 +301,8 @@ function GiveCoinsModal({ player, onConfirm, onCancel }: {
 
 export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const token = useAuthStore(s => s.token)
+  const myId = useAuthStore(s => s.userId)
+  const fetchProfile = useProfileStore(s => s.fetchProfile)
   const [players, setPlayers] = useState<PlayerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -339,6 +342,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       setPlayers(prev => prev.map(row =>
         row.id === p.id ? { ...row, coins: data.coins } : row
       ))
+      if (p.id === myId) void fetchProfile()
       showToast(`+${amount} coins granted to ${p.username ?? `#${p.id}`}`, '#ffcc44')
     } catch {
       showToast('Failed to give coins', '#ff4444')
@@ -377,6 +381,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       setPlayers(prev => prev.map(row =>
         row.id === p.id ? { ...row, coins: 0, upgrades: emptyUpgrades } : row
       ))
+      if (p.id === myId) void fetchProfile()
       showToast(`${p.username ?? `#${p.id}`} has been reset`, '#ffcc44')
     } catch {
       showToast('Failed to reset player', '#ff4444')
