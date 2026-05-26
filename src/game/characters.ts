@@ -94,7 +94,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   shade: {
     id: 'shade', name: 'Shade', trait: 'Cursed Ground',
     description: 'Leaves a burning trail as they move. Heals on kills. Durable but less damage.',
-    spriteKey: 'char_shade', color: '#cc2222',
+    spriteKey: 'char_shade', color: '#ff7722',
     statLines: [
       { label: 'Weapon: Flame Trail',  positive: true  },
       { label: '+60 Max HP',           positive: true  },
@@ -147,7 +147,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   apollo: {
     id: 'apollo', name: 'Apollo', trait: 'Solar Archer',
     description: 'God of the Sun. Fires enchanted arcane bolts with precision and radiant might.',
-    spriteKey: 'char_apollo', color: '#ffd44d',
+    spriteKey: 'char_apollo', color: '#ff9933',
     statLines: [
       { label: 'Weapon: Arcane Wand',  positive: true  },
       { label: '+20% Might',           positive: true  },
@@ -167,7 +167,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   hades: {
     id: 'hades', name: 'Hades', trait: 'Lord of Souls',
     description: 'God of the Underworld. Radiates a death aura that consumes enemies. Drains their souls on kill.',
-    spriteKey: 'char_hades', color: '#7733cc',
+    spriteKey: 'char_hades', color: '#5544dd',
     statLines: [
       { label: 'Weapon: Aura',       positive: true  },
       { label: '+30% Might',         positive: true  },
@@ -187,10 +187,10 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   chronos: {
     id: 'chronos', name: 'Chronos', trait: 'Dual Sunrays',
     description: 'God of Time. Commands the flow of battle — sunrays blaze in all four directions, endlessly.',
-    spriteKey: 'char_chronos', color: '#ffcc00',
+    spriteKey: 'char_chronos', color: '#22ddcc',
     statLines: [
-      { label: 'Weapon: Phiera',    positive: true  },
-      { label: 'Weapon: Eight',     positive: true  },
+      { label: 'Weapon: Equinox',    positive: true  },
+      { label: 'Weapon: Solstice',  positive: true  },
       { label: '+10% Might',        positive: true  },
       { label: '+15 Move Speed',    positive: true  },
       { label: '+0.2 HP/sec regen', positive: true  },

@@ -38,13 +38,14 @@ const FRAME_H = 32 * SCALE
 const SHEET_W = 96 * SCALE
 const SHEET_H = 128 * SCALE
 
-function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprite }: {
+function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprite, innerScale }: {
   spriteKey: string
   color: string
   menuFrame?: { fw: number; fh: number; sw: number; sh: number }
   menuRow?: number
   compact?: boolean
   staticSprite?: boolean
+  innerScale?: number
 }) {
   const [frame, setFrame] = useState(0)
   const url = CHAR_SPRITE_URL[spriteKey]
@@ -60,36 +61,44 @@ function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprit
   }, [staticSprite])
 
   const sf = compact ? 0.65 : 1
+  const is = innerScale ?? 1
   const dfw = Math.round(fw * sf)
   const dfh = Math.round(fh * sf)
-  const dsw = Math.round(sw * sf)
-  const dsh = Math.round(sh * sf)
+  const dsw = Math.round(sw * sf * is)
+  const dsh = Math.round(sh * sf * is)
+  const sdfw = Math.round(dfw * is)
+  const sdfh = Math.round(dfh * is)
   const pad = Math.round(16 * sf)
 
   return (
     <div style={{
       width: dfw + pad, height: dfh + pad,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      position: 'relative',
       background: 'rgba(0,0,0,0.3)',
       border: `1px solid ${color}44`,
       borderRadius: compact ? 7 : 10,
       flexShrink: 0,
+      overflow: 'hidden',
     }}>
       {staticSprite ? (
         <img src={url} style={{
-          width: dfw, height: dfh,
+          width: sdfw, height: sdfh,
           objectFit: 'contain',
           filter: `drop-shadow(0 0 6px ${color}bb)`,
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
         }} />
       ) : (
         <div style={{
-          width: dfw, height: dfh,
+          width: sdfw, height: sdfh,
           backgroundImage: `url(${url})`,
-          backgroundPosition: `-${frame * dfw}px -${Math.round((menuRow ?? 0) * dfh)}px`,
+          backgroundPosition: `-${frame * sdfw}px -${Math.round((menuRow ?? 0) * sdfh)}px`,
           backgroundSize: `${dsw}px ${dsh}px`,
           backgroundRepeat: 'no-repeat',
           imageRendering: 'pixelated',
           filter: `drop-shadow(0 0 6px ${color}bb)`,
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
         }} />
       )}
     </div>
@@ -1130,7 +1139,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
 
                         <div style={{ position: 'relative' }}>
                           <div style={{ opacity: isLocked ? 0.35 : 1 }}>
-                            <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} compact staticSprite={def.staticSprite} />
+                            <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} compact staticSprite={def.staticSprite} innerScale={id === 'poseidon' ? 1.4 : undefined} />
                           </div>
                           {isLocked && (
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>🔒</div>
@@ -1164,7 +1173,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                         borderRadius: 12, flexShrink: 0,
                       }}>
                         <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} staticSprite={def.staticSprite} />
+                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} staticSprite={def.staticSprite} innerScale={selectedCharacter === 'poseidon' ? 1.4 : undefined} />
                         </div>
                         <div style={{
                           color: def.color, fontFamily: 'monospace', fontSize: 22, fontWeight: 'bold',
