@@ -22,7 +22,9 @@ function emptyUpgrades(): MetaUpgrades {
 }
 
 // Characters that cost coins — must match server CHARACTER_UNLOCK_COSTS
-export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { rogue: 100, witch: 150, shade: 300, zeus: 1000, poseidon: 500 }
+export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { rogue: 100, witch: 150, shade: 300, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500 }
+// Characters unlocked by earning a specific achievement — must match server ACHIEVEMENT_CHARACTER_UNLOCKS
+export const CHARACTER_ACHIEVEMENT_REQUIRED: Partial<Record<string, string>> = { hades: 'transcendent' }
 
 interface ProfileStore {
   coins: number

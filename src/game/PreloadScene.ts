@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { SPRITE_URLS } from './assets'
-import { createWalkAnims, createZeusAnims } from './spriteUtils'
+import { createWalkAnims, createZeusAnims, createApolloAnims, createHadesAnims, createChronosAnims } from './spriteUtils'
 
 const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight: number; frameRate?: number }> = [
   { key: 'player',         url: SPRITE_URLS.player,       frameWidth: 32, frameHeight: 32 },
@@ -10,6 +10,9 @@ const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight:
   { key: 'char_zeus',    url: SPRITE_URLS.charZeus,    frameWidth: 96, frameHeight: 96 },
   { key: 'char_ares',    url: SPRITE_URLS.charAres,    frameWidth: 64, frameHeight: 64 },
   { key: 'char_poseidon', url: SPRITE_URLS.charPoseidon, frameWidth: 96, frameHeight: 96 },
+  { key: 'char_apollo',   url: SPRITE_URLS.charApollo,   frameWidth: 96, frameHeight: 96 },
+  { key: 'char_hades',    url: SPRITE_URLS.charHades,    frameWidth: 96, frameHeight: 96 },
+  { key: 'char_chronos',  url: SPRITE_URLS.charChronos,  frameWidth: 96, frameHeight: 96 },
   { key: 'enemy_basic',    url: SPRITE_URLS.enemyBasic,   frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_speeder',  url: SPRITE_URLS.enemySpeeder, frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_tank',     url: SPRITE_URLS.enemyTank,    frameWidth: 32, frameHeight: 32 },
@@ -57,13 +60,17 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('axe', SPRITE_URLS.axeSprite)
     this.load.image('ground_tiles', SPRITE_URLS.grassTileset)
     this.load.image('tree', SPRITE_URLS.treeSprite)
+    this.load.spritesheet('rock', SPRITE_URLS.rockSprite, { frameWidth: 512, frameHeight: 512 })
   }
 
   create() {
     for (const { key, frameRate } of SHEETS) {
-      if (key !== 'char_zeus') createWalkAnims(this.anims, key, frameRate)
+      if (key !== 'char_zeus' && key !== 'char_apollo' && key !== 'char_hades' && key !== 'char_chronos') createWalkAnims(this.anims, key, frameRate)
     }
     createZeusAnims(this.anims)
+    createApolloAnims(this.anims)
+    createHadesAnims(this.anims)
+    createChronosAnims(this.anims)
     this.scene.start('MainScene')
   }
 }

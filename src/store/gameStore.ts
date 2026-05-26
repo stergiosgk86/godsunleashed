@@ -3,13 +3,16 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'vampiric' | 'lightning' | 'might' | 'axe' | 'divineShield'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'divineShield' | 'xpGain' | 'magnetRange' | 'phiera' | 'eight' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra'
 
 export type AdminSpawnEntity =
   | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
   | 'veteran' | 'brute' | 'revenant' | 'warlord' | 'titan'
   | 'boss' | 'summoner' | 'finalBoss'
   | 'potion' | 'xporb' | 'coin'
+  | 'weapon:wand' | 'weapon:boomerang' | 'weapon:flameTrail' | 'weapon:bloodNova'
+  | 'weapon:lightning' | 'weapon:axe' | 'weapon:aura' | 'weapon:orbital'
+  | 'weapon:phiera' | 'weapon:eight'
 
 export function weaponBaseDamage(level: number): number {
   return 8 + Math.floor(level * 0.7)
@@ -25,20 +28,30 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'dashCooldown',  label: 'Swift Dash',      description: '25% shorter dash cooldown' },
   { id: 'dashDistance',  label: 'Longer Dash',     description: '40% further dash distance' },
   { id: 'wand',          label: 'Arcane Wand',     description: 'Fires a magic bolt at the nearest enemy' },
-  { id: 'multiShot',     label: 'Multi Shot',      description: 'Wand fires an extra bolt per attack (stackable, up to 4×)' },
+  { id: 'multiShot',     label: 'Multi Shot',      description: 'Wand fires an extra bolt per attack (stackable, up to 3×)' },
   { id: 'piercing',      label: 'Piercing',        description: 'Wand bolts pass through enemies' },
   { id: 'aura',          label: 'Aura',            description: 'Pulses damage to all enemies in range and knocks them back' },
-  { id: 'auraTick',     label: 'Aura Tempo',      description: 'Aura pulses 250ms faster (stackable, up to 3×)' },
+  { id: 'auraTick',     label: 'Aura Tempo',      description: 'Aura pulses 100ms faster (stackable, up to 3×)' },
   { id: 'auraRange',    label: 'Aura Range',      description: 'Expands the aura radius (stackable, up to 3×)' },
   { id: 'orbital',      label: 'Spirit Orb',      description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 3)' },
   { id: 'boomerang',   label: 'Boomerang',        description: 'Throws a disc that flies out then returns, hitting enemies twice' },
   { id: 'flameTrail',  label: 'Flame Trail',      description: 'Leaves burning patches as you move that damage nearby enemies' },
-  { id: 'bloodNova',   label: 'Blood Nova',       description: 'Every 7s releases a massive red ring — costs 8% of your max HP' },
+  { id: 'bloodNova',   label: 'Blood Nova',       description: 'Every 90s wipes all enemies on screen in a massive dark shockwave' },
+  { id: 'bloodNovaCD', label: 'Dark Convergence', description: 'Blood Nova triggers 10s sooner (stackable, up to 4×, down to 50s)' },
   { id: 'vampiric',   label: 'Soul Drain',       description: 'Each hit restores 8% of damage dealt as HP' },
-  { id: 'lightning',  label: 'Thunder Strike',   description: 'Every 4s lightning bolts strike 2 random enemies for heavy damage' },
-  { id: 'might',     label: 'Power',            description: '+20% weapon damage (stackable, up to 3×)' },
+  { id: 'lightning',        label: 'Thunder Strike',    description: 'Every 4.5s lightning bolts strike 2 random enemies for heavy damage' },
+  { id: 'lightningTargets', label: 'Storm Surge',       description: 'Thunder Strike hits 1 additional enemy (stackable, up to +2)' },
+  { id: 'lightningCooldown',label: 'Thunderhaste',      description: 'Thunder Strike fires 1s faster (stackable, up to 2×)' },
+  { id: 'might',     label: 'Power',            description: '+10% weapon damage (stackable)' },
   { id: 'axe',      label: 'War Axe',          description: 'Hurls a spinning axe in an arc — hits on the way up and again on the way down' },
-  { id: 'divineShield', label: 'Divine Shield', description: 'Grants a shield that blocks the next hit. After absorbing a hit you are briefly immune, then the shield recharges in 7s' },
+  { id: 'divineShield', label: 'Divine Shield', description: 'Grants a shield that blocks the next hit. After absorbing a hit you are briefly immune, then the shield recharges in 10s' },
+  { id: 'xpGain',       label: 'Gilded Soul',   description: '+8% XP gained from all sources (stackable, up to 5×)' },
+  { id: 'magnetRange',  label: 'Astral Pull',   description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },
+  { id: 'phiera',       label: 'Phiera',         description: 'Fires sunray bolts left and right continuously' },
+  { id: 'eight',        label: 'Eight',          description: 'Fires sunray bolts up and down continuously' },
+  { id: 'dualGunDamage',label: 'Solar Intensity', description: 'Sunray bolts deal 30% more damage (stackable, up to 3×)' },
+  { id: 'dualGunSpeed', label: 'Solar Tempo',    description: 'Sunray guns fire 20% faster (stackable, up to 2×)' },
+  { id: 'dualGunExtra', label: 'Solar Barrage',  description: 'Each gun fires an extra bolt per direction' },
 ]
 
 function xpNeeded(level: number) {
@@ -48,36 +61,86 @@ function xpNeeded(level: number) {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-function pickChoices(state: { wand: boolean; multiShot: number; piercing: boolean; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; vampiric: boolean; lightning: boolean; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean }): Upgrade[] {
-  const pool = UPGRADE_POOL.filter(u => {
+type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; phiera: boolean; eight: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: boolean }
+
+function upgradeWeight(id: UpgradeId, s: PickState): number {
+  if ((id === 'multiShot' || id === 'piercing') && s.wand) return 10
+  if ((id === 'auraTick'  || id === 'auraRange') && s.aura > 0) return 10
+  if ((id === 'lightningTargets' || id === 'lightningCooldown') && s.lightning) return 10
+  if (id === 'bloodNovaCD' && s.bloodNova) return 10
+  if ((id === 'dualGunDamage' || id === 'dualGunSpeed' || id === 'dualGunExtra') && (s.phiera || s.eight)) return 10
+  if (id === 'orbital' && s.orbital > 0) return 8
+  if (id === 'might' || id === 'dashCooldown' || id === 'dashDistance') return 4
+  return 1
+}
+
+function weightedPickOne(pool: Array<{ u: Upgrade; weight: number }>): number {
+  const total = pool.reduce((s, x) => s + x.weight, 0)
+  let r = Math.random() * total
+  for (let i = 0; i < pool.length; i++) {
+    r -= pool[i].weight
+    if (r <= 0) return i
+  }
+  return pool.length - 1
+}
+
+function pickChoices(state: PickState): Upgrade[] {
+  const eligible = UPGRADE_POOL.filter(u => {
     if (u.id === 'wand'       && state.wand)            return false
     if (u.id === 'multiShot'  && !state.wand)           return false
-    if (u.id === 'multiShot'  && state.multiShot >= 4)  return false
+    if (u.id === 'multiShot'  && state.multiShot >= 3)  return false
     if (u.id === 'piercing'   && !state.wand)           return false
     if (u.id === 'piercing'   && state.piercing)        return false
     if (u.id === 'orbital'    && state.orbital >= 3)    return false
-    if (u.id === 'boomerang'  && state.boomerang)      return false
-    if (u.id === 'flameTrail' && state.flameTrail)     return false
-    if (u.id === 'bloodNova'  && state.bloodNova)      return false
-    if (u.id === 'vampiric'   && state.vampiric)       return false
-    if (u.id === 'lightning'  && state.lightning)      return false
-    if (u.id === 'might'      && state.might >= 3.0)    return false
-    if (u.id === 'axe'        && state.axe)            return false
+    if (u.id === 'boomerang'  && state.boomerang)       return false
+    if (u.id === 'flameTrail' && state.flameTrail)      return false
+    if (u.id === 'bloodNova'    && state.bloodNova)           return false
+    if (u.id === 'bloodNovaCD'  && !state.bloodNova)          return false
+    if (u.id === 'bloodNovaCD'  && state.bloodNovaCD >= 4)    return false
+    if (u.id === 'vampiric'   && state.vampiric)        return false
+    if (u.id === 'lightning'         && state.lightning)                   return false
+    if (u.id === 'lightningTargets'  && !state.lightning)                  return false
+    if (u.id === 'lightningTargets'  && state.lightningTargets >= 2)       return false
+    if (u.id === 'lightningCooldown' && !state.lightning)                  return false
+    if (u.id === 'lightningCooldown' && state.lightningCooldown >= 2)      return false
+    if (u.id === 'might'      && state.might >= 1.5)    return false
+    if (u.id === 'axe'        && state.axe)             return false
     if (u.id === 'divineShield' && state.divineShield)  return false
+    if (u.id === 'xpGain'     && state.xpGain >= 5)        return false
+    if (u.id === 'magnetRange' && state.magnetRange >= 3)  return false
     if (u.id === 'aura'       && state.aura >= 1)       return false
-    if (u.id === 'auraTick'   && state.aura === 0)     return false
-    if (u.id === 'auraTick'   && state.auraTick >= 3)  return false
-    if (u.id === 'auraRange'  && state.aura === 0)     return false
-    if (u.id === 'auraRange'  && state.auraRange >= 3) return false
+    if (u.id === 'auraTick'   && state.aura === 0)      return false
+    if (u.id === 'auraTick'   && state.auraTick >= 3)   return false
+    if (u.id === 'auraRange'  && state.aura === 0)      return false
+    if (u.id === 'auraRange'  && state.auraRange >= 3)  return false
+    if (u.id === 'phiera'       && state.phiera)                            return false
+    if (u.id === 'eight'        && state.eight)                             return false
+    if (u.id === 'dualGunDamage' && !state.phiera && !state.eight)          return false
+    if (u.id === 'dualGunDamage' && state.dualGunDamage >= 3)               return false
+    if (u.id === 'dualGunSpeed'  && !state.phiera && !state.eight)          return false
+    if (u.id === 'dualGunSpeed'  && state.dualGunSpeed >= 2)                return false
+    if (u.id === 'dualGunExtra'  && !state.phiera && !state.eight)          return false
+    if (u.id === 'dualGunExtra'  && state.dualGunExtra)                     return false
     return true
   })
-  const shuffled = [...pool].sort(() => Math.random() - 0.5)
-  const choices = shuffled.slice(0, 3)
+
+  // Weighted draw without replacement
+  const remaining = eligible.map(u => ({ u, weight: upgradeWeight(u.id, state) }))
+  const choices: Upgrade[] = []
+  for (let pick = 0; pick < 3 && remaining.length > 0; pick++) {
+    const idx = weightedPickOne(remaining)
+    choices.push(remaining[idx].u)
+    remaining.splice(idx, 1)
+  }
+
+  // At most one dash upgrade per offer
   const dashCount = choices.filter(u => DASH_IDS.has(u.id)).length
   if (dashCount > 1) {
     const dupIdx = choices.findLastIndex(u => DASH_IDS.has(u.id))
-    const replacement = shuffled.find(u => !DASH_IDS.has(u.id) && !choices.includes(u))!
-    choices[dupIdx] = replacement
+    const nonDash = remaining.filter(x => !DASH_IDS.has(x.u.id))
+    if (dupIdx >= 0 && nonDash.length > 0) {
+      choices[dupIdx] = nonDash[weightedPickOne(nonDash)].u
+    }
   }
   return choices
 }
@@ -108,15 +171,27 @@ interface GameState {
   auraTick: number
   auraRange: number
   orbital: number
+  wandAttackInterval: number
   wand: boolean
   boomerang: boolean
+  phiera: boolean
+  eight: boolean
+  dualGunDamage: number
+  dualGunSpeed: number
+  dualGunExtra: boolean
+  dualGunAttackInterval: number
   flameTrail: boolean
   bloodNova: boolean
+  bloodNovaCD: number
   vampiric: boolean
   lightning: boolean
+  lightningTargets: number
+  lightningCooldown: number
   axe: boolean
   divineShield: boolean
   divineShieldActive: boolean
+  xpGain: number
+  magnetRange: number
   armor: number
   sessionCoins: number
   isDead: boolean
@@ -167,8 +242,15 @@ export const useGameStore = create<GameState>()(
     hp: 100,
     maxHp: 100,
     might: 1.0,
-    attackInterval: 500,
-    moveSpeed: 200,
+    attackInterval: 1350,
+    wandAttackInterval: 1200,
+    phiera: false,
+    eight: false,
+    dualGunDamage: 0,
+    dualGunSpeed: 0,
+    dualGunExtra: false,
+    dualGunAttackInterval: 800,
+    moveSpeed: 160,
     isLevelUpPending: false,
     upgradeChoices: [],
     invincibleUntil: 0,
@@ -190,11 +272,16 @@ export const useGameStore = create<GameState>()(
     boomerang: false,
     flameTrail: false,
     bloodNova: false,
+    bloodNovaCD: 0,
     vampiric: false,
     lightning: false,
+    lightningTargets: 0,
+    lightningCooldown: 0,
     axe: false,
     divineShield: false,
     divineShieldActive: false,
+    xpGain: 0,
+    magnetRange: 0,
     armor: 0,
     sessionCoins: 0,
     isDead: false,
@@ -237,16 +324,17 @@ export const useGameStore = create<GameState>()(
     setAdminInvincible: (value) => set({ adminInvincible: value }),
     setDivineShield: (active) => set({ divineShieldActive: active }),
 
-    // Contact damage: per-enemy cooldowns in CombatSystem — no global invincibility here.
     takeContactDamage: (amount) => {
-      const { hp, isDead, adminInvincible, armor, divineShieldActive } = get()
+      const { hp, isDead, adminInvincible, armor, divineShieldActive, invincibleUntil } = get()
       if (isDead || adminInvincible) return
+      if (Date.now() < invincibleUntil) return
       if (divineShieldActive) {
         set({ divineShieldActive: false })
         return
       }
+      const now = Date.now()
       const reduced = Math.max(1, amount - armor)
-      set({ hp: Math.max(0, hp - reduced), damageFlashUntil: Date.now() + 200, tookDamageThisRun: true })
+      set({ hp: Math.max(0, hp - reduced), invincibleUntil: now + 240, damageFlashUntil: now + 240, tookDamageThisRun: true })
       if (get().hp <= 0) get().die()
     },
 
@@ -261,10 +349,11 @@ export const useGameStore = create<GameState>()(
       if (Date.now() < invincibleUntil) return
       const now = Date.now()
       const reduced = Math.max(1, amount - armor)
-      set({ hp: Math.max(0, hp - reduced), invincibleUntil: now + 1000, damageFlashUntil: now + 1000, tookDamageThisRun: true })
+      set({ hp: Math.max(0, hp - reduced), invincibleUntil: now + 240, damageFlashUntil: now + 240, tookDamageThisRun: true })
+      if (get().hp <= 0) get().die()
     },
 
-    die: () => set({ isDead: true, isPaused: false }),
+    die: () => set({ isDead: true, isPaused: true }),
     win: () => set({ isWon: true, isPaused: false }),
 
     setBossHp: (hp, maxHp) => {
@@ -298,12 +387,13 @@ export const useGameStore = create<GameState>()(
       chosenUpgrade: null,
       xp: 0, xpNeeded: xpNeeded(1), level: 1,
       hp: 100, maxHp: 100,
-      might: 1.0, attackInterval: 500, moveSpeed: 200,
+      might: 1.0, attackInterval: 1350, wandAttackInterval: 1200, moveSpeed: 160,
       isLevelUpPending: false, upgradeChoices: [],
       invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300, bossInvulnerable: false,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, auraRange: 0, orbital: 0,
-      wand: false, boomerang: false, flameTrail: false, bloodNova: false, vampiric: false, lightning: false, axe: false, divineShield: false, divineShieldActive: false, armor: 0,
+      wand: false, boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0, vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, axe: false, divineShield: false, divineShieldActive: false, xpGain: 0, magnetRange: 0, armor: 0,
+      phiera: false, eight: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: false, dualGunAttackInterval: 800,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
     }),
@@ -312,7 +402,7 @@ export const useGameStore = create<GameState>()(
       set(s => {
         let upgrade: Partial<GameState>
         switch (id) {
-          case 'moveSpeed':    upgrade = { moveSpeed: Math.min(300, Math.floor(s.moveSpeed * 1.15)) }; break
+          case 'moveSpeed':    upgrade = { moveSpeed: Math.min(240, Math.floor(s.moveSpeed * 1.15)) }; break
           case 'dashCooldown': upgrade = { dashCooldown: Math.max(400, Math.floor(s.dashCooldown * 0.75)) }; break
           case 'dashDistance': upgrade = { dashDistance: s.dashDistance + 0.4 }; break
           case 'multiShot':    upgrade = { multiShot: s.multiShot + 1 }; break
@@ -325,11 +415,21 @@ export const useGameStore = create<GameState>()(
           case 'boomerang':    upgrade = { boomerang: true }; break
           case 'flameTrail':   upgrade = { flameTrail: true }; break
           case 'bloodNova':    upgrade = { bloodNova: true }; break
+          case 'bloodNovaCD':  upgrade = { bloodNovaCD: Math.min(4, s.bloodNovaCD + 1) }; break
           case 'vampiric':     upgrade = { vampiric: true }; break
-          case 'lightning':    upgrade = { lightning: true }; break
+          case 'lightning':         upgrade = { lightning: true }; break
+          case 'lightningTargets':  upgrade = { lightningTargets: Math.min(2, s.lightningTargets + 1) }; break
+          case 'lightningCooldown': upgrade = { lightningCooldown: Math.min(2, s.lightningCooldown + 1) }; break
           case 'axe':          upgrade = { axe: true }; break
           case 'divineShield': upgrade = { divineShield: true }; break
-          case 'might':        upgrade = { might: Math.min(3.0, s.might + 0.2) }; break
+          case 'xpGain':       upgrade = { xpGain: Math.min(5, s.xpGain + 1) }; break
+          case 'magnetRange':  upgrade = { magnetRange: Math.min(3, s.magnetRange + 1) }; break
+          case 'might':        upgrade = { might: Math.min(1.5, s.might + 0.1) }; break
+          case 'phiera':       upgrade = { phiera: true }; break
+          case 'eight':        upgrade = { eight: true }; break
+          case 'dualGunDamage':upgrade = { dualGunDamage: Math.min(3, s.dualGunDamage + 1) }; break
+          case 'dualGunSpeed': upgrade = { dualGunSpeed: Math.min(2, s.dualGunSpeed + 1), dualGunAttackInterval: Math.max(300, Math.floor(s.dualGunAttackInterval * 0.8)) }; break
+          case 'dualGunExtra': upgrade = { dualGunExtra: true }; break
           default:             upgrade = {}
         }
         return { ...upgrade, isLevelUpPending: false, chosenUpgrade: id }
@@ -345,12 +445,20 @@ export function getValidatedCombatState() {
   return {
     ...s,
     might:          Math.min(4.0, Math.max(1.0, s.might)),
-    attackInterval: Math.max(250, s.attackInterval),
-    multiShot:      Math.min(4, Math.max(0, Math.floor(s.multiShot))),
+    attackInterval:     Math.max(250, s.attackInterval),
+    wandAttackInterval: Math.max(250, s.wandAttackInterval),
+    multiShot:      Math.min(3, Math.max(0, Math.floor(s.multiShot))),
     aura:           Math.min(1, Math.max(0, Math.floor(s.aura))),
     auraTick:       Math.min(3, Math.max(0, Math.floor(s.auraTick))),
     auraRange:      Math.min(3, Math.max(0, Math.floor(s.auraRange))),
-    orbital:        Math.min(3, Math.max(0, Math.floor(s.orbital))),
-    moveSpeed:      Math.min(300, Math.max(50, s.moveSpeed)),
+    orbital:            Math.min(3, Math.max(0, Math.floor(s.orbital))),
+    lightningTargets:   Math.min(2, Math.max(0, Math.floor(s.lightningTargets))),
+    lightningCooldown:  Math.min(2, Math.max(0, Math.floor(s.lightningCooldown))),
+    bloodNovaCD:        Math.min(4, Math.max(0, Math.floor(s.bloodNovaCD))),
+    moveSpeed:          Math.min(240, Math.max(50, s.moveSpeed)),
+    magnetRange:        Math.min(3, Math.max(0, Math.floor(s.magnetRange))),
+    dualGunDamage:      Math.min(3, Math.max(0, Math.floor(s.dualGunDamage))),
+    dualGunSpeed:       Math.min(2, Math.max(0, Math.floor(s.dualGunSpeed))),
+    dualGunAttackInterval: Math.max(300, s.dualGunAttackInterval),
   }
 }

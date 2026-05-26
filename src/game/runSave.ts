@@ -40,8 +40,11 @@ export interface RunSnapshot {
   boomerang: boolean
   flameTrail: boolean
   bloodNova: boolean
+  bloodNovaCD?: number
   vampiric: boolean
   lightning: boolean
+  lightningTargets: number
+  lightningCooldown: number
   axe: boolean
   divineShield: boolean
   armor: number

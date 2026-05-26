@@ -32,14 +32,14 @@ const SUMMONER_COUNT_P2        = 18
 interface Cfg { speed: number; maxHp: number; xpValue: number; isBoss: boolean }
 
 const CONFIGS: Record<EnemyKind, Cfg> = {
-  basic:       { speed: 80,   maxHp: 1,    xpValue: 2,   isBoss: false },
-  speeder:     { speed: 190,  maxHp: 1,    xpValue: 1,   isBoss: false },
-  tank:        { speed: 35,   maxHp: 20,   xpValue: 6,   isBoss: false },
-  ranged:      { speed: 55,   maxHp: 10,   xpValue: 4,   isBoss: false },
-  exploder:    { speed: 65,   maxHp: 8,    xpValue: 4,   isBoss: false },
-  ghost:       { speed: 280,  maxHp: 4,    xpValue: 2,   isBoss: false },
-  charger:     { speed: 55,   maxHp: 15,   xpValue: 5,   isBoss: false },
-  necromancer: { speed: 40,   maxHp: 20,   xpValue: 5,   isBoss: false },
+  basic:       { speed: 75,   maxHp: 1,    xpValue: 2,   isBoss: false },
+  speeder:     { speed: 148,  maxHp: 15,   xpValue: 1,   isBoss: false },
+  tank:        { speed: 38,   maxHp: 40,   xpValue: 6,   isBoss: false },
+  ranged:      { speed: 65,   maxHp: 25,   xpValue: 4,   isBoss: false },
+  exploder:    { speed: 78,   maxHp: 20,   xpValue: 4,   isBoss: false },
+  ghost:       { speed: 280,  maxHp: 8,    xpValue: 2,   isBoss: false },
+  charger:     { speed: 72,   maxHp: 50,   xpValue: 5,   isBoss: false },
+  necromancer: { speed: 50,   maxHp: 65,   xpValue: 5,   isBoss: false },
   summoner:    { speed: 45,   maxHp: 2500, xpValue: 150, isBoss: true  },
   boss:        { speed: 55,   maxHp: 2500, xpValue: 80,  isBoss: true  },
   finalBoss:   { speed: 72,   maxHp: 5000, xpValue: 500, isBoss: true  },

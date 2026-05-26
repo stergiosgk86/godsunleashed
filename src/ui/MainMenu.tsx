@@ -282,6 +282,152 @@ function MenuBackground() {
   )
 }
 
+// ── Collection ────────────────────────────────────────────────────────────────
+
+const COLLECTION_WEAPONS = [
+  {
+    id: 'wand', label: 'Arcane Wand', color: '#88aaff', icon: '✦',
+    description: 'Fires a magic bolt at the nearest enemy',
+    upgrades: [
+      { id: 'multiShot',  label: 'Multi Shot', description: 'Wand fires an extra bolt per attack (stackable, up to 3×)' },
+      { id: 'piercing',   label: 'Piercing',   description: 'Wand bolts pass through enemies' },
+    ],
+  },
+  {
+    id: 'aura', label: 'Aura', color: '#9944ff', icon: '◎',
+    description: 'Pulses damage to all enemies in range and knocks them back',
+    upgrades: [
+      { id: 'auraTick',  label: 'Aura Tempo',  description: 'Aura pulses 100ms faster (stackable, up to 3×)' },
+      { id: 'auraRange', label: 'Aura Range',  description: 'Expands the aura radius (stackable, up to 3×)' },
+    ],
+  },
+  {
+    id: 'orbital', label: 'Spirit Orb', color: '#44ffcc', icon: '◉',
+    description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 3)',
+    upgrades: [],
+  },
+  {
+    id: 'boomerang', label: 'Boomerang', color: '#ffaa22', icon: '↩',
+    description: 'Throws a disc that flies out then returns, hitting enemies twice',
+    upgrades: [],
+  },
+  {
+    id: 'flameTrail', label: 'Flame Trail', color: '#ff6622', icon: '♨',
+    description: 'Leaves burning patches as you move that damage nearby enemies',
+    upgrades: [],
+  },
+  {
+    id: 'bloodNova', label: 'Blood Nova', color: '#cc2244', icon: '✸',
+    description: 'Every 90s wipes all enemies on screen in a massive dark shockwave',
+    upgrades: [
+      { id: 'bloodNovaCD', label: 'Dark Convergence', description: 'Blood Nova triggers 10s sooner (stackable, up to 4×, down to 50s)' },
+    ],
+  },
+  {
+    id: 'lightning', label: 'Thunder Strike', color: '#ddee22', icon: '⚡',
+    description: 'Every 4.5s lightning bolts strike 2 random enemies for heavy damage',
+    upgrades: [
+      { id: 'lightningTargets',  label: 'Storm Surge',   description: 'Thunder Strike hits 1 additional enemy (stackable, up to +2)' },
+      { id: 'lightningCooldown', label: 'Thunderhaste',  description: 'Thunder Strike fires 1s faster (stackable, up to 2×)' },
+    ],
+  },
+  {
+    id: 'axe', label: 'War Axe', color: '#dd8844', icon: '⚔',
+    description: 'Hurls a spinning axe in an arc — hits on the way up and again on the way down',
+    upgrades: [],
+  },
+  {
+    id: 'divineShield', label: 'Divine Shield', color: '#ffee66', icon: '◈',
+    description: 'Grants a shield that blocks the next hit. Recharges in 10s after absorbing a hit',
+    upgrades: [],
+  },
+] as const
+
+const COLLECTION_PASSIVES = [
+  { id: 'might',       label: 'Power',        color: '#ff6644', icon: '▲', description: '+10% weapon damage (stackable)' },
+  { id: 'vampiric',    label: 'Soul Drain',   color: '#cc3355', icon: '♥', description: 'Each hit restores 8% of damage dealt as HP' },
+  { id: 'xpGain',      label: 'Gilded Soul',  color: '#ffcc33', icon: '★', description: '+8% XP gained from all sources (stackable, up to 5×)' },
+  { id: 'magnetRange', label: 'Astral Pull',  color: '#66ccff', icon: '◎', description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },
+  { id: 'dashCooldown',label: 'Swift Dash',   color: '#88aaff', icon: '→', description: '25% shorter dash cooldown' },
+  { id: 'dashDistance',label: 'Longer Dash',  color: '#88aaff', icon: '⟶', description: '40% further dash distance' },
+] as const
+
+function CollectionView({ onBack }: { onBack: () => void }) {
+  return (
+    <>
+      <ViewHeader color="#44ccaa">COLLECTION</ViewHeader>
+      <div style={{ width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+
+        <div style={{ color: '#44776688', fontFamily: 'monospace', fontSize: 10, letterSpacing: 3, paddingLeft: 2 }}>
+          WEAPONS
+        </div>
+
+        {COLLECTION_WEAPONS.map(w => (
+          <div key={w.id} style={{
+            background: 'rgba(10,10,26,0.6)',
+            border: `1px solid ${w.color}25`,
+            borderLeft: `3px solid ${w.color}99`,
+            borderRadius: 10, padding: '10px 14px',
+            display: 'flex', flexDirection: 'column', gap: 5,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ color: w.color, fontSize: 17, width: 22, textAlign: 'center', flexShrink: 0, filter: `drop-shadow(0 0 5px ${w.color}99)` }}>
+                {w.icon}
+              </span>
+              <div>
+                <div style={{ color: '#ddddff', fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold', letterSpacing: 1 }}>
+                  {w.label.toUpperCase()}
+                </div>
+                <div style={{ color: '#505070', fontFamily: 'monospace', fontSize: 10, marginTop: 2 }}>
+                  {w.description}
+                </div>
+              </div>
+            </div>
+            {w.upgrades.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 32 }}>
+                {w.upgrades.map(u => (
+                  <div key={u.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                    <span style={{ color: w.color + '77', fontSize: 9, flexShrink: 0 }}>▸</span>
+                    <span style={{ color: w.color + 'cc', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', flexShrink: 0 }}>{u.label}</span>
+                    <span style={{ color: '#383858', fontFamily: 'monospace', fontSize: 10 }}>— {u.description}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        <div style={{ color: '#44776688', fontFamily: 'monospace', fontSize: 10, letterSpacing: 3, paddingLeft: 2, marginTop: 6 }}>
+          PASSIVES
+        </div>
+
+        {COLLECTION_PASSIVES.map(p => (
+          <div key={p.id} style={{
+            background: 'rgba(10,10,26,0.6)',
+            border: `1px solid ${p.color}20`,
+            borderLeft: `3px solid ${p.color}66`,
+            borderRadius: 10, padding: '10px 14px',
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <span style={{ color: p.color, fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0, filter: `drop-shadow(0 0 4px ${p.color}77)` }}>
+              {p.icon}
+            </span>
+            <div>
+              <div style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold', letterSpacing: 1 }}>
+                {p.label.toUpperCase()}
+              </div>
+              <div style={{ color: '#383858', fontFamily: 'monospace', fontSize: 10, marginTop: 2 }}>
+                {p.description}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <BackButton onBack={onBack} />
+    </>
+  )
+}
+
 // ── Leaderboard ───────────────────────────────────────────────────────────────
 
 interface RunEntry {
@@ -543,8 +689,8 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const unlockCostOfSelected = CHARACTER_UNLOCK_COSTS[_selectedCharacter]
   const isSelectedLocked = (unlockCostOfSelected !== undefined || CHARACTER_ACHIEVEMENT_REQUIRED[_selectedCharacter] !== undefined) && !unlockedCharacters.includes(_selectedCharacter)
   const selectedCharacter = isSelectedLocked ? 'ares' : _selectedCharacter
-  type MenuView = 'home' | 'shop' | 'characters' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds'
-  const VALID_VIEWS = new Set<string>(['home', 'shop', 'characters', 'statistics', 'leaderboard', 'achievements', 'admin', 'settings', 'controls', 'sounds'])
+  type MenuView = 'home' | 'shop' | 'characters' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds' | 'collection'
+  const VALID_VIEWS = new Set<string>(['home', 'shop', 'characters', 'statistics', 'leaderboard', 'achievements', 'admin', 'settings', 'controls', 'sounds', 'collection'])
   const [view, setViewRaw] = useState<MenuView>(() => {
     const saved = sessionStorage.getItem('gods_menu_view')
     return (saved && VALID_VIEWS.has(saved) ? saved : 'home') as MenuView
@@ -561,7 +707,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const mob = useIsMobile()
 
   const VIEW_PARENT: Partial<Record<MenuView, MenuView>> = {
-    characters: 'home', shop: 'home', settings: 'home', statistics: 'home', admin: 'home',
+    characters: 'home', shop: 'home', settings: 'home', statistics: 'home', admin: 'home', collection: 'home',
     leaderboard: 'statistics', achievements: 'statistics',
     controls: 'settings', sounds: 'settings',
   }
@@ -624,7 +770,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
       <div style={{
         ...panel,
         padding: mob ? '20px 16px' : '32px 48px',
-        minWidth: mob ? 'calc(100vw - 24px)' : (view === 'characters' ? 700 : ['shop', 'leaderboard', 'achievements', 'admin'].includes(view) ? 520 : 420),
+        minWidth: mob ? 'calc(100vw - 24px)' : (view === 'characters' ? 700 : ['shop', 'leaderboard', 'achievements', 'admin', 'collection'].includes(view) ? 520 : 420),
         maxWidth: mob ? 'calc(100vw - 24px)' : undefined,
         maxHeight: 'calc(100vh - 180px)',
         height: (!mob && view === 'characters') ? 'calc(100vh - 180px)' : undefined,
@@ -675,6 +821,8 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         <ControlsView onBack={() => setView('settings')} />
       ) : view === 'sounds' ? (
         <SoundsView onBack={() => setView('settings')} />
+      ) : view === 'collection' ? (
+        <CollectionView onBack={() => setView('home')} />
       ) : view === 'admin' ? (
         <AdminPlayersView onBack={() => setView('home')} />
       ) : view === 'characters' ? (
@@ -1312,19 +1460,34 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setView('statistics')}
-            style={{
-              ...btnBase, fontSize: 13,
-              color: '#bb9933', background: 'rgba(25,20,5,0.5)',
-              borderColor: 'rgba(100,70,10,0.4)', boxShadow: 'none',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(38,30,8,0.7)'; e.currentTarget.style.color = '#ddbb55' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(25,20,5,0.5)'; e.currentTarget.style.color = '#bb9933' }}
-          >
-            STATISTICS
-          </button>
+          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+            <button
+              type="button"
+              onClick={() => setView('statistics')}
+              style={{
+                ...btnBase, flex: 1, fontSize: 13,
+                color: '#bb9933', background: 'rgba(25,20,5,0.5)',
+                borderColor: 'rgba(100,70,10,0.4)', boxShadow: 'none',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(38,30,8,0.7)'; e.currentTarget.style.color = '#ddbb55' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(25,20,5,0.5)'; e.currentTarget.style.color = '#bb9933' }}
+            >
+              STATISTICS
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('collection')}
+              style={{
+                ...btnBase, flex: 1, fontSize: 13,
+                color: '#44ccaa', background: 'rgba(5,25,20,0.5)',
+                borderColor: 'rgba(20,100,70,0.4)', boxShadow: 'none',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(8,40,30,0.7)'; e.currentTarget.style.color = '#66eebb' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(5,25,20,0.5)'; e.currentTarget.style.color = '#44ccaa' }}
+            >
+              COLLECTION
+            </button>
+          </div>
 
           <button
             type="button"

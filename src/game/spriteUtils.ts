@@ -29,6 +29,39 @@ export function createWalkAnims(anims: Phaser.Animations.AnimationManager, key: 
   }
 }
 
+// Apollo sheet row order differs from standard: row0=up, row1=down, row2=left, row3=right
+export const APOLLO_IDLE_FRAMES: Record<Direction, number> = { up: 1, down: 4, left: 7, right: 10 }
+
+// Shared row-order for Apollo and Hades: row0=up, row1=down, row2=left, row3=right
+function createRemappedWalkAnims(anims: Phaser.Animations.AnimationManager, key: string) {
+  const walk: { dir: Direction; start: number }[] = [
+    { dir: 'up',    start: 0 },
+    { dir: 'down',  start: 3 },
+    { dir: 'left',  start: 6 },
+    { dir: 'right', start: 9 },
+  ]
+  for (const { dir, start } of walk) {
+    anims.create({
+      key: `${key}_${dir}`,
+      frames: anims.generateFrameNumbers(key, { start, end: start + 2 }),
+      frameRate: 8,
+      repeat: -1,
+    })
+  }
+}
+
+export function createApolloAnims(anims: Phaser.Animations.AnimationManager) {
+  createRemappedWalkAnims(anims, 'char_apollo')
+}
+
+export function createHadesAnims(anims: Phaser.Animations.AnimationManager) {
+  createRemappedWalkAnims(anims, 'char_hades')
+}
+
+export function createChronosAnims(anims: Phaser.Animations.AnimationManager) {
+  createRemappedWalkAnims(anims, 'char_chronos')
+}
+
 // Zeus spritesheet: rows 0-3 = walk, rows 4-7 = attack.
 // The artist labeled rows 1/2 as LEFT/RIGHT but the sprites face the opposite direction,
 // so we swap them: sheet row 1 ("LEFT") → game 'right', sheet row 2 ("RIGHT") → game 'left'.
@@ -70,9 +103,11 @@ export function playDir(
   dir: Direction,
   lastDir: Direction,
   moving: boolean,
-  idleFrames: Record<Direction, number> = IDLE_FRAMES
+  idleFrames: Record<Direction, number> = IDLE_FRAMES,
+  staticSprite = false
 ): Direction {
   if (!sprite.active || !sprite.anims) return lastDir
+  if (staticSprite) return moving ? dir : lastDir
   if (!moving) {
     if (sprite.anims.isPlaying) {
       sprite.anims.stop()

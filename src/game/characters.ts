@@ -1,4 +1,4 @@
-export type CharacterType = 'ares' | 'rogue' | 'witch' | 'shade' | 'zeus' | 'poseidon'
+export type CharacterType = 'ares' | 'rogue' | 'witch' | 'shade' | 'zeus' | 'poseidon' | 'apollo' | 'hades' | 'chronos'
 
 export interface CharacterDef {
   id: CharacterType
@@ -23,12 +23,19 @@ export interface CharacterDef {
   startBoomerang: boolean
   startFlameTrail: boolean
   startOrbital: number
+  startWand: boolean
+  startPhiera: boolean
+  startEight: boolean
   // Only fires at enemies within a ~140° arc in the facing direction
   frontArcOnly: boolean
   // In-game sprite scale (default 1.5 for 32×32 sprites)
   scale: number
   // Menu sprite display overrides (for non-32×32 spritesheets)
   menuFrame?: { fw: number; fh: number; sw: number; sh: number }
+  // Which row of the spritesheet to show in the character select menu (default 0)
+  menuRow?: number
+  // True for characters loaded as a single static image (no walk animation frames)
+  staticSprite?: boolean
 }
 
 export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
@@ -47,7 +54,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 50, baseArmor: 1, mightMult: 1.5, bonusMoveSpeed: 30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, frontArcOnly: true,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: true,
     scale: 0.85,
   },
   rogue: {
@@ -65,7 +72,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: -20, baseArmor: 0, mightMult: 0.9, bonusMoveSpeed: 50,
     attackIntervalMult: 1.0, dashCooldownMult: 0.55, bonusDashDistance: 0.5,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: true,
-    startFlameTrail: false, startOrbital: 0, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
     scale: 1.5,
   },
   witch: {
@@ -81,7 +88,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: -15, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: -30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 1, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
     scale: 1.5,
   },
   shade: {
@@ -98,7 +105,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 60, baseArmor: 2, mightMult: 0.85, bonusMoveSpeed: 0,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 2, startLightning: false, startBoomerang: false,
-    startFlameTrail: true, startOrbital: 0, frontArcOnly: false,
+    startFlameTrail: true, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
     scale: 1.5,
   },
   zeus: {
@@ -115,7 +122,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 10, baseArmor: 0, mightMult: 1.4, bonusMoveSpeed: -40,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.3, startAura: 0, lifeDrain: 0, startLightning: true, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
     scale: 1.0,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 768 },
   },
@@ -133,10 +140,69 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 25, baseArmor: 1, mightMult: 1.15, bonusMoveSpeed: -30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 1, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 1, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
     scale: 1.0,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
   },
+  apollo: {
+    id: 'apollo', name: 'Apollo', trait: 'Solar Archer',
+    description: 'God of the Sun. Fires enchanted arcane bolts with precision and radiant might.',
+    spriteKey: 'char_apollo', color: '#ffd44d',
+    statLines: [
+      { label: 'Weapon: Arcane Wand',  positive: true  },
+      { label: '+20% Might',           positive: true  },
+      { label: '20% faster Wand',      positive: true  },
+      { label: '+10 Max HP',           positive: true  },
+      { label: '+0.15 HP/sec regen',   positive: true  },
+      { label: '-10 Move Speed',       positive: false },
+    ],
+    bonusMaxHp: 10, baseArmor: 0, mightMult: 1.2, bonusMoveSpeed: -10,
+    attackIntervalMult: 0.8, dashCooldownMult: 1.0, bonusDashDistance: 0,
+    bonusHpRegen: 0.15, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
+    startFlameTrail: false, startOrbital: 0, startWand: true, startPhiera: false, startEight: false, frontArcOnly: false,
+    scale: 0.8,
+    menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
+    menuRow: 1,
+  },
+  hades: {
+    id: 'hades', name: 'Hades', trait: 'Lord of Souls',
+    description: 'God of the Underworld. Radiates a death aura that consumes enemies. Drains their souls on kill.',
+    spriteKey: 'char_hades', color: '#7733cc',
+    statLines: [
+      { label: 'Weapon: Aura',       positive: true  },
+      { label: '+30% Might',         positive: true  },
+      { label: '+80 Max HP',         positive: true  },
+      { label: '3 Armor',            positive: true  },
+      { label: '+4 HP per kill',     positive: true  },
+      { label: '-50 Move Speed',     positive: false },
+    ],
+    bonusMaxHp: 80, baseArmor: 3, mightMult: 1.3, bonusMoveSpeed: -50,
+    attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
+    bonusHpRegen: 0, startAura: 1, lifeDrain: 4, startLightning: false, startBoomerang: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
+    scale: 0.9,
+    menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
+    menuRow: 1,
+  },
+  chronos: {
+    id: 'chronos', name: 'Chronos', trait: 'Dual Sunrays',
+    description: 'God of Time. Commands the flow of battle — sunrays blaze in all four directions, endlessly.',
+    spriteKey: 'char_chronos', color: '#ffcc00',
+    statLines: [
+      { label: 'Weapon: Phiera',    positive: true  },
+      { label: 'Weapon: Eight',     positive: true  },
+      { label: '+10% Might',        positive: true  },
+      { label: '+15 Move Speed',    positive: true  },
+      { label: '+0.2 HP/sec regen', positive: true  },
+    ],
+    bonusMaxHp: 0, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: 15,
+    attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
+    bonusHpRegen: 0.2, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: true, startEight: true, frontArcOnly: false,
+    scale: 0.8,
+    menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
+    menuRow: 1,
+  },
 }
 
-export const ALL_CHARACTERS: CharacterType[] = ['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon']
+export const ALL_CHARACTERS: CharacterType[] = ['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos']

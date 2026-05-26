@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import type { AnyEnemy } from './Enemy'
 import type { ClientEnemy } from './ClientEnemy'
 import { Projectile } from './Projectile'
+import { SunBeam } from './SunBeam'
 import { Boomerang } from './Boomerang'
 import { Axe } from './Axe'
 import { XPOrb } from './XPOrb'
@@ -16,10 +17,10 @@ import { activeNetClient } from '../net/netState'
 import { minimapData } from './minimapData'
 
 const CONTACT_RADIUS = 28
-const CONTACT_ENEMY_COOLDOWN = 1000  // ms between hits from each individual enemy
+const CONTACT_ENEMY_COOLDOWN = 240   // ms — matches VS post-hit immunity window
 const BULLET_HIT_RADIUS = 15
 const BOOMERANG_INTERVAL = 3000
-const AXE_INTERVAL = 3000
+const AXE_INTERVAL = 4000
 const AXE_HIT_R = 20
 const AXE_DAMAGE_MULT = 2.5
 const BOOMERANG_HIT_R = 28
@@ -27,17 +28,19 @@ const FLAME_SPAWN_DIST = 55
 const FLAME_RADIUS = 50
 const FLAME_DURATION = 3000
 const FLAME_TICK = 600
-const NOVA_INTERVAL = 7000
-const NOVA_RADIUS = 230
-const LIGHTNING_INTERVAL = 4000
+const NOVA_INTERVAL = 90000
+const LIGHTNING_INTERVAL = 4500
 const LIGHTNING_TARGETS = 2
 const LIGHTNING_DAMAGE_MULT = 3.5
+const DUAL_GUN_SPEED = 600
+const DUAL_GUN_DAMAGE_MULT = 0.6
+const DUAL_GUN_EXTRA_OFFSET = 14
 const POTION_KILL_THRESHOLD = 100
 const POTION_HEAL = 25
 const POTION_MAX = 3
 const POTION_SPAWN_MIN = 180
 const POTION_SPAWN_MAX = 320
-const DIVINE_COOLDOWN_MS = 7000
+const DIVINE_COOLDOWN_MS = 10000
 
 interface FlamePool {
   x: number; y: number
@@ -58,9 +61,9 @@ export class CombatSystem {
   private playerX = 0
   private playerY = 0
   private fireTimer = 0
-  private auraTimer = 0
   private auraAngle = 0
   private auraFlashTimer = -1
+  private auraHitCooldowns = new Map<AnyEnemy, number>()
   private auraGraphic: Phaser.GameObjects.Graphics
   private orbAngle = 0
   private orbCenterX = 0
@@ -74,6 +77,9 @@ export class CombatSystem {
   private boomerangs: Boomerang[] = []
   private wandTimer = 0
   private boomerangTimer = 0
+  // Dual guns (Chronos / Phiera + Eight)
+  private sunBeams: SunBeam[] = []
+  private dualGunTimer = 0
   // Axe
   private axes: Axe[] = []
   private axeTimer = 0
@@ -85,6 +91,7 @@ export class CombatSystem {
   private flameTime = 0
   // Blood Nova
   private bloodNovaTimer = 0
+  public novaPaused = false
   // Lightning
   private lightningTimer = 0
   private frontArcOnly: boolean
@@ -133,6 +140,7 @@ export class CombatSystem {
       this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
       hit = true
     }
+    soundSystem.shootMelee()
     if (hit) soundSystem.enemyHit()
     this.showSlashEffect(px, py)
   }
@@ -270,7 +278,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, wand, boomerang, flameTrail, bloodNova, vampiric, lightning, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing } = getValidatedCombatState()
+    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing, magnetRange, phiera, eight, dualGunDamage, dualGunAttackInterval, dualGunExtra } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -293,7 +301,7 @@ export class CombatSystem {
     // Arcane Wand: fires magic bolts at nearest enemy
     if (wand) {
       this.wandTimer += delta
-      if (this.wandTimer >= attackInterval) {
+      if (this.wandTimer >= wandAttackInterval) {
         this.wandTimer = 0
         const target = this.findNearest(playerX, playerY, enemies, 700)
         if (target) {
@@ -308,10 +316,47 @@ export class CombatSystem {
             proj.piercing = isPiercing
             this.projectiles.push(proj)
           }
-          soundSystem.shoot()
+          soundSystem.shootWand()
         }
       }
     }
+
+    // Dual guns (Phiera = horizontal, Eight = vertical)
+    if (phiera || eight) {
+      this.dualGunTimer += delta
+      if (this.dualGunTimer >= dualGunAttackInterval) {
+        this.dualGunTimer = 0
+        if (phiera) this.fireSunBeamPair(playerX, playerY, false, dualGunExtra)
+        if (eight)  this.fireSunBeamPair(playerX, playerY, true,  dualGunExtra)
+        soundSystem.shootWand()
+      }
+    }
+
+    // Move sun beams + check enemy hits
+    const camWVBeams = this.scene.cameras.main.worldView
+    const BEAM_OFF_MARGIN = 200
+    const gunDmgActive = Math.floor(weaponBaseDamage(level) * might * DUAL_GUN_DAMAGE_MULT * (1 + dualGunDamage * 0.3))
+    for (const b of this.sunBeams) {
+      if (!b.active) continue
+      b.update(delta)
+      if (!b.active) continue
+      if (b.x < camWVBeams.left  - BEAM_OFF_MARGIN || b.x > camWVBeams.right  + BEAM_OFF_MARGIN ||
+          b.y < camWVBeams.top   - BEAM_OFF_MARGIN || b.y > camWVBeams.bottom + BEAM_OFF_MARGIN) {
+        b.destroy(); continue
+      }
+      for (const e of enemies) {
+        if (!e.active || b.hitTargets.has(e)) continue
+        const dx = b.x - e.x
+        const dy = b.y - e.y
+        if (dx * dx + dy * dy < b.hitRadius * b.hitRadius) {
+          this.applyHit(e, gunDmgActive, coinDropChance, lifeDrain, vampiric)
+          b.hitTargets.add(e)
+          b.destroy()
+          break
+        }
+      }
+    }
+    this.sunBeams = this.sunBeams.filter(b => b.active)
 
     // Move player projectiles + check enemy hits
     const camWV = this.scene.cameras.main.worldView
@@ -347,7 +392,7 @@ export class CombatSystem {
     let xpGained = 0
     for (const orb of this.orbs) {
       if (!orb.active) continue
-      const collected = orb.update(playerX, playerY, delta)
+      const collected = orb.update(playerX, playerY, delta, magnetRange)
       if (collected > 0) {
         this.effects.showXPCollect(orb.x, orb.y)
         soundSystem.xpCollect()
@@ -408,7 +453,7 @@ export class CombatSystem {
         const dx = b.x - playerX
         const dy = b.y - playerY
         if (dx * dx + dy * dy < BULLET_HIT_RADIUS * BULLET_HIT_RADIUS) {
-          takeDamage(Math.round(20 * difficultyScale.damage))
+          takeDamage(10)
           b.destroy()
           this.effects.shakeCamera()
         }
@@ -425,25 +470,30 @@ export class CombatSystem {
       const radius = 60 + auraRange * 30
       this.auraAngle += delta * 0.0015
 
-      // Damage tick
-      this.auraTimer += delta
-      if (this.auraTimer >= 1500 - auraTick * 250) {
-        this.auraTimer = 0
-        this.auraFlashTimer = 0
-        const auraDmg = damage * aura
-        for (const e of enemies) {
-          if (!e.active || !this.isOnScreen(e.x, e.y)) continue
-          const dx = e.x - playerX
-          const dy = e.y - playerY
-          const dist2 = dx * dx + dy * dy
-          if (dist2 < radius * radius) {
-            this.applyHit(e, auraDmg, coinDropChance, lifeDrain, vampiric)
-            // Knockback: push away from player
-            const dist = Math.sqrt(dist2) || 1
-            e.x += (dx / dist) * 100
-            e.y += (dy / dist) * 100
+      // VS Garlic-style: per-enemy cooldown — immediate hit on first contact, re-hit only after interval
+      const auraDmg = damage * aura
+      const tickInterval = 700 - auraTick * 80
+      const nowAura = Date.now()
+      for (const e of enemies) {
+        if (!e.active || !this.isOnScreen(e.x, e.y)) continue
+        const dx = e.x - playerX
+        const dy = e.y - playerY
+        if (dx * dx + dy * dy >= radius * radius) continue
+        const lastHit = this.auraHitCooldowns.get(e) ?? 0
+        if (nowAura - lastHit >= tickInterval) {
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1
+          if ('knockbackDx' in e) {
+            (e as any).knockbackDx = dx / dist
+            ;(e as any).knockbackDy = dy / dist
           }
+          this.applyAuraHit(e, auraDmg, playerX, playerY, coinDropChance, lifeDrain, vampiric)
+          this.auraHitCooldowns.set(e, nowAura)
+          this.auraFlashTimer = 0
         }
+      }
+      // Prune dead enemies from cooldown map
+      for (const [e] of this.auraHitCooldowns) {
+        if (!e.active) this.auraHitCooldowns.delete(e)
       }
 
       // Always-visible base: soft pulsing field
@@ -615,7 +665,7 @@ export class CombatSystem {
         const target = this.findNearest(playerX, playerY, enemies)
         if (target) {
           this.boomerangs.push(new Boomerang(this.scene, playerX, playerY, target.x, target.y))
-          soundSystem.shoot()
+          soundSystem.shootBoomerang()
         }
       }
       for (const b of this.boomerangs) {
@@ -671,9 +721,10 @@ export class CombatSystem {
     // === Blood Nova ===
     if (bloodNova) {
       this.bloodNovaTimer += delta
-      if (this.bloodNovaTimer >= NOVA_INTERVAL) {
+      const novaInterval = NOVA_INTERVAL - bloodNovaCD * 10000
+      if (this.bloodNovaTimer >= novaInterval) {
         this.bloodNovaTimer = 0
-        const novaDmg = Math.floor(weaponBaseDamage(level) * might * 5)
+        const novaDmg = Math.floor(weaponBaseDamage(level) * might * 30)
         this.fireBloodNova(playerX, playerY, novaDmg, enemies, coinDropChance, lifeDrain, vampiric)
       }
     }
@@ -687,7 +738,7 @@ export class CombatSystem {
         const dirX = target ? Math.sign(target.x - playerX) || this.axeDir : this.axeDir
         this.axeDir = -dirX
         this.axes.push(new Axe(this.scene, playerX, playerY, dirX))
-        soundSystem.shoot()
+        soundSystem.shootAxe()
       }
       const axeDamage = Math.floor(weaponBaseDamage(level) * might * AXE_DAMAGE_MULT)
       for (const a of this.axes) {
@@ -710,15 +761,16 @@ export class CombatSystem {
     // === Lightning Strike ===
     if (lightning) {
       this.lightningTimer += delta
-      if (this.lightningTimer >= LIGHTNING_INTERVAL) {
+      const lightningInterval = LIGHTNING_INTERVAL - lightningCooldown * 1000
+      if (this.lightningTimer >= lightningInterval) {
         this.lightningTimer = 0
         const boltDmg = Math.floor(weaponBaseDamage(level) * might * LIGHTNING_DAMAGE_MULT)
         const cam = this.scene.cameras.main.worldView
         const active = enemies.filter(e => e.active && cam.contains(e.x, e.y))
-        // Pick up to LIGHTNING_TARGETS distinct random enemies
+        const targetCount = LIGHTNING_TARGETS + lightningTargets
         const targets: AnyEnemy[] = []
         const pool = [...active]
-        for (let i = 0; i < LIGHTNING_TARGETS && pool.length > 0; i++) {
+        for (let i = 0; i < targetCount && pool.length > 0; i++) {
           const idx = Math.floor(Math.random() * pool.length)
           targets.push(pool.splice(idx, 1)[0])
         }
@@ -860,39 +912,145 @@ export class CombatSystem {
     })
   }
 
-  private fireBloodNova(playerX: number, playerY: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
-    const { maxHp } = useGameStore.getState()
-    const cost = Math.max(1, Math.floor(maxHp * 0.08))
-    useGameStore.setState(s => ({ hp: Math.max(1, s.hp - cost) }))
+  private fireSunBeamPair(px: number, py: number, vertical: boolean, extra: boolean) {
+    const dirs: [number, number][] = vertical
+      ? [[0, -DUAL_GUN_SPEED], [0, DUAL_GUN_SPEED]]
+      : [[-DUAL_GUN_SPEED, 0], [DUAL_GUN_SPEED, 0]]
 
-    for (const e of enemies) {
-      if (!e.active || !this.isOnScreen(e.x, e.y)) continue
-      const dx = e.x - playerX
-      const dy = e.y - playerY
-      if (dx * dx + dy * dy < NOVA_RADIUS * NOVA_RADIUS) {
-        this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
+    for (const [vx, vy] of dirs) {
+      this.sunBeams.push(new SunBeam(this.scene, px, py, vx, vy))
+      if (extra) {
+        const ox = vertical ? DUAL_GUN_EXTRA_OFFSET : 0
+        const oy = vertical ? 0 : DUAL_GUN_EXTRA_OFFSET
+        this.sunBeams.push(new SunBeam(this.scene, px + ox, py + oy, vx, vy))
+        this.sunBeams.push(new SunBeam(this.scene, px - ox, py - oy, vx, vy))
       }
     }
+  }
 
-    const g = this.scene.add.graphics().setDepth(6)
+  private fireBloodNova(playerX: number, playerY: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
+    // Wipe ALL on-screen enemies — no radius limit, no HP cost
+    for (const e of enemies) {
+      if (!e.active || !this.isOnScreen(e.x, e.y)) continue
+      this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
+    }
+
+    soundSystem.bloodNova()
+    this.effects.shakeCamera()
+
+    // Freeze game logic for the duration of the animation
+    const NOVA_PAUSE_MS = 1700
+    this.novaPaused = true
+    setTimeout(() => { this.novaPaused = false }, NOVA_PAUSE_MS)
+
+    const cam = this.scene.cameras.main
+    const screenR = Math.hypot(cam.width, cam.height) / 2 + 80
+
+    // Full-screen dark flash (fixed to camera, not world)
+    const flash = this.scene.add.graphics().setDepth(30).setScrollFactor(0)
+    flash.fillStyle(0x0d0000, 1)
+    flash.fillRect(0, 0, cam.width, cam.height)
+    this.scene.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 1400,
+      ease: 'Power3In',
+      ignoreTimeScale: true,
+      onComplete: () => flash.destroy(),
+    })
+
+    // Expanding dark ring in world space
+    const g = this.scene.add.graphics().setDepth(29)
     const obj = { t: 0 }
     this.scene.tweens.add({
       targets: obj,
       t: 1,
-      duration: 650,
+      duration: 1600,
       ease: 'Power2Out',
+      ignoreTimeScale: true,
       onUpdate: () => {
         const t = obj.t
-        const r = 30 + (NOVA_RADIUS - 30) * t
-        const alpha = 1 - t
+        const r = 10 + (screenR - 10) * t
+        const alpha = 1 - t * 0.85
         g.clear()
-        g.lineStyle(3 + (1 - t) * 9, 0xff1111, alpha)
+        g.lineStyle(22 * (1 - t) + 4, 0x000000, alpha)
         g.strokeCircle(playerX, playerY, r)
-        g.fillStyle(0xcc0000, alpha * 0.18)
+        g.lineStyle(6 * (1 - t) + 2, 0xcc0000, alpha * 0.8)
+        g.strokeCircle(playerX, playerY, r - 18)
+        g.fillStyle(0x0a0000, alpha * 0.55)
         g.fillCircle(playerX, playerY, r)
       },
       onComplete: () => g.destroy(),
     })
+
+    // "BLOOD NOVA" title text — fades in then out
+    const label = this.scene.add.text(cam.width / 2, cam.height / 2, 'BLOOD NOVA', {
+      fontSize: '52px',
+      fontFamily: 'monospace',
+      fontStyle: 'bold',
+      color: '#ff2222',
+      stroke: '#000000',
+      strokeThickness: 8,
+      shadow: { offsetX: 0, offsetY: 0, color: '#cc0000', blur: 18, fill: true },
+    })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(31)
+      .setAlpha(0)
+
+    this.scene.tweens.add({
+      targets: label,
+      alpha: 1,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 300,
+      ease: 'Power2Out',
+      ignoreTimeScale: true,
+      onComplete: () => {
+        this.scene.tweens.add({
+          targets: label,
+          alpha: 0,
+          scaleX: 0.95,
+          scaleY: 0.95,
+          duration: 900,
+          delay: 500,
+          ease: 'Power2In',
+          ignoreTimeScale: true,
+          onComplete: () => label.destroy(),
+        })
+      },
+    })
+  }
+
+  private applyAuraHit(e: AnyEnemy, damage: number, playerX: number, playerY: number, coinDropChance: number, lifeDrain: number, vampiric: boolean) {
+    const net = activeNetClient
+    const actual = this.jitter(damage)
+    useGameStore.getState().addDamage(actual)
+    this.effects.showDamageNumber(e.x, e.y, actual)
+    soundSystem.enemyHit()
+    if (vampiric) {
+      this.vampiricPool += actual * VAMPIRIC_PERCENT
+      if (this.vampiricPool >= 1) {
+        const heal = Math.floor(this.vampiricPool)
+        this.vampiricPool -= heal
+        useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + heal) }))
+      }
+    }
+    if (net && 'serverId' in e) {
+      net.send({ type: 'auraHit', enemyId: (e as ClientEnemy).serverId, damage: actual })
+      e.takeDamage(actual)
+    } else {
+      e.takeDamage(actual)
+      if (e.hp <= 0) {
+        this.killEnemy(e, coinDropChance, lifeDrain)
+      } else {
+        const dx = e.x - playerX
+        const dy = e.y - playerY
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1
+        e.x += (dx / dist) * 12
+        e.y += (dy / dist) * 12
+      }
+    }
   }
 
   private applyHit(e: AnyEnemy, damage: number, coinDropChance: number, lifeDrain: number, vampiric: boolean) {
@@ -947,7 +1105,9 @@ export class CombatSystem {
     const luckRank = useProfileStore.getState().upgrades.luck
     const coinDropChance = 0.02 + luckRank * 0.01
 
-    this.orbs.push(new XPOrb(this.scene, x, y, xpValue))
+    const sa = Math.random() * Math.PI * 2
+    const sr = Math.random() * 20
+    this.orbs.push(new XPOrb(this.scene, x + Math.cos(sa) * sr, y + Math.sin(sa) * sr, xpValue))
     if (isBoss) {
       const count = 4 + Math.floor(Math.random() * 5)
       for (let i = 0; i < count; i++) {

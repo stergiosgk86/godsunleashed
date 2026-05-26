@@ -25,6 +25,7 @@ export type C2SMessage =
   | { type: 'join'; characterType: string; solo?: boolean; viewportW?: number; viewportH?: number; resumeElapsed?: number; resumeLevel?: number; resumeXp?: number }
   | { type: 'input'; x: number; y: number; aura: number; orbital: number }
   | { type: 'hit'; enemyId: number; damage: number }
+  | { type: 'auraHit'; enemyId: number; damage: number }
   | { type: 'died' }
   | { type: 'startGame' }
   | { type: 'projectile'; x: number; y: number; vx: number; vy: number }
@@ -52,3 +53,4 @@ export type S2CMessage =
   | { type: 'bossInvuln'; bossId: number; invulnerable: boolean }
   | { type: 'exploderExplode'; x: number; y: number }
   | { type: 'adminSpawnItem'; entity: string; x: number; y: number }
+  | { type: 'adminGrantUpgrade'; upgradeId: string }

@@ -40,8 +40,10 @@ const MAX_UPGRADE_RANK = 5
 const VALID_UPGRADE_KEYS = new Set(['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed', 'armor', 'attackSpeed'])
 
 // Characters that require coins to unlock (others are free)
-const CHARACTER_UNLOCK_COSTS: Record<string, number> = { rogue: 100, witch: 150, shade: 300, zeus: 1000, poseidon: 500 }
-const LOCKABLE_CHARACTERS = new Set(Object.keys(CHARACTER_UNLOCK_COSTS))
+const CHARACTER_UNLOCK_COSTS: Record<string, number> = { rogue: 100, witch: 150, shade: 300, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500 }
+// Characters unlocked automatically when a specific achievement is earned
+const ACHIEVEMENT_CHARACTER_UNLOCKS: Record<string, string> = { transcendent: 'hades' }
+const LOCKABLE_CHARACTERS = new Set([...Object.keys(CHARACTER_UNLOCK_COSTS), ...Object.values(ACHIEVEMENT_CHARACTER_UNLOCKS)])
 
 const VALID_ACHIEVEMENT_IDS = new Set([
   'survivor_5', 'veteran', 'boss_slayer', 'hunter', 'slaughterer',
@@ -543,6 +545,24 @@ apiRouter.post('/runs', writeRateLimit, async (req: Request, res: Response) => {
   const newlyUnlocked = achievementResults
     .flatMap(r => r.rows)
     .map(r => r.achievement_id as string)
+
+  // Auto-unlock characters tied to newly earned achievements
+  const newChars = newlyUnlocked
+    .filter(id => ACHIEVEMENT_CHARACTER_UNLOCKS[id])
+    .map(id => ACHIEVEMENT_CHARACTER_UNLOCKS[id])
+  if (newChars.length > 0) {
+    const profileResult = await db.query(
+      'SELECT unlocked_characters FROM profiles WHERE user_id = $1',
+      [req.userId],
+    )
+    const current: string[] = Array.isArray(profileResult.rows[0]?.unlocked_characters)
+      ? profileResult.rows[0].unlocked_characters : []
+    const merged = [...new Set([...current, ...newChars])]
+    await db.query(
+      'UPDATE profiles SET unlocked_characters = $1, updated_at = NOW() WHERE user_id = $2',
+      [JSON.stringify(merged), req.userId],
+    )
+  }
 
   res.json({ ok: true, newAchievements: newlyUnlocked })
 })

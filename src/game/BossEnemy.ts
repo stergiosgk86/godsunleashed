@@ -4,8 +4,8 @@ import { type Direction, getDirection, playDir } from './spriteUtils'
 import { useGameStore } from '../store/gameStore'
 
 const BOSS_MAX_HP = 600
-const BOSS_SPEED = 55
-const CHARGE_SPEED = 420
+const BOSS_SPEED = 64
+const CHARGE_SPEED = 336
 const CHARGE_WINDUP = 500   // ms pause before dash
 const CHARGE_DURATION = 700 // ms of actual dash
 const SHOOT_INTERVAL = 3000
@@ -59,7 +59,7 @@ export class BossEnemy implements AnyEnemy {
   y: number
   hp = BOSS_MAX_HP
   active = true
-  contactDamage = 40
+  contactDamage = 30
   xpValue = 80
   isBoss = true
   private projectiles: BossProjectile[] = []

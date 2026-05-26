@@ -13,7 +13,7 @@ import { saveRunRecord } from './runSaver.js'
 import { db } from './db.js'
 import type { C2SMessage } from './protocol.js'
 
-const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon'])
+const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos'])
 
 const SECRET = process.env.JWT_SECRET!
 
@@ -182,6 +182,8 @@ wss.on('connection', (ws) => {
       room.updatePlayerPos(playerId, msg.x, msg.y, msg.aura, msg.orbital)
     } else if (msg.type === 'hit') {
       room.handleHit(playerId, msg.enemyId, msg.damage)
+    } else if (msg.type === 'auraHit') {
+      room.handleAuraHit(playerId, msg.enemyId, msg.damage)
     } else if (msg.type === 'died') {
       console.log(`[${label}] died`)
       room.markPlayerDead(playerId)

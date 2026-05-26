@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { useGameStore, getValidatedCombatState } from '../store/gameStore'
 import { useKeyBindingsStore, type BindableAction } from '../store/keyBindingsStore'
-import { type Direction, getDirection, playDir, ZEUS_IDLE_FRAMES } from './spriteUtils'
+import { type Direction, getDirection, playDir, ZEUS_IDLE_FRAMES, APOLLO_IDLE_FRAMES } from './spriteUtils'
 import { type EffectsSystem } from './EffectsSystem'
 import { soundSystem } from './SoundSystem'
 
@@ -43,13 +43,17 @@ export class Player {
   private bounds: Phaser.Geom.Rectangle
   private spriteKey: string
   private idleFrames: Record<Direction, number>
+  private staticSprite: boolean
   private nameLabel: Phaser.GameObjects.Text | null = null
 
-  constructor(scene: Phaser.Scene, x: number, y: number, spriteKey = 'player', username = '', scale = 1.5) {
+  constructor(scene: Phaser.Scene, x: number, y: number, spriteKey = 'player', username = '', scale = 1.5, staticSprite = false) {
     this.x = x
     this.y = y
     this.spriteKey = spriteKey
-    this.idleFrames = spriteKey === 'char_zeus' ? ZEUS_IDLE_FRAMES : { down: 1, left: 4, right: 7, up: 10 }
+    this.staticSprite = staticSprite
+    this.idleFrames = spriteKey === 'char_zeus' ? ZEUS_IDLE_FRAMES
+      : (spriteKey === 'char_apollo' || spriteKey === 'char_hades' || spriteKey === 'char_chronos') ? APOLLO_IDLE_FRAMES
+      : { down: 1, left: 4, right: 7, up: 10 }
     this.bounds = scene.physics.world.bounds
     this.graphic = scene.add.sprite(x, y, spriteKey).setDepth(4).setScale(scale)
     if (username) {
@@ -149,7 +153,7 @@ export class Player {
 
     if (moving) { this.facingVx = vx; this.facingVy = vy }
     const dir = moving ? getDirection(vx, vy) : this.lastDir
-    this.lastDir = playDir(this.graphic, this.spriteKey, dir, this.lastDir, moving, this.idleFrames)
+    this.lastDir = playDir(this.graphic, this.spriteKey, dir, this.lastDir, moving, this.idleFrames, this.staticSprite)
 
     const { damageFlashUntil } = useGameStore.getState()
     const isFlashing = Date.now() < damageFlashUntil

@@ -6,7 +6,12 @@ const TREES_PER_CHUNK_MIN = 1
 const TREES_PER_CHUNK_MAX = 3
 const TREE_SCALE_MIN    = 0.07
 const TREE_SCALE_MAX    = 0.16
-const SPAWN_CLEAR_SQ    = 400 * 400   // no trees within 400 px of world origin
+const ROCKS_PER_CHUNK_MIN = 1
+const ROCKS_PER_CHUNK_MAX = 2
+const ROCK_SCALE_MIN    = 0.10
+const ROCK_SCALE_MAX    = 0.22
+const ROCK_FRAMES       = 6
+const SPAWN_CLEAR_SQ    = 400 * 400   // no trees/rocks within 400 px of world origin
 
 interface Chunk { decos: Phaser.GameObjects.Image[] }
 
@@ -49,9 +54,10 @@ export class ChunkManager {
     const worldX = cx * CHUNK_PX
     const worldY = cy * CHUNK_PX
     const rand   = lcg(cx, cy)
-    const count  = TREES_PER_CHUNK_MIN + Math.floor(rand() * (TREES_PER_CHUNK_MAX - TREES_PER_CHUNK_MIN))
     const decos: Phaser.GameObjects.Image[] = []
-    for (let i = 0; i < count; i++) {
+
+    const treeCount = TREES_PER_CHUNK_MIN + Math.floor(rand() * (TREES_PER_CHUNK_MAX - TREES_PER_CHUNK_MIN))
+    for (let i = 0; i < treeCount; i++) {
       const px = worldX + rand() * CHUNK_PX
       const py = worldY + rand() * CHUNK_PX
       if (px * px + py * py < SPAWN_CLEAR_SQ) continue
@@ -61,6 +67,20 @@ export class ChunkManager {
           .setScale(TREE_SCALE_MIN + rand() * (TREE_SCALE_MAX - TREE_SCALE_MIN))
       )
     }
+
+    const rockCount = ROCKS_PER_CHUNK_MIN + Math.floor(rand() * (ROCKS_PER_CHUNK_MAX - ROCKS_PER_CHUNK_MIN))
+    for (let i = 0; i < rockCount; i++) {
+      const px = worldX + rand() * CHUNK_PX
+      const py = worldY + rand() * CHUNK_PX
+      if (px * px + py * py < SPAWN_CLEAR_SQ) continue
+      const frame = Math.floor(rand() * ROCK_FRAMES)
+      decos.push(
+        this.scene.add.image(px, py, 'rock', frame)
+          .setDepth(-9)
+          .setScale(ROCK_SCALE_MIN + rand() * (ROCK_SCALE_MAX - ROCK_SCALE_MIN))
+      )
+    }
+
     this.chunks.set(this.key(cx, cy), { decos })
   }
 

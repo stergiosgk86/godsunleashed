@@ -1,9 +1,28 @@
-import musicUrl from '../assets/Graveyard Dash.mp3'
+import graveyardDashUrl      from '../assets/Music/Graveyard Dash.mp3'
+import eternalGodClashUrl    from '../assets/Music/Eternal God Clash.mp3'
+import eternalGodClash2Url   from '../assets/Music/Eternal God Clash 2.mp3'
+import olympusResetUrl       from '../assets/Music/Olympus Reset.mp3'
+import olympusRestartUrl     from '../assets/Music/Olympus Restart.mp3'
+import bloodBetweenStarsUrl  from '../assets/Music/Blood Between Stars.mp3'
+import ironGodsAwakeUrl      from '../assets/Music/Iron Gods Awake.mp3'
 
-const STORAGE_KEY     = 'gods_muted'
-const MUSIC_VOL_KEY   = 'gods_music_vol'
-const MUSIC_POS_KEY   = 'gods_music_pos'
-const MUSIC_VOLUME    = 0.35
+export const MUSIC_TRACKS: ReadonlyArray<{ id: string; label: string; url: string }> = [
+  { id: 'graveyard-dash',       label: 'Graveyard Dash',       url: graveyardDashUrl },
+  { id: 'eternal-god-clash',    label: 'Eternal God Clash',    url: eternalGodClashUrl },
+  { id: 'eternal-god-clash-2',  label: 'Eternal God Clash 2',  url: eternalGodClash2Url },
+  { id: 'olympus-reset',        label: 'Olympus Reset',        url: olympusResetUrl },
+  { id: 'olympus-restart',      label: 'Olympus Restart',      url: olympusRestartUrl },
+  { id: 'blood-between-stars',  label: 'Blood Between Stars',  url: bloodBetweenStarsUrl },
+  { id: 'iron-gods-awake',      label: 'Iron Gods Awake',      url: ironGodsAwakeUrl },
+]
+
+const STORAGE_KEY      = 'gods_muted'
+const MUSIC_VOL_KEY    = 'gods_music_vol'
+const MUSIC_POS_KEY    = 'gods_music_pos'
+const GAME_TRACK_KEY   = 'gods_game_track'
+const MUSIC_VOLUME     = 0.35
+const DEFAULT_GAME_TRACK = 'graveyard-dash'
+const MENU_TRACK_URL   = eternalGodClashUrl
 
 class SoundSystem {
   private ctx: AudioContext | null = null
@@ -11,6 +30,7 @@ class SoundSystem {
   private _muted: boolean
   private music: HTMLAudioElement | null = null
   private _musicVolume: number
+  private _gameTrackId: string
   private xpLastPlayed = 0
   private coinLastPlayed = 0
   private hitLastPlayed = 0
@@ -20,14 +40,12 @@ class SoundSystem {
   constructor() {
     this._muted = localStorage.getItem(STORAGE_KEY) === 'true'
     this._musicVolume = parseFloat(localStorage.getItem(MUSIC_VOL_KEY) ?? String(MUSIC_VOLUME))
-    // Resume the context on every user gesture — browsers may suspend it on
-    // page blur or if created before sufficient user engagement.
+    this._gameTrackId = localStorage.getItem(GAME_TRACK_KEY) ?? DEFAULT_GAME_TRACK
     this.resumeCtx = () => {
       if (this.ctx?.state === 'suspended') this.ctx.resume().catch(() => {})
     }
     window.addEventListener('keydown', this.resumeCtx)
     window.addEventListener('mousedown', this.resumeCtx)
-    // Save playback position before the page unloads so we can resume after refresh
     window.addEventListener('beforeunload', () => {
       if (this.music) sessionStorage.setItem(MUSIC_POS_KEY, String(this.music.currentTime))
     })
@@ -35,6 +53,7 @@ class SoundSystem {
 
   get muted() { return this._muted }
   get musicVolume() { return this._musicVolume }
+  get gameTrackId() { return this._gameTrackId }
 
   toggleMute() {
     this._muted = !this._muted
@@ -49,18 +68,24 @@ class SoundSystem {
     if (this.music && !this._muted) this.music.volume = this._musicVolume
   }
 
-  startMusic() {
+  setGameTrackId(id: string) {
+    this._gameTrackId = id
+    localStorage.setItem(GAME_TRACK_KEY, id)
+  }
+
+  private playUrl(url: string, restorePos = false) {
     if (this.music) this.stopMusic()
-    this.music = new Audio(musicUrl)
+    this.music = new Audio(url)
     this.music.loop = true
     this.music.volume = this._muted ? 0 : this._musicVolume
-    const saved = sessionStorage.getItem(MUSIC_POS_KEY)
-    if (saved) {
-      this.music.currentTime = parseFloat(saved)
-      sessionStorage.removeItem(MUSIC_POS_KEY)
+    if (restorePos) {
+      const saved = sessionStorage.getItem(MUSIC_POS_KEY)
+      if (saved) {
+        this.music.currentTime = parseFloat(saved)
+        sessionStorage.removeItem(MUSIC_POS_KEY)
+      }
     }
     this.music.play().catch(() => {
-      // Browser blocked autoplay — retry on first user gesture
       const retry = () => {
         this.music?.play().catch(() => {})
         window.removeEventListener('keydown', retry)
@@ -71,6 +96,15 @@ class SoundSystem {
       window.addEventListener('mousedown', retry, { once: true })
       window.addEventListener('touchstart', retry, { once: true })
     })
+  }
+
+  startMenuMusic() {
+    this.playUrl(MENU_TRACK_URL)
+  }
+
+  startMusic() {
+    const track = MUSIC_TRACKS.find(t => t.id === this._gameTrackId) ?? MUSIC_TRACKS[0]
+    this.playUrl(track.url, true)
   }
 
   stopMusic() {
@@ -124,8 +158,6 @@ class SoundSystem {
         return null
       }
     }
-    // ctx.currentTime is frozen when suspended so scheduled audio plays
-    // immediately once resume() fires — no need to gate on 'running'.
     if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {})
     return { ctx: this.ctx, out: this.master! }
   }
@@ -147,6 +179,129 @@ class SoundSystem {
     osc.start(t); osc.stop(t + 0.1)
   }
 
+  shootWand() {
+    const r = this.getCtx()
+    if (!r) return
+    const { ctx, out } = r
+    const t = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(1100, t)
+    osc.frequency.exponentialRampToValueAtTime(2600, t + 0.07)
+    gain.gain.setValueAtTime(0.14, t)
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11)
+    osc.connect(gain); gain.connect(out)
+    osc.start(t); osc.stop(t + 0.11)
+    // Shimmer layer
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.type = 'triangle'
+    osc2.frequency.setValueAtTime(1900, t + 0.02)
+    osc2.frequency.exponentialRampToValueAtTime(3400, t + 0.1)
+    gain2.gain.setValueAtTime(0, t)
+    gain2.gain.linearRampToValueAtTime(0.07, t + 0.03)
+    gain2.gain.exponentialRampToValueAtTime(0.001, t + 0.12)
+    osc2.connect(gain2); gain2.connect(out)
+    osc2.start(t + 0.02); osc2.stop(t + 0.12)
+  }
+
+  shootBoomerang() {
+    const r = this.getCtx()
+    if (!r) return
+    const { ctx, out } = r
+    const t = ctx.currentTime
+    const bufLen = Math.floor(ctx.sampleRate * 0.3)
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1
+    const noise = ctx.createBufferSource()
+    noise.buffer = buf
+    const flt = ctx.createBiquadFilter()
+    flt.type = 'bandpass'; flt.Q.value = 4
+    flt.frequency.setValueAtTime(380, t)
+    flt.frequency.exponentialRampToValueAtTime(1600, t + 0.15)
+    flt.frequency.exponentialRampToValueAtTime(500, t + 0.3)
+    const ng = ctx.createGain()
+    ng.gain.setValueAtTime(0.3, t)
+    ng.gain.setValueAtTime(0.3, t + 0.05)
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.3)
+    noise.connect(flt); flt.connect(ng); ng.connect(out)
+    noise.start(t)
+    const osc = ctx.createOscillator()
+    const og = ctx.createGain()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(160, t)
+    osc.frequency.exponentialRampToValueAtTime(300, t + 0.15)
+    osc.frequency.exponentialRampToValueAtTime(190, t + 0.3)
+    og.gain.setValueAtTime(0.09, t)
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.3)
+    osc.connect(og); og.connect(out)
+    osc.start(t); osc.stop(t + 0.3)
+  }
+
+  shootAxe() {
+    const r = this.getCtx()
+    if (!r) return
+    const { ctx, out } = r
+    const t = ctx.currentTime
+    const osc = ctx.createOscillator()
+    const og = ctx.createGain()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(240, t)
+    osc.frequency.exponentialRampToValueAtTime(52, t + 0.22)
+    og.gain.setValueAtTime(0.24, t)
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.24)
+    osc.connect(og); og.connect(out)
+    osc.start(t); osc.stop(t + 0.24)
+    const bufLen = Math.floor(ctx.sampleRate * 0.2)
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1
+    const noise = ctx.createBufferSource()
+    noise.buffer = buf
+    const flt = ctx.createBiquadFilter()
+    flt.type = 'bandpass'; flt.Q.value = 1.8
+    flt.frequency.setValueAtTime(900, t)
+    flt.frequency.exponentialRampToValueAtTime(160, t + 0.2)
+    const ng = ctx.createGain()
+    ng.gain.setValueAtTime(0.22, t)
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.2)
+    noise.connect(flt); flt.connect(ng); ng.connect(out)
+    noise.start(t)
+  }
+
+  shootMelee() {
+    const r = this.getCtx()
+    if (!r) return
+    const { ctx, out } = r
+    const t = ctx.currentTime
+    const bufLen = Math.floor(ctx.sampleRate * 0.13)
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < bufLen; i++) d[i] = Math.random() * 2 - 1
+    const noise = ctx.createBufferSource()
+    noise.buffer = buf
+    const flt = ctx.createBiquadFilter()
+    flt.type = 'highpass'
+    flt.frequency.setValueAtTime(2200, t)
+    flt.frequency.exponentialRampToValueAtTime(4500, t + 0.07)
+    const ng = ctx.createGain()
+    ng.gain.setValueAtTime(0.26, t)
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.11)
+    noise.connect(flt); flt.connect(ng); ng.connect(out)
+    noise.start(t)
+    const osc = ctx.createOscillator()
+    const og = ctx.createGain()
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(1200, t)
+    osc.frequency.exponentialRampToValueAtTime(620, t + 0.13)
+    og.gain.setValueAtTime(0.11, t)
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.13)
+    osc.connect(og); og.connect(out)
+    osc.start(t); osc.stop(t + 0.13)
+  }
+
   enemyHit() {
     const now = Date.now()
     if (now - this.hitLastPlayed < 55) return
@@ -164,6 +319,53 @@ class SoundSystem {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 0.07)
     osc.connect(gain); gain.connect(out)
     osc.start(t); osc.stop(t + 0.07)
+  }
+
+  bloodNova() {
+    const r = this.getCtx()
+    if (!r) return
+    const { ctx, out } = r
+    const t = ctx.currentTime
+
+    // Deep bass thud
+    const sub = ctx.createOscillator()
+    const subG = ctx.createGain()
+    sub.type = 'sine'
+    sub.frequency.setValueAtTime(55, t)
+    sub.frequency.exponentialRampToValueAtTime(28, t + 0.9)
+    subG.gain.setValueAtTime(0.7, t)
+    subG.gain.exponentialRampToValueAtTime(0.001, t + 0.95)
+    sub.connect(subG); subG.connect(out)
+    sub.start(t); sub.stop(t + 0.95)
+
+    // Dark whoosh (filtered noise)
+    const bufLen = Math.floor(ctx.sampleRate * 0.85)
+    const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate)
+    const d = buf.getChannelData(0)
+    for (let i = 0; i < bufLen; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 0.4)
+    const noise = ctx.createBufferSource()
+    noise.buffer = buf
+    const flt = ctx.createBiquadFilter()
+    flt.type = 'bandpass'
+    flt.frequency.setValueAtTime(350, t)
+    flt.frequency.exponentialRampToValueAtTime(80, t + 0.85)
+    flt.Q.value = 0.8
+    const ng = ctx.createGain()
+    ng.gain.setValueAtTime(0.45, t)
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.85)
+    noise.connect(flt); flt.connect(ng); ng.connect(out)
+    noise.start(t)
+
+    // High sinister tone sweep
+    const osc = ctx.createOscillator()
+    const og = ctx.createGain()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(220, t)
+    osc.frequency.exponentialRampToValueAtTime(55, t + 0.7)
+    og.gain.setValueAtTime(0.18, t)
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.75)
+    osc.connect(og); og.connect(out)
+    osc.start(t); osc.stop(t + 0.75)
   }
 
   enemyDie() {
@@ -293,7 +495,6 @@ class SoundSystem {
     if (!r) return
     const { ctx, out } = r
     const t = ctx.currentTime
-    // Warm ascending chord — two sine tones that step up
     for (let i = 0; i < 2; i++) {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
@@ -384,7 +585,6 @@ class SoundSystem {
     }
     const t = ctx.currentTime + 0.05
 
-    // Test A: via master gain chain
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.frequency.value = 440
@@ -394,7 +594,6 @@ class SoundSystem {
     osc.start(t); osc.stop(t + 0.6)
     console.log('[Sound] Test A (via master gain) scheduled at t =', t, '— should hear 440 Hz')
 
-    // Test B: direct to destination, bypassing master gain
     const osc2 = ctx.createOscillator()
     osc2.frequency.value = 880
     osc2.connect(ctx.destination)
@@ -408,5 +607,5 @@ class SoundSystem {
   }
 }
 
-export const soundSystem = new SoundSystem() ;
-(window as unknown as Record<string, unknown>).soundSystem = soundSystem
+export const soundSystem = new SoundSystem()
+;(window as unknown as Record<string, unknown>).soundSystem = soundSystem

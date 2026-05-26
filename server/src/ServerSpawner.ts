@@ -16,17 +16,17 @@ const FINAL_BOSS_LOCK  = RUN_DURATION - 30_000
 const SURGE_SPEED_MULT = 2.5
 
 // ── Difficulty curves (mirrors src/game/difficultyScale.ts) ──────────────────
-function computeSpeedScale(elapsed: number): number {
-  return 0.6 + 0.55 * Math.min(elapsed / RUN_DURATION, 1)
+function computeSpeedScale(_elapsed: number): number {
+  return 1.0
 }
 
 function computeHpScale(elapsed: number): number {
   const t = Math.min(elapsed / RUN_DURATION, 1)
-  return 1 + 5 * t * t   // quadratic: 1× at t=0, 6× at t=1
+  return 1 + 4 * t * t   // quadratic: 1× at t=0, 5× at t=1
 }
 
 // ── Player info passed to the spawner each tick ───────────────────────────────
-type SpawnerPlayer = { x: number; y: number; viewW: number; viewH: number }
+type SpawnerPlayer = { x: number; y: number; viewW: number; viewH: number; aura: number; auraRange: number }
 
 // ── Lane definitions (mirrors EnemySpawner.ts LANE_DEFS) ─────────────────────
 type SpawnKind = 'basic' | 'speeder' | 'tank' | 'exploder' | 'ghost' | 'ranged' | 'charger' | 'necromancer'

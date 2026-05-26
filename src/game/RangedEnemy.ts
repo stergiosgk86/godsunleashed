@@ -4,7 +4,7 @@ import { type Direction, getDirection, playDir } from './spriteUtils'
 import { difficultyScale } from './difficultyScale'
 
 const PREFERRED_DIST = 280
-const MOVE_SPEED = 55
+const MOVE_SPEED = 56
 const FIRE_INTERVAL = 2500
 
 class EnemyProjectile implements EnemyBullet {

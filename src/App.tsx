@@ -102,6 +102,7 @@ function App() {
   const initRef = useRef(false)
   const prevLobbyCount = useRef(0)
   const inLobbyRef = useRef(false)
+  const isMultiplayerRun = useRef(false)
 
   const token = useAuthStore(s => s.token)
   const setAuth = useAuthStore(s => s.setAuth)
@@ -133,8 +134,9 @@ function App() {
       maxHp:          startMaxHp,
       hp:             startMaxHp,
       hpRegen:        (upgrades.recovery ?? 0) * 0.1 + char.bonusHpRegen,
-      moveSpeed:      Math.min(300, Math.floor((200 + char.bonusMoveSpeed) * (1 + (upgrades.moveSpeed ?? 0) * 0.02))),
-      attackInterval: Math.max(250, Math.floor(600 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
+      moveSpeed:      Math.min(240, Math.floor((160 + char.bonusMoveSpeed) * (1 + (upgrades.moveSpeed ?? 0) * 0.02))),
+      attackInterval:     Math.max(250, Math.floor(1350 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
+      wandAttackInterval: Math.max(250, Math.floor(1200 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
       dashCooldown:   Math.max(400, Math.floor(DASH_COOLDOWN_MS * char.dashCooldownMult)),
       dashDistance:   1 + char.bonusDashDistance,
       aura:           char.startAura,
@@ -142,6 +144,10 @@ function App() {
       boomerang:      char.startBoomerang,
       flameTrail:     char.startFlameTrail,
       orbital:        char.startOrbital,
+      wand:           char.startWand,
+      phiera:         char.startPhiera,
+      eight:          char.startEight,
+      dualGunAttackInterval: Math.max(300, Math.floor(800 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
       lifeDrain:      char.lifeDrain,
       armor:          char.baseArmor + (upgrades.armor ?? 0),
     })
@@ -183,6 +189,10 @@ function App() {
     inLobbyRef.current = inLobby
     if (!inLobby) prevLobbyCount.current = 0
   }, [inLobby])
+
+  useEffect(() => {
+    if (!inGame && !inLobby && token) soundSystem.startMenuMusic()
+  }, [inGame, inLobby, token])
 
   useEffect(() => {
     if (!token) return
@@ -271,6 +281,7 @@ function App() {
   }, [inGame])
 
   async function handlePlay(restore = false) {
+    isMultiplayerRun.current = false
     if (!restore) clearRun()
     startRun()
     const authToken = useAuthStore.getState().token
@@ -306,6 +317,7 @@ function App() {
     registerRunSavedHandler(net)
     setNetClient(net)
     startRun()
+    isMultiplayerRun.current = true
     setInLobby(false)
     setInGame(true)
   }
@@ -318,6 +330,7 @@ function App() {
     submitRun()
     clearRun()
     soundSystem.stopMusic()
+    activeNetClient?.close()
     setNetClient(null)
     useGameStore.getState().resetRun()
     setInGame(false)
@@ -326,7 +339,9 @@ function App() {
   }
 
   function handlePlayAgain() {
-    const wasMultiplayer = !!activeNetClient
+    const wasMultiplayer = isMultiplayerRun.current
+    isMultiplayerRun.current = false
+    activeNetClient?.close()
     setNetClient(null)
     clearRun()
     runSubmittedRef.current = false

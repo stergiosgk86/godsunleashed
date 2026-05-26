@@ -4,7 +4,7 @@ import { type Direction, getDirection, playDir } from './spriteUtils'
 import { useGameStore } from '../store/gameStore'
 import { difficultyScale } from './difficultyScale'
 
-const SPEED = 65
+const SPEED = 80
 const MAX_HP = 8
 const XP_VALUE = 4
 const TRIGGER_RADIUS = 110   // arms the bomb when player is this close

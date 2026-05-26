@@ -104,6 +104,19 @@ const SPAWN_GROUPS: { label: string; color: string; items: { label: string; enti
       { label: 'Coin',   entity: 'coin' },
     ],
   },
+  {
+    label: 'WEAPONS', color: '#cc88ff',
+    items: [
+      { label: 'Arcane Wand',  entity: 'weapon:wand' },
+      { label: 'Boomerang',    entity: 'weapon:boomerang' },
+      { label: 'Flame Trail',  entity: 'weapon:flameTrail' },
+      { label: 'Blood Nova',   entity: 'weapon:bloodNova' },
+      { label: 'Thunder Strike', entity: 'weapon:lightning' },
+      { label: 'War Axe',      entity: 'weapon:axe' },
+      { label: 'Aura',         entity: 'weapon:aura' },
+      { label: 'Spirit Orb',   entity: 'weapon:orbital' },
+    ],
+  },
 ]
 
 function AdminPanel({ onBack }: { onBack: () => void }) {
@@ -111,6 +124,7 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
   const setAdminInvincible = useGameStore(s => s.setAdminInvincible)
   const requestAdminSpawn = useGameStore(s => s.requestAdminSpawn)
   const [subView, setSubView] = useState<'main' | 'players' | 'spawn'>('main')
+  const mob = useIsMobile()
 
   const toggleStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -133,32 +147,64 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
           SPAWN
         </div>
 
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', maxHeight: '60vh' }}>
-          {SPAWN_GROUPS.map(group => (
-            <div key={group.label}>
-              <div style={{ color: group.color, fontFamily: 'monospace', fontSize: 11, letterSpacing: 2, marginBottom: 6 }}>
-                {group.label}
+        {mob ? (
+          // Mobile: vertical scroll layout
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', maxHeight: '60vh' }}>
+            {SPAWN_GROUPS.map(group => (
+              <div key={group.label}>
+                <div style={{ color: group.color, fontFamily: 'monospace', fontSize: 11, letterSpacing: 2, marginBottom: 6 }}>
+                  {group.label}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {group.items.map(item => (
+                    <button
+                      key={item.entity}
+                      onClick={() => { requestAdminSpawn(item.entity); useGameStore.getState().togglePause() }}
+                      style={{
+                        padding: '8px 4px', fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold',
+                        border: `1px solid ${group.color}44`, borderRadius: 5,
+                        background: '#0a0a1a', color: '#ccccff', cursor: 'pointer', letterSpacing: 1,
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '#0a0a1a')}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                {group.items.map(item => (
-                  <button
-                    key={item.entity}
-                    onClick={() => { requestAdminSpawn(item.entity); useGameStore.getState().togglePause() }}
-                    style={{
-                      padding: '8px 4px', fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold',
-                      border: `1px solid ${group.color}44`, borderRadius: 5,
-                      background: '#0a0a1a', color: '#ccccff', cursor: 'pointer', letterSpacing: 1,
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '#0a0a1a')}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+            ))}
+          </div>
+        ) : (
+          // Desktop: horizontal landscape layout, all groups visible at once
+          <div style={{ display: 'flex', flexDirection: 'row', gap: 20, alignItems: 'flex-start' }}>
+            {SPAWN_GROUPS.map(group => (
+              <div key={group.label} style={{ display: 'flex', flexDirection: 'column', gap: 0, minWidth: 140 }}>
+                <div style={{ color: group.color, fontFamily: 'monospace', fontSize: 11, letterSpacing: 2, marginBottom: 6 }}>
+                  {group.label}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 5 }}>
+                  {group.items.map(item => (
+                    <button
+                      key={item.entity}
+                      onClick={() => { requestAdminSpawn(item.entity); useGameStore.getState().togglePause() }}
+                      style={{
+                        padding: '7px 4px', fontSize: 11, fontFamily: 'monospace', fontWeight: 'bold',
+                        border: `1px solid ${group.color}44`, borderRadius: 5,
+                        background: '#0a0a1a', color: '#ccccff', cursor: 'pointer', letterSpacing: 1,
+                        whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '#0a0a1a')}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <button
           onClick={() => setSubView('main')}
@@ -222,6 +268,8 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
 export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   const isPaused = useGameStore(s => s.isPaused)
   const isLevelUpPending = useGameStore(s => s.isLevelUpPending)
+  const isDead = useGameStore(s => s.isDead)
+  const isWon = useGameStore(s => s.isWon)
   const togglePause = useGameStore(s => s.togglePause)
   const depositCoins = useProfileStore(s => s.depositCoins)
   const role = useAuthStore(s => s.role)
@@ -238,7 +286,7 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   useEffect(() => { if (!isPaused) setView('main') }, [isPaused])
 
 
-  if (!isPaused || isLevelUpPending) return null
+  if (!isPaused || isLevelUpPending || isDead || isWon) return null
 
   const panel = (
     <div style={{

@@ -3,8 +3,8 @@ import type { AnyEnemy } from './Enemy'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 import { difficultyScale } from './difficultyScale'
 
-const WALK_SPEED        = 55
-const CHARGE_SPEED      = 550
+const WALK_SPEED        = 72
+const CHARGE_SPEED      = 440
 const MAX_HP            = 10
 const WALK_DAMAGE       = 12
 const CHARGE_DAMAGE     = 30

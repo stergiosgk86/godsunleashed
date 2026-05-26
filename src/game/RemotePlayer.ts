@@ -6,11 +6,17 @@ const CHAR_SPRITE: Record<string, string> = {
   witch:   'char_witch',
   shade:   'char_shade',
   zeus:    'char_zeus',
+  apollo:  'char_apollo',
+  hades:   'char_hades',
 }
 
 const CHAR_SCALE: Record<string, number> = {
-  zeus: 1.0,
+  zeus:   1.0,
+  apollo: 0.065,
+  hades:  0.9,
 }
+
+const STATIC_SPRITES = new Set<string>()
 
 export class RemotePlayer {
   x: number
@@ -36,7 +42,7 @@ export class RemotePlayer {
       .setDepth(4)
       .setScale(CHAR_SCALE[characterType] ?? 1.5)
       .setAlpha(0.85)
-    this.sprite.play(`${this.spriteKey}_down`)
+    if (!STATIC_SPRITES.has(this.spriteKey)) this.sprite.play(`${this.spriteKey}_down`)
     this.nameLabel = scene.add.text(x, y - 28, label, {
       fontSize: '10px', color: '#aaffaa', fontFamily: 'monospace',
       stroke: '#000000', strokeThickness: 3,
@@ -55,9 +61,9 @@ export class RemotePlayer {
     this.nameLabel.setPosition(x, y - 28)
     if (moving) {
       const dir = getDirection(dx, dy)
-      this.lastDir = playDir(this.sprite, this.spriteKey, dir, this.lastDir, true)
+      this.lastDir = playDir(this.sprite, this.spriteKey, dir, this.lastDir, true, undefined, STATIC_SPRITES.has(this.spriteKey))
     } else {
-      playDir(this.sprite, this.spriteKey, this.lastDir, this.lastDir, false)
+      playDir(this.sprite, this.spriteKey, this.lastDir, this.lastDir, false, undefined, STATIC_SPRITES.has(this.spriteKey))
     }
   }
 

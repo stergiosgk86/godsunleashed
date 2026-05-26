@@ -7,6 +7,7 @@ import charZeus     from '../assets/Sprites/Characters/zeus_sheet.png'
 import charPoseidon from '../assets/Sprites/Characters/poseidon_sheet.png'
 import charApollo   from '../assets/Sprites/Characters/apollo_sheet.png'
 import charHades    from '../assets/Sprites/Characters/hades_sheet.png'
+const charChronos = charApollo  // placeholder — same sheet as Apollo until a dedicated Chronos sprite exists
 import xpOrbSprite from '../assets/Sprites/Items/xp_orb_sprite.png'
 import healthPotionSprite from '../assets/Sprites/Items/health_potion_sprite.png'
 import coinSprite from '../assets/Sprites/Items/coin_sprite.png'
@@ -31,7 +32,7 @@ import treeSprite from '../assets/Sprites/Background/Tree.png'
 import rockSprite from '../assets/Sprites/Background/Rocks.png'
 
 export const SPRITE_URLS = {
-  player, charRogue, charWitch, charShade, charZeus, charAres, charPoseidon, charApollo, charHades,
+  player, charRogue, charWitch, charShade, charZeus, charAres, charPoseidon, charApollo, charHades, charChronos,
   xpOrbSprite, healthPotionSprite, coinSprite,
   enemyBasic,
   enemySpeeder,

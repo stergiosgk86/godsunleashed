@@ -98,6 +98,8 @@ export class ClientEnemy implements AnyEnemy {
   private prevX: number
   private prevY: number
   private projectiles: BossProjectile[] = []
+  knockbackDx = 0
+  knockbackDy = 0
 
   constructor(scene: Phaser.Scene, snap: EnemySnapshot) {
     this.serverId = snap.id
@@ -175,17 +177,25 @@ export class ClientEnemy implements AnyEnemy {
     this.sprite.anims.stop()
     this.sprite.setTint(0xff2222).setTintMode(TintModes.FILL)
     const scene = this.sprite.scene
+    const startX = this.sprite.x
+    const startY = this.sprite.y
+    const kx = this.knockbackDx * 50
+    const ky = this.knockbackDy * 50
     scene.tweens.add({
       targets: this.sprite,
+      x: startX + kx,
+      y: startY + ky,
       scaleX: baseScale * 1.4,
       scaleY: baseScale * 1.4,
-      duration: 60,
-      ease: 'Power1',
+      duration: 80,
+      ease: 'Power2Out',
       onComplete: () => {
         scene.tweens.add({
           targets: this.sprite,
+          x: startX + kx * 2,
+          y: startY + ky * 2,
           scaleX: 0, scaleY: 0, alpha: 0,
-          duration: 280,
+          duration: 220,
           ease: 'Power2In',
           onComplete: () => this.sprite.destroy(),
         })

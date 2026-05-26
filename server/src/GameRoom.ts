@@ -13,12 +13,26 @@ const MAX_VEL     = 2_000   // max projectile velocity component
 const ALL_UPGRADE_IDS = [
   'dashCooldown', 'dashDistance', 'wand', 'multiShot', 'piercing',
   'aura', 'auraTick', 'auraRange', 'orbital',
-  'boomerang', 'flameTrail', 'bloodNova', 'vampiric',
-  'lightning', 'might', 'axe', 'divineShield',
+  'boomerang', 'flameTrail', 'bloodNova', 'bloodNovaCD', 'vampiric',
+  'lightning', 'lightningTargets', 'lightningCooldown', 'might', 'axe', 'divineShield',
+  'xpGain', 'magnetRange',
+  'phiera', 'eight', 'dualGunDamage', 'dualGunSpeed', 'dualGunExtra',
 ] as const
 type UpgradeId = typeof ALL_UPGRADE_IDS[number]
 const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
-const DASH_IDS = new Set<string>(['dashCooldown', 'dashDistance'])
+// Weapon families — at most one member per offer (VS-style structural cap)
+const WEAPON_FAMILIES: Record<string, readonly string[]> = {
+  wand:      ['multiShot', 'piercing'],
+  aura:      ['auraTick', 'auraRange'],
+  lightning: ['lightningTargets', 'lightningCooldown'],
+  bloodNova: ['bloodNovaCD'],
+  dash:      ['dashCooldown', 'dashDistance'],
+  dualGun:   ['dualGunDamage', 'dualGunSpeed', 'dualGunExtra'],
+}
+const UPGRADE_FAMILY: Record<string, string> = {}
+for (const [family, ids] of Object.entries(WEAPON_FAMILIES)) {
+  for (const id of ids) UPGRADE_FAMILY[id] = family
+}
 
 // Mirrors client xpNeeded(level) in gameStore.ts
 function xpNeeded(level: number): number {
@@ -33,22 +47,33 @@ interface PlayerUpgrades {
   boomerang: boolean
   flameTrail: boolean
   bloodNova: boolean
+  bloodNovaCD: number  // 0–4, each -10s cooldown
   vampiric: boolean
   lightning: boolean
+  lightningTargets: number  // 0–2
+  lightningCooldown: number // 0–2
   mightPicks: number  // 0–5
   axe: boolean
   aura: boolean
   auraTick: number    // 0–3
   auraRange: number   // 0–3
   divineShield: boolean
+  xpGain: number      // 0–5, each +8% XP
+  magnetRange: number // 0–3, client-only visual effect
+  phiera: boolean
+  eight: boolean
+  dualGunDamage: number  // 0–3
+  dualGunSpeed: number   // 0–2
+  dualGunExtra: boolean
 }
 
 function emptyUpgrades(): PlayerUpgrades {
   return {
     wand: false, piercing: false, multiShot: 0, orbital: 0,
-    boomerang: false, flameTrail: false, bloodNova: false,
-    vampiric: false, lightning: false, mightPicks: 0,
-    axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false,
+    boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0,
+    vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, mightPicks: 0,
+    axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false, xpGain: 0, magnetRange: 0,
+    phiera: false, eight: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: false,
   }
 }
 
@@ -59,11 +84,35 @@ function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
   if (characterType === 'zeus')     return { lightning: true }
   if (characterType === 'rogue')    return { boomerang: true }
   if (characterType === 'shade')    return { flameTrail: true }
+  if (characterType === 'apollo')   return { wand: true }
+  if (characterType === 'hades')    return { aura: true }
+  if (characterType === 'chronos')  return { phiera: true, eight: true }
   return {}
 }
 
+function upgradeWeight(id: UpgradeId, u: PlayerUpgrades): number {
+  if ((id === 'multiShot' || id === 'piercing') && u.wand) return 3
+  if ((id === 'auraTick'  || id === 'auraRange') && u.aura) return 3
+  if ((id === 'lightningTargets' || id === 'lightningCooldown') && u.lightning) return 3
+  if (id === 'bloodNovaCD' && u.bloodNova) return 3
+  if ((id === 'dualGunDamage' || id === 'dualGunSpeed' || id === 'dualGunExtra') && (u.phiera || u.eight)) return 3
+  if (id === 'orbital' && u.orbital > 0) return 2
+  if (id === 'might' || id === 'dashCooldown' || id === 'dashDistance') return 2
+  return 1
+}
+
+function weightedPickOne(pool: Array<{ id: string; weight: number }>): number {
+  const total = pool.reduce((s, x) => s + x.weight, 0)
+  let r = Math.random() * total
+  for (let i = 0; i < pool.length; i++) {
+    r -= pool[i].weight
+    if (r <= 0) return i
+  }
+  return pool.length - 1
+}
+
 function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
-  const pool = ALL_UPGRADE_IDS.filter(id => {
+  const eligible = ALL_UPGRADE_IDS.filter(id => {
     if (isMelee && (id === 'multiShot' || id === 'piercing')) return false
     if (id === 'wand'        && u.wand)              return false
     if (id === 'multiShot'   && !u.wand)             return false
@@ -73,32 +122,52 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'orbital'     && u.orbital >= 3)      return false
     if (id === 'boomerang'   && u.boomerang)         return false
     if (id === 'flameTrail'  && u.flameTrail)        return false
-    if (id === 'bloodNova'   && u.bloodNova)         return false
+    if (id === 'bloodNova'    && u.bloodNova)              return false
+    if (id === 'bloodNovaCD'  && !u.bloodNova)             return false
+    if (id === 'bloodNovaCD'  && u.bloodNovaCD >= 4)       return false
     if (id === 'vampiric'    && u.vampiric)          return false
-    if (id === 'lightning'   && u.lightning)         return false
+    if (id === 'lightning'         && u.lightning)                   return false
+    if (id === 'lightningTargets'  && !u.lightning)                  return false
+    if (id === 'lightningTargets'  && u.lightningTargets >= 2)       return false
+    if (id === 'lightningCooldown' && !u.lightning)                  return false
+    if (id === 'lightningCooldown' && u.lightningCooldown >= 2)      return false
     if (id === 'might'       && u.mightPicks >= 5)   return false
     if (id === 'axe'         && u.axe)               return false
     if (id === 'divineShield'&& u.divineShield)      return false
+    if (id === 'xpGain'      && u.xpGain >= 5)      return false
+    if (id === 'magnetRange' && u.magnetRange >= 3) return false
     if (id === 'aura'        && u.aura)              return false
     if (id === 'auraTick'    && !u.aura)             return false
     if (id === 'auraTick'    && u.auraTick >= 3)     return false
     if (id === 'auraRange'   && !u.aura)             return false
     if (id === 'auraRange'   && u.auraRange >= 3)    return false
+    if (id === 'phiera'        && u.phiera)                          return false
+    if (id === 'eight'         && u.eight)                           return false
+    if (id === 'dualGunDamage' && !u.phiera && !u.eight)             return false
+    if (id === 'dualGunDamage' && u.dualGunDamage >= 3)              return false
+    if (id === 'dualGunSpeed'  && !u.phiera && !u.eight)             return false
+    if (id === 'dualGunSpeed'  && u.dualGunSpeed >= 2)               return false
+    if (id === 'dualGunExtra'  && !u.phiera && !u.eight)             return false
+    if (id === 'dualGunExtra'  && u.dualGunExtra)                    return false
     return true
   })
 
-  const shuffled: string[] = (pool as string[]).slice().sort(() => Math.random() - 0.5)
-  const choices: string[] = shuffled.slice(0, 3)
-
-  // At most one dash upgrade per offer
-  const dashCount = choices.filter((id: string) => DASH_IDS.has(id)).length
-  if (dashCount > 1) {
-    let dupIdx = -1
-    for (let i = choices.length - 1; i >= 0; i--) {
-      if (DASH_IDS.has(choices[i])) { dupIdx = i; break }
+  // Weighted draw without replacement — VS-style: at most one upgrade per weapon family per offer
+  const remaining = eligible.map(id => ({ id: id as string, weight: upgradeWeight(id, u) }))
+  const choices: string[] = []
+  for (let pick = 0; pick < 3 && remaining.length > 0; pick++) {
+    const idx = weightedPickOne(remaining)
+    const chosen = remaining[idx]
+    choices.push(chosen.id)
+    remaining.splice(idx, 1)
+    // Remove siblings from the same weapon family so they can't appear in this offer
+    const family = UPGRADE_FAMILY[chosen.id]
+    if (family) {
+      const siblings = new Set(WEAPON_FAMILIES[family])
+      for (let j = remaining.length - 1; j >= 0; j--) {
+        if (siblings.has(remaining[j].id)) remaining.splice(j, 1)
+      }
     }
-    const replacement = shuffled.find((id: string) => !DASH_IDS.has(id) && !choices.includes(id))
-    if (dupIdx >= 0 && replacement) choices[dupIdx] = replacement
   }
   return choices
 }
@@ -262,6 +331,43 @@ export class GameRoom {
     }
   }
 
+  handleAuraHit(playerId: string, enemyId: number, damage: number) {
+    if (!Number.isInteger(enemyId) || enemyId < 0 || !isFinite(damage) || damage <= 0) return
+    const player = this.players.find(p => p.id === playerId)
+    const cap = player ? this.maxHitDamage(player) : MAX_DAMAGE_FALLBACK
+    const safeDamage = Math.min(Math.floor(damage), cap)
+    const enemy = this.spawner.findById(enemyId)
+    if (!enemy || !enemy.active) return
+
+    if (player) player.damageDealt += safeDamage
+
+    const died = enemy.takeDamage(safeDamage)
+    if (died) {
+      this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue })
+      if (enemy.isBoss) this.broadcast({ type: 'bossHp', bossId: enemyId, hp: 0 })
+      if (player) {
+        player.kills++
+        if (enemy.isBoss) {
+          player.bossKills++
+          player.coins += 4 + Math.floor(Math.random() * 5)
+        } else if (Math.random() < COIN_DROP_CHANCE) {
+          player.coins++
+        }
+      }
+      this.grantXP(enemy.xpValue)
+    } else {
+      // Enemy survived: one-time knockback using server-stored player position
+      if (player) {
+        const dx = enemy.x - player.x
+        const dy = enemy.y - player.y
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1
+        enemy.x += (dx / dist) * 12
+        enemy.y += (dy / dist) * 12
+      }
+      if (enemy.isBoss) this.broadcast({ type: 'bossHp', bossId: enemyId, hp: enemy.hp })
+    }
+  }
+
   // Max legitimate per-hit damage based on server-tracked might upgrades.
   // Blood Nova is the highest multiplier (5×); 1.5× safety buffer on top.
   private maxHitDamage(p: Player): number {
@@ -284,16 +390,26 @@ export class GameRoom {
       case 'orbital':     u.orbital = Math.min(3, u.orbital + 1); p.orbital = u.orbital; break
       case 'boomerang':   u.boomerang = true; break
       case 'flameTrail':  u.flameTrail = true; break
-      case 'bloodNova':   u.bloodNova = true; break
+      case 'bloodNova':    u.bloodNova = true; break
+      case 'bloodNovaCD':  u.bloodNovaCD = Math.min(4, u.bloodNovaCD + 1); break
       case 'vampiric':    u.vampiric = true; break
-      case 'lightning':   u.lightning = true; break
+      case 'lightning':         u.lightning = true; break
+      case 'lightningTargets':  u.lightningTargets = Math.min(2, u.lightningTargets + 1); break
+      case 'lightningCooldown': u.lightningCooldown = Math.min(2, u.lightningCooldown + 1); break
       case 'might':       u.mightPicks = Math.min(5, u.mightPicks + 1); break
       case 'axe':         u.axe = true; break
       case 'aura':        u.aura = true; p.aura = 1; break
       case 'auraTick':    u.auraTick = Math.min(3, u.auraTick + 1); break
       case 'auraRange':   u.auraRange = Math.min(3, u.auraRange + 1); break
+      case 'phiera':       u.phiera = true; break
+      case 'eight':        u.eight = true; break
+      case 'dualGunDamage':u.dualGunDamage = Math.min(3, u.dualGunDamage + 1); break
+      case 'dualGunSpeed': u.dualGunSpeed = Math.min(2, u.dualGunSpeed + 1); break
+      case 'dualGunExtra': u.dualGunExtra = true; break
       case 'divineShield':u.divineShield = true; break
-      // dashCooldown, dashDistance: no server-side tracking needed
+      case 'xpGain':      u.xpGain = Math.min(5, u.xpGain + 1); break
+      // dashCooldown, dashDistance, magnetRange: no server-side tracking needed
+
     }
   }
 
@@ -304,7 +420,8 @@ export class GameRoom {
     const scaled = Math.round(xpValue * xpScale)
     for (const p of this.players) {
       if (p.dead || p.pendingChoices !== null) continue
-      p.xp += scaled
+      const gained = Math.round(scaled * (1 + p.upgrades.xpGain * 0.08))
+      p.xp += gained
       const needed = xpNeeded(p.level)
       if (p.xp >= needed) {
         p.xp -= needed
@@ -334,6 +451,22 @@ export class GameRoom {
 
     if (entity === 'potion' || entity === 'xporb' || entity === 'coin') {
       this.send(requester.ws, { type: 'adminSpawnItem', entity, x: ix, y: iy })
+    } else if (entity.startsWith('weapon:')) {
+      const upgradeId = entity.slice(7)
+      const u = requester.upgrades
+      switch (upgradeId) {
+        case 'wand':        u.wand = true; break
+        case 'boomerang':   u.boomerang = true; break
+        case 'flameTrail':  u.flameTrail = true; break
+        case 'bloodNova':   u.bloodNova = true; break
+        case 'lightning':   u.lightning = true; break
+        case 'axe':         u.axe = true; break
+        case 'aura':        u.aura = true; requester.aura = 1; break
+        case 'orbital':     u.orbital = Math.min(3, u.orbital + 1); requester.orbital = u.orbital; break
+        case 'phiera':      u.phiera = true; break
+        case 'eight':       u.eight = true; break
+      }
+      this.send(requester.ws, { type: 'adminGrantUpgrade', upgradeId })
     } else {
       const spawned = this.spawner.adminSpawnEnemy(entity, positions)
       if (spawned && spawned.isBoss) {
@@ -433,7 +566,7 @@ export class GameRoom {
     try {
       const alivePlayers = this.players.filter(p => !p.dead)
       const src = alivePlayers.length > 0 ? alivePlayers : this.players
-      const positions = src.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH }))
+      const positions = src.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH, aura: p.aura, auraRange: p.upgrades.auraRange }))
       this.spawner.update(positions, TICK_MS)
 
       for (const e of this.spawner.all) {

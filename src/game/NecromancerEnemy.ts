@@ -3,7 +3,7 @@ import type { AnyEnemy, EnemyBullet } from './Enemy'
 import { type Direction, getDirection, playDir } from './spriteUtils'
 import { difficultyScale } from './difficultyScale'
 
-const MOVE_SPEED      = 40
+const MOVE_SPEED      = 48
 const MAX_HP          = 10
 const CONTACT_DAMAGE  = 10
 const XP_VALUE        = 5

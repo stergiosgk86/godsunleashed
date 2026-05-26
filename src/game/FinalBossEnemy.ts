@@ -4,8 +4,8 @@ import { type Direction, getDirection, playDir } from './spriteUtils'
 import { useGameStore } from '../store/gameStore'
 
 const FINAL_HP        = 2000
-const BOSS_SPEED      = 72
-const CHARGE_SPEED    = 520
+const BOSS_SPEED      = 80
+const CHARGE_SPEED    = 416
 const CHARGE_WINDUP   = 500
 const CHARGE_DURATION = 900
 const SHOOT_INTERVAL  = 2200
@@ -49,7 +49,7 @@ export class FinalBossEnemy implements AnyEnemy {
   x: number; y: number
   hp = FINAL_HP
   active = true
-  contactDamage = 60
+  contactDamage = 30
   xpValue = 500
   isBoss = true
   private projectiles: FinalProjectile[] = []

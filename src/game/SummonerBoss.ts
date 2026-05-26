@@ -4,7 +4,7 @@ import { type Direction, getDirection, playDir } from './spriteUtils'
 import { useGameStore } from '../store/gameStore'
 
 const MAX_HP           = 800
-const SPEED            = 45
+const SPEED            = 48
 const INVULN_INTERVAL  = 10_000  // 10s vulnerable before next shield
 const INVULN_DURATION  =  5_000  // 5s invulnerable
 const SUMMON_INTERVAL_P1 = 8_000
@@ -23,7 +23,7 @@ export class SummonerBoss implements AnyEnemy {
   y: number
   hp = MAX_HP
   active = true
-  contactDamage = 35
+  contactDamage = 30
   xpValue = 150
   isBoss = true
 
