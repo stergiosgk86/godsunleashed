@@ -145,9 +145,9 @@ function App() {
       flameTrail:     char.startFlameTrail,
       orbital:        char.startOrbital,
       wand:           char.startWand,
-      phiera:         char.startPhiera,
-      eight:          char.startEight,
-      dualGunAttackInterval: Math.max(300, Math.floor(800 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
+      equinox:        char.startEquinox,
+      solstice:       char.startSolstice,
+      dualGunAttackInterval: Math.max(500, Math.floor(1400 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
       lifeDrain:      char.lifeDrain,
       armor:          char.baseArmor + (upgrades.armor ?? 0),
     })
@@ -333,6 +333,7 @@ function App() {
     activeNetClient?.close()
     setNetClient(null)
     useGameStore.getState().resetRun()
+    sessionStorage.removeItem('gods_menu_view')
     setInGame(false)
     // Sync profile after server has had time to process the WS close and save the run.
     setTimeout(() => useProfileStore.getState().fetchProfile(), 2000)

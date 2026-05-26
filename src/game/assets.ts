@@ -7,7 +7,7 @@ import charZeus     from '../assets/Sprites/Characters/zeus_sheet.png'
 import charPoseidon from '../assets/Sprites/Characters/poseidon_sheet.png'
 import charApollo   from '../assets/Sprites/Characters/apollo_sheet.png'
 import charHades    from '../assets/Sprites/Characters/hades_sheet.png'
-const charChronos = charApollo  // placeholder — same sheet as Apollo until a dedicated Chronos sprite exists
+import charChronos  from '../assets/Sprites/Characters/chronos_sheet.png'
 import xpOrbSprite from '../assets/Sprites/Items/xp_orb_sprite.png'
 import healthPotionSprite from '../assets/Sprites/Items/health_potion_sprite.png'
 import coinSprite from '../assets/Sprites/Items/coin_sprite.png'

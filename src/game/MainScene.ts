@@ -232,7 +232,6 @@ export class MainScene extends Phaser.Scene {
       s => s.damageFlashUntil,
       () => {
         if (sceneAlive && useGameStore.getState().hp > 0) {
-          this.effects.shakeCamera()
           soundSystem.playerHit()
         }
       }
@@ -417,7 +416,6 @@ export class MainScene extends Phaser.Scene {
       const dy = msg.y - this.player.y
       if (dx * dx + dy * dy < 120 * 120) {
         useGameStore.getState().takeDamage(Math.round(30 * difficultyScale.damage))
-        this.effects.shakeCamera()
       }
     })
 

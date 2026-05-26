@@ -34,7 +34,7 @@ const LIGHTNING_TARGETS = 2
 const LIGHTNING_DAMAGE_MULT = 3.5
 const DUAL_GUN_SPEED = 600
 const DUAL_GUN_DAMAGE_MULT = 0.6
-const DUAL_GUN_EXTRA_OFFSET = 14
+const DUAL_GUN_BURST_DELAY = 200  // ms between each staggered gun shot (VS: 0.2s)
 const POTION_KILL_THRESHOLD = 100
 const POTION_HEAL = 25
 const POTION_MAX = 3
@@ -77,9 +77,10 @@ export class CombatSystem {
   private boomerangs: Boomerang[] = []
   private wandTimer = 0
   private boomerangTimer = 0
-  // Dual guns (Chronos / Phiera + Eight)
+  // Dual guns (Chronos / Equinox + Solstice)
   private sunBeams: SunBeam[] = []
   private dualGunTimer = 0
+  private dualGunQueue: Array<{ timeLeft: number; gold: boolean }> = []
   // Axe
   private axes: Axe[] = []
   private axeTimer = 0
@@ -278,7 +279,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing, magnetRange, phiera, eight, dualGunDamage, dualGunAttackInterval, dualGunExtra } = getValidatedCombatState()
+    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -321,18 +322,37 @@ export class CombatSystem {
       }
     }
 
-    // Dual guns (Phiera = horizontal, Eight = vertical)
-    if (phiera || eight) {
+    // Both guns fire 4 diagonal beams (NE/SE/SW/NW). Equinox = gold, Solstice = cyan.
+    // With both equipped, gun 2 fires 200ms after gun 1 so its beams trail behind.
+    // dualGunExtra adds more trailing volleys at 200ms intervals.
+    if (equinox || solstice) {
       this.dualGunTimer += delta
       if (this.dualGunTimer >= dualGunAttackInterval) {
         this.dualGunTimer = 0
-        if (phiera) this.fireSunBeamPair(playerX, playerY, false, dualGunExtra)
-        if (eight)  this.fireSunBeamPair(playerX, playerY, true,  dualGunExtra)
         soundSystem.shootWand()
+        // Build shot sequence: equinox=gold, solstice=cyan, repeated per dualGunExtra
+        const shots: boolean[] = []  // true = gold (equinox), false = cyan (solstice)
+        for (let burst = 0; burst <= dualGunExtra; burst++) {
+          if (equinox)  shots.push(true)
+          if (solstice) shots.push(false)
+        }
+        this.fireSunBeams(playerX, playerY, shots[0])
+        for (let i = 1; i < shots.length; i++) {
+          this.dualGunQueue.push({ timeLeft: i * DUAL_GUN_BURST_DELAY, gold: shots[i] })
+        }
       }
     }
 
-    // Move sun beams + check enemy hits
+    // Process queued sequential bursts
+    for (let i = this.dualGunQueue.length - 1; i >= 0; i--) {
+      this.dualGunQueue[i].timeLeft -= delta
+      if (this.dualGunQueue[i].timeLeft <= 0) {
+        const q = this.dualGunQueue.splice(i, 1)[0]
+        this.fireSunBeams(playerX, playerY, q.gold)
+      }
+    }
+
+    // Move sun beams + check enemy hits (pierce — beam continues through enemies)
     const camWVBeams = this.scene.cameras.main.worldView
     const BEAM_OFF_MARGIN = 200
     const gunDmgActive = Math.floor(weaponBaseDamage(level) * might * DUAL_GUN_DAMAGE_MULT * (1 + dualGunDamage * 0.3))
@@ -350,9 +370,7 @@ export class CombatSystem {
         const dy = b.y - e.y
         if (dx * dx + dy * dy < b.hitRadius * b.hitRadius) {
           this.applyHit(e, gunDmgActive, coinDropChance, lifeDrain, vampiric)
-          b.hitTargets.add(e)
-          b.destroy()
-          break
+          b.hitTargets.add(e)  // pierce: beam keeps going
         }
       }
     }
@@ -455,7 +473,6 @@ export class CombatSystem {
         if (dx * dx + dy * dy < BULLET_HIT_RADIUS * BULLET_HIT_RADIUS) {
           takeDamage(10)
           b.destroy()
-          this.effects.shakeCamera()
         }
       }
     }
@@ -912,19 +929,10 @@ export class CombatSystem {
     })
   }
 
-  private fireSunBeamPair(px: number, py: number, vertical: boolean, extra: boolean) {
-    const dirs: [number, number][] = vertical
-      ? [[0, -DUAL_GUN_SPEED], [0, DUAL_GUN_SPEED]]
-      : [[-DUAL_GUN_SPEED, 0], [DUAL_GUN_SPEED, 0]]
-
-    for (const [vx, vy] of dirs) {
-      this.sunBeams.push(new SunBeam(this.scene, px, py, vx, vy))
-      if (extra) {
-        const ox = vertical ? DUAL_GUN_EXTRA_OFFSET : 0
-        const oy = vertical ? 0 : DUAL_GUN_EXTRA_OFFSET
-        this.sunBeams.push(new SunBeam(this.scene, px + ox, py + oy, vx, vy))
-        this.sunBeams.push(new SunBeam(this.scene, px - ox, py - oy, vx, vy))
-      }
+  private fireSunBeams(px: number, py: number, gold: boolean) {
+    const d = DUAL_GUN_SPEED * 0.707
+    for (const [vx, vy] of [[d, -d], [d, d], [-d, d], [-d, -d]] as [number, number][]) {
+      this.sunBeams.push(new SunBeam(this.scene, px, py, vx, vy, gold))
     }
   }
 

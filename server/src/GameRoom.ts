@@ -16,7 +16,7 @@ const ALL_UPGRADE_IDS = [
   'boomerang', 'flameTrail', 'bloodNova', 'bloodNovaCD', 'vampiric',
   'lightning', 'lightningTargets', 'lightningCooldown', 'might', 'axe', 'divineShield',
   'xpGain', 'magnetRange',
-  'phiera', 'eight', 'dualGunDamage', 'dualGunSpeed', 'dualGunExtra',
+  'equinox', 'solstice', 'dualGunDamage', 'dualGunSpeed', 'dualGunExtra',
 ] as const
 type UpgradeId = typeof ALL_UPGRADE_IDS[number]
 const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
@@ -60,11 +60,11 @@ interface PlayerUpgrades {
   divineShield: boolean
   xpGain: number      // 0–5, each +8% XP
   magnetRange: number // 0–3, client-only visual effect
-  phiera: boolean
-  eight: boolean
+  equinox: boolean
+  solstice: boolean
   dualGunDamage: number  // 0–3
   dualGunSpeed: number   // 0–2
-  dualGunExtra: boolean
+  dualGunExtra: number   // 0–2
 }
 
 function emptyUpgrades(): PlayerUpgrades {
@@ -73,7 +73,7 @@ function emptyUpgrades(): PlayerUpgrades {
     boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0,
     vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, mightPicks: 0,
     axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false, xpGain: 0, magnetRange: 0,
-    phiera: false, eight: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: false,
+    equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0,
   }
 }
 
@@ -86,7 +86,7 @@ function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
   if (characterType === 'shade')    return { flameTrail: true }
   if (characterType === 'apollo')   return { wand: true }
   if (characterType === 'hades')    return { aura: true }
-  if (characterType === 'chronos')  return { phiera: true, eight: true }
+  if (characterType === 'chronos')  return { equinox: true, solstice: true }
   return {}
 }
 
@@ -95,7 +95,7 @@ function upgradeWeight(id: UpgradeId, u: PlayerUpgrades): number {
   if ((id === 'auraTick'  || id === 'auraRange') && u.aura) return 3
   if ((id === 'lightningTargets' || id === 'lightningCooldown') && u.lightning) return 3
   if (id === 'bloodNovaCD' && u.bloodNova) return 3
-  if ((id === 'dualGunDamage' || id === 'dualGunSpeed' || id === 'dualGunExtra') && (u.phiera || u.eight)) return 3
+  if ((id === 'dualGunDamage' || id === 'dualGunSpeed' || id === 'dualGunExtra') && (u.equinox || u.solstice)) return 3
   if (id === 'orbital' && u.orbital > 0) return 2
   if (id === 'might' || id === 'dashCooldown' || id === 'dashDistance') return 2
   return 1
@@ -141,14 +141,14 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'auraTick'    && u.auraTick >= 3)     return false
     if (id === 'auraRange'   && !u.aura)             return false
     if (id === 'auraRange'   && u.auraRange >= 3)    return false
-    if (id === 'phiera'        && u.phiera)                          return false
-    if (id === 'eight'         && u.eight)                           return false
-    if (id === 'dualGunDamage' && !u.phiera && !u.eight)             return false
+    if (id === 'equinox'       && u.equinox)                          return false
+    if (id === 'solstice'      && u.solstice)                         return false
+    if (id === 'dualGunDamage' && !u.equinox && !u.solstice)         return false
     if (id === 'dualGunDamage' && u.dualGunDamage >= 3)              return false
-    if (id === 'dualGunSpeed'  && !u.phiera && !u.eight)             return false
+    if (id === 'dualGunSpeed'  && !u.equinox && !u.solstice)         return false
     if (id === 'dualGunSpeed'  && u.dualGunSpeed >= 2)               return false
-    if (id === 'dualGunExtra'  && !u.phiera && !u.eight)             return false
-    if (id === 'dualGunExtra'  && u.dualGunExtra)                    return false
+    if (id === 'dualGunExtra'  && !u.equinox && !u.solstice)         return false
+    if (id === 'dualGunExtra'  && u.dualGunExtra >= 2)               return false
     return true
   })
 
@@ -401,11 +401,11 @@ export class GameRoom {
       case 'aura':        u.aura = true; p.aura = 1; break
       case 'auraTick':    u.auraTick = Math.min(3, u.auraTick + 1); break
       case 'auraRange':   u.auraRange = Math.min(3, u.auraRange + 1); break
-      case 'phiera':       u.phiera = true; break
-      case 'eight':        u.eight = true; break
+      case 'equinox':      u.equinox = true; break
+      case 'solstice':     u.solstice = true; break
       case 'dualGunDamage':u.dualGunDamage = Math.min(3, u.dualGunDamage + 1); break
       case 'dualGunSpeed': u.dualGunSpeed = Math.min(2, u.dualGunSpeed + 1); break
-      case 'dualGunExtra': u.dualGunExtra = true; break
+      case 'dualGunExtra': u.dualGunExtra = Math.min(2, u.dualGunExtra + 1); break
       case 'divineShield':u.divineShield = true; break
       case 'xpGain':      u.xpGain = Math.min(5, u.xpGain + 1); break
       // dashCooldown, dashDistance, magnetRange: no server-side tracking needed
@@ -463,8 +463,8 @@ export class GameRoom {
         case 'axe':         u.axe = true; break
         case 'aura':        u.aura = true; requester.aura = 1; break
         case 'orbital':     u.orbital = Math.min(3, u.orbital + 1); requester.orbital = u.orbital; break
-        case 'phiera':      u.phiera = true; break
-        case 'eight':       u.eight = true; break
+        case 'equinox':     u.equinox = true; break
+        case 'solstice':    u.solstice = true; break
       }
       this.send(requester.ws, { type: 'adminGrantUpgrade', upgradeId })
     } else {

@@ -29,6 +29,7 @@ const CHAR_SPRITE_URL: Record<string, string> = {
   char_poseidon:   SPRITE_URLS.charPoseidon,
   char_apollo:     SPRITE_URLS.charApollo,
   char_hades:      SPRITE_URLS.charHades,
+  char_chronos:    SPRITE_URLS.charChronos,
 }
 
 const SCALE = 2
@@ -341,6 +342,15 @@ const COLLECTION_WEAPONS = [
     description: 'Grants a shield that blocks the next hit. Recharges in 10s after absorbing a hit',
     upgrades: [],
   },
+  {
+    id: 'dualGun', label: 'Dual Sunrays', color: '#ffcc00', icon: '✦✦',
+    description: 'Equinox fires piercing bolts in the 4 cardinal directions; Solstice covers the 4 diagonals. Pick both for full coverage',
+    upgrades: [
+      { id: 'dualGunDamage', label: 'Solar Intensity', description: 'Sunray bolts deal 30% more damage (stackable, up to 3×)' },
+      { id: 'dualGunSpeed',  label: 'Solar Tempo',     description: 'Sunray guns fire 20% faster (stackable, up to 2×)' },
+      { id: 'dualGunExtra',  label: 'Solar Barrage',   description: 'Fires one extra staggered burst per gun per volley (stackable, up to 2×)' },
+    ],
+  },
 ] as const
 
 const COLLECTION_PASSIVES = [
@@ -358,8 +368,9 @@ function CollectionView({ onBack }: { onBack: () => void }) {
       <ViewHeader color="#44ccaa">COLLECTION</ViewHeader>
       <div style={{ width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
 
-        <div style={{ color: '#44776688', fontFamily: 'monospace', fontSize: 10, letterSpacing: 3, paddingLeft: 2 }}>
-          WEAPONS
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
+          <span style={{ color: '#88aaff', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 4, flexShrink: 0 }}>⚔ WEAPONS</span>
+          <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #88aaff44, transparent)' }} />
         </div>
 
         {COLLECTION_WEAPONS.map(w => (
@@ -397,8 +408,9 @@ function CollectionView({ onBack }: { onBack: () => void }) {
           </div>
         ))}
 
-        <div style={{ color: '#44776688', fontFamily: 'monospace', fontSize: 10, letterSpacing: 3, paddingLeft: 2, marginTop: 6 }}>
-          PASSIVES
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, marginBottom: 2 }}>
+          <span style={{ color: '#ffcc44', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 4, flexShrink: 0 }}>★ PASSIVES</span>
+          <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #ffcc4444, transparent)' }} />
         </div>
 
         {COLLECTION_PASSIVES.map(p => (
@@ -689,8 +701,8 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const unlockCostOfSelected = CHARACTER_UNLOCK_COSTS[_selectedCharacter]
   const isSelectedLocked = (unlockCostOfSelected !== undefined || CHARACTER_ACHIEVEMENT_REQUIRED[_selectedCharacter] !== undefined) && !unlockedCharacters.includes(_selectedCharacter)
   const selectedCharacter = isSelectedLocked ? 'ares' : _selectedCharacter
-  type MenuView = 'home' | 'shop' | 'characters' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds' | 'collection'
-  const VALID_VIEWS = new Set<string>(['home', 'shop', 'characters', 'statistics', 'leaderboard', 'achievements', 'admin', 'settings', 'controls', 'sounds', 'collection'])
+  type MenuView = 'home' | 'shop' | 'characters' | 'stageSelect' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds' | 'collection'
+  const VALID_VIEWS = new Set<string>(['home', 'shop', 'characters', 'stageSelect', 'statistics', 'leaderboard', 'achievements', 'admin', 'settings', 'controls', 'sounds', 'collection'])
   const [view, setViewRaw] = useState<MenuView>(() => {
     const saved = sessionStorage.getItem('gods_menu_view')
     return (saved && VALID_VIEWS.has(saved) ? saved : 'home') as MenuView
@@ -710,6 +722,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
     characters: 'home', shop: 'home', settings: 'home', statistics: 'home', admin: 'home', collection: 'home',
     leaderboard: 'statistics', achievements: 'statistics',
     controls: 'settings', sounds: 'settings',
+    stageSelect: 'characters',
   }
 
   useEffect(() => {
@@ -770,7 +783,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
       <div style={{
         ...panel,
         padding: mob ? '20px 16px' : '32px 48px',
-        minWidth: mob ? 'calc(100vw - 24px)' : (view === 'characters' ? 700 : ['shop', 'leaderboard', 'achievements', 'admin', 'collection'].includes(view) ? 520 : 420),
+        minWidth: mob ? 'calc(100vw - 24px)' : (view === 'characters' ? 700 : ['shop', 'leaderboard', 'achievements', 'admin', 'collection'].includes(view) ? 520 : view === 'stageSelect' ? 480 : 420),
         maxWidth: mob ? 'calc(100vw - 24px)' : undefined,
         maxHeight: 'calc(100vh - 180px)',
         height: (!mob && view === 'characters') ? 'calc(100vh - 180px)' : undefined,
@@ -825,6 +838,87 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         <CollectionView onBack={() => setView('home')} />
       ) : view === 'admin' ? (
         <AdminPlayersView onBack={() => setView('home')} />
+      ) : view === 'stageSelect' ? (
+        <>
+          <ViewHeader color="#8888ff">SELECT STAGE</ViewHeader>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+
+            {/* Stage 1 — available */}
+            <div
+              onClick={onPlay}
+              style={{
+                position: 'relative', overflow: 'hidden',
+                background: 'linear-gradient(135deg, rgba(15,15,60,0.95) 0%, rgba(30,10,70,0.95) 100%)',
+                border: '1px solid rgba(100,80,220,0.6)',
+                borderLeft: '4px solid #6655ff',
+                borderRadius: 12, padding: '18px 20px',
+                cursor: 'pointer',
+                boxShadow: '0 0 20px rgba(80,50,200,0.3)',
+                transition: 'all 0.18s ease',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(25,20,90,0.98) 0%, rgba(50,20,110,0.98) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 32px rgba(100,70,255,0.45)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(15,15,60,0.95) 0%, rgba(30,10,70,0.95) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 20px rgba(80,50,200,0.3)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#ffffff', letterSpacing: 2 }}>
+                  STAGE 1
+                </div>
+                <div style={{
+                  fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                  color: '#44ee88', background: 'rgba(20,80,40,0.5)',
+                  border: '1px solid rgba(40,160,80,0.5)', borderRadius: 20,
+                  padding: '2px 10px',
+                }}>
+                  AVAILABLE
+                </div>
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#9988cc', lineHeight: 1.5 }}>
+                Olympus Fields — Survive the divine assault
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#6655ff', marginTop: 4, letterSpacing: 1 }}>
+                ▶ CLICK TO START
+              </div>
+            </div>
+
+            {/* Coming soon stages */}
+            {[
+              { num: 2, name: 'Underworld Depths' },
+              { num: 3, name: 'Sea of Poseidon' },
+              { num: 4, name: 'Forge of Hephaestus' },
+            ].map(({ num, name }) => (
+              <div
+                key={num}
+                style={{
+                  background: 'rgba(10,10,22,0.6)',
+                  border: '1px solid rgba(40,40,70,0.4)',
+                  borderLeft: '4px solid rgba(60,50,100,0.5)',
+                  borderRadius: 12, padding: '18px 20px',
+                  cursor: 'default', opacity: 0.55,
+                  display: 'flex', flexDirection: 'column', gap: 6,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#666688', letterSpacing: 2 }}>
+                    STAGE {num}
+                  </div>
+                  <div style={{
+                    fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                    color: '#888899', background: 'rgba(20,20,40,0.5)',
+                    border: '1px solid rgba(60,60,100,0.4)', borderRadius: 20,
+                    padding: '2px 10px',
+                  }}>
+                    COMING SOON
+                  </div>
+                </div>
+                <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#555577', lineHeight: 1.5 }}>
+                  {name}
+                </div>
+              </div>
+            ))}
+          </div>
+          <BackButton onBack={() => setView('characters')} />
+        </>
       ) : view === 'characters' ? (
         <>
           <ViewHeader color="#8888ff">SELECT CHARACTER</ViewHeader>
@@ -966,7 +1060,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               {playAfterSelect && (
                 <button
                   type="button"
-                  onClick={onPlay}
+                  onClick={() => setViewRaw('stageSelect')}
                   style={{
                     ...btnBase, padding: '14px 0', fontSize: 16,
                     color: '#ffffff',
@@ -977,7 +1071,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(30,30,160,0.95) 0%, rgba(70,30,140,0.95) 100%)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(70,40,200,0.55), inset 0 1px 0 rgba(255,255,255,0.1)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)' }}
                 >
-                  START GAME
+                  SELECT STAGE
                 </button>
               )}
               <BackButton onBack={() => { setPlayAfterSelect(false); setView('home') }} />
@@ -1106,11 +1200,11 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                         ))}
                       </div>
 
-                      {/* START GAME */}
+                      {/* SELECT STAGE */}
                       {playAfterSelect && (
                         <button
                           type="button"
-                          onClick={onPlay}
+                          onClick={() => setViewRaw('stageSelect')}
                           style={{
                             width: '100%', padding: '13px 0', fontSize: 15,
                             fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 2,
@@ -1123,7 +1217,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                           onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(30,30,160,0.95) 0%, rgba(70,30,140,0.95) 100%)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(70,40,200,0.55), inset 0 1px 0 rgba(255,255,255,0.1)' }}
                           onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)' }}
                         >
-                          START GAME
+                          SELECT STAGE
                         </button>
                       )}
                     </div>

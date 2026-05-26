@@ -20,8 +20,9 @@ export class CoinOrb {
       .image(x, y, 'coin_glow')
       .setDepth(0.9)
       .setAlpha(0.6)
+      .setScale(0.7)
       .setBlendMode(Phaser.BlendModes.ADD)
-    this.graphic = scene.add.image(x, y, 'coin').setDepth(1)
+    this.graphic = scene.add.image(x, y, 'coin').setDepth(1).setScale(0.7)
   }
 
   // magnetRank 0-5 from meta upgrades; each rank adds 10% attract radius

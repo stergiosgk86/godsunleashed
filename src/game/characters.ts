@@ -24,8 +24,8 @@ export interface CharacterDef {
   startFlameTrail: boolean
   startOrbital: number
   startWand: boolean
-  startPhiera: boolean
-  startEight: boolean
+  startEquinox: boolean
+  startSolstice: boolean
   // Only fires at enemies within a ~140° arc in the facing direction
   frontArcOnly: boolean
   // In-game sprite scale (default 1.5 for 32×32 sprites)
@@ -54,7 +54,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 50, baseArmor: 1, mightMult: 1.5, bonusMoveSpeed: 30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: true,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: true,
     scale: 0.85,
   },
   rogue: {
@@ -72,7 +72,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: -20, baseArmor: 0, mightMult: 0.9, bonusMoveSpeed: 50,
     attackIntervalMult: 1.0, dashCooldownMult: 0.55, bonusDashDistance: 0.5,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: true,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: false,
     scale: 1.5,
   },
   witch: {
@@ -88,7 +88,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: -15, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: -30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 1, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: false,
     scale: 1.5,
   },
   shade: {
@@ -105,7 +105,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 60, baseArmor: 2, mightMult: 0.85, bonusMoveSpeed: 0,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 2, startLightning: false, startBoomerang: false,
-    startFlameTrail: true, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
+    startFlameTrail: true, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: false,
     scale: 1.5,
   },
   zeus: {
@@ -122,7 +122,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 10, baseArmor: 0, mightMult: 1.4, bonusMoveSpeed: -40,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.3, startAura: 0, lifeDrain: 0, startLightning: true, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: false,
     scale: 1.0,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 768 },
   },
@@ -140,7 +140,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 25, baseArmor: 1, mightMult: 1.15, bonusMoveSpeed: -30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 1, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 1, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: false,
     scale: 1.0,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
   },
@@ -159,7 +159,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 10, baseArmor: 0, mightMult: 1.2, bonusMoveSpeed: -10,
     attackIntervalMult: 0.8, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.15, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: true, startPhiera: false, startEight: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: true, startEquinox: false, startSolstice: false, frontArcOnly: false,
     scale: 0.8,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
     menuRow: 1,
@@ -179,7 +179,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 80, baseArmor: 3, mightMult: 1.3, bonusMoveSpeed: -50,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 1, lifeDrain: 4, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: false, startEight: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: false,
     scale: 0.9,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
     menuRow: 1,
@@ -198,9 +198,9 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 0, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: 15,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.2, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startPhiera: true, startEight: true, frontArcOnly: false,
-    scale: 0.8,
-    menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: true, startSolstice: true, frontArcOnly: false,
+    scale: 0.6,
+    menuFrame: { fw: 80, fh: 80, sw: 240, sh: 320 },
     menuRow: 1,
   },
 }
