@@ -12,7 +12,7 @@ const MAX_VEL     = 2_000   // max projectile velocity component
 // All upgrade IDs the server knows about (mirrors client UPGRADE_POOL)
 const ALL_UPGRADE_IDS = [
   'dashCooldown', 'dashDistance', 'wand', 'multiShot', 'piercing',
-  'aura', 'auraTick', 'auraRange', 'orbital',
+  'aura', 'auraTick', 'auraRange', 'orbital', 'orbSpeed', 'orbPower', 'orbRange',
   'boomerang', 'flameTrail', 'bloodNova', 'bloodNovaCD', 'vampiric',
   'lightning', 'lightningTargets', 'lightningCooldown', 'might', 'axe', 'divineShield',
   'xpGain', 'magnetRange',
@@ -24,6 +24,7 @@ const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
 const WEAPON_FAMILIES: Record<string, readonly string[]> = {
   wand:      ['multiShot', 'piercing'],
   aura:      ['auraTick', 'auraRange'],
+  orbital:   ['orbSpeed', 'orbPower', 'orbRange'],
   lightning: ['lightningTargets', 'lightningCooldown'],
   bloodNova: ['bloodNovaCD'],
   dash:      ['dashCooldown', 'dashDistance'],
@@ -43,7 +44,10 @@ interface PlayerUpgrades {
   wand: boolean
   piercing: boolean
   multiShot: number   // 0–4
-  orbital: number     // 0–3
+  orbital: number     // 0–5
+  orbSpeed: number    // 0–3
+  orbPower: number    // 0–3
+  orbRange: number    // 0–2
   boomerang: boolean
   flameTrail: boolean
   bloodNova: boolean
@@ -69,7 +73,7 @@ interface PlayerUpgrades {
 
 function emptyUpgrades(): PlayerUpgrades {
   return {
-    wand: false, piercing: false, multiShot: 0, orbital: 0,
+    wand: false, piercing: false, multiShot: 0, orbital: 0, orbSpeed: 0, orbPower: 0, orbRange: 0,
     boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0,
     vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, mightPicks: 0,
     axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false, xpGain: 0, magnetRange: 0,
@@ -97,6 +101,7 @@ function upgradeWeight(id: UpgradeId, u: PlayerUpgrades): number {
   if (id === 'bloodNovaCD' && u.bloodNova) return 3
   if ((id === 'dualGunDamage' || id === 'dualGunSpeed' || id === 'dualGunExtra') && (u.equinox || u.solstice)) return 3
   if (id === 'orbital' && u.orbital > 0) return 2
+  if ((id === 'orbSpeed' || id === 'orbPower' || id === 'orbRange') && u.orbital > 0) return 3
   if (id === 'might' || id === 'dashCooldown' || id === 'dashDistance') return 2
   return 1
 }
@@ -119,7 +124,13 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'multiShot'   && u.multiShot >= 4)    return false
     if (id === 'piercing'    && !u.wand)             return false
     if (id === 'piercing'    && u.piercing)          return false
-    if (id === 'orbital'     && u.orbital >= 3)      return false
+    if (id === 'orbital'     && u.orbital >= 5)      return false
+    if (id === 'orbSpeed'    && u.orbital === 0)     return false
+    if (id === 'orbSpeed'    && u.orbSpeed >= 3)     return false
+    if (id === 'orbPower'    && u.orbital === 0)     return false
+    if (id === 'orbPower'    && u.orbPower >= 3)     return false
+    if (id === 'orbRange'    && u.orbital === 0)     return false
+    if (id === 'orbRange'    && u.orbRange >= 2)     return false
     if (id === 'boomerang'   && u.boomerang)         return false
     if (id === 'flameTrail'  && u.flameTrail)        return false
     if (id === 'bloodNova'    && u.bloodNova)              return false
@@ -387,7 +398,10 @@ export class GameRoom {
       case 'wand':        u.wand = true; break
       case 'piercing':    u.piercing = true; break
       case 'multiShot':   u.multiShot = Math.min(4, u.multiShot + 1); break
-      case 'orbital':     u.orbital = Math.min(3, u.orbital + 1); p.orbital = u.orbital; break
+      case 'orbital':     u.orbital = Math.min(5, u.orbital + 1); p.orbital = u.orbital; break
+      case 'orbSpeed':    u.orbSpeed = Math.min(3, u.orbSpeed + 1); break
+      case 'orbPower':    u.orbPower = Math.min(3, u.orbPower + 1); break
+      case 'orbRange':    u.orbRange = Math.min(2, u.orbRange + 1); break
       case 'boomerang':   u.boomerang = true; break
       case 'flameTrail':  u.flameTrail = true; break
       case 'bloodNova':    u.bloodNova = true; break
@@ -462,7 +476,7 @@ export class GameRoom {
         case 'lightning':   u.lightning = true; break
         case 'axe':         u.axe = true; break
         case 'aura':        u.aura = true; requester.aura = 1; break
-        case 'orbital':     u.orbital = Math.min(3, u.orbital + 1); requester.orbital = u.orbital; break
+        case 'orbital':     u.orbital = Math.min(5, u.orbital + 1); requester.orbital = u.orbital; break
         case 'equinox':     u.equinox = true; break
         case 'solstice':    u.solstice = true; break
       }

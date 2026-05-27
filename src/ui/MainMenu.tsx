@@ -64,16 +64,20 @@ function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprit
   const is = innerScale ?? 1
   const dfw = Math.round(fw * sf)
   const dfh = Math.round(fh * sf)
-  const dsw = Math.round(sw * sf * is)
-  const dsh = Math.round(sh * sf * is)
-  const sdfw = Math.round(dfw * is)
-  const sdfh = Math.round(dfh * is)
+  // Scale the background up by `is`, then offset to show the center of the frame
+  const totalSF = sf * is
+  const dsw = Math.round(sw * totalSF)
+  const dsh = Math.round(sh * totalSF)
+  const bfw = Math.round(fw * totalSF)
+  const bfh = Math.round(fh * totalSF)
+  const bpxBase = Math.round((dfw - bfw) / 2)
+  const bpyBase = Math.round((dfh - bfh) / 2)
   const pad = Math.round(16 * sf)
 
   return (
     <div style={{
       width: dfw + pad, height: dfh + pad,
-      position: 'relative',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
       background: 'rgba(0,0,0,0.3)',
       border: `1px solid ${color}44`,
       borderRadius: compact ? 7 : 10,
@@ -82,23 +86,19 @@ function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprit
     }}>
       {staticSprite ? (
         <img src={url} style={{
-          width: sdfw, height: sdfh,
+          width: Math.round(dfw * is), height: Math.round(dfh * is),
           objectFit: 'contain',
           filter: `drop-shadow(0 0 6px ${color}bb)`,
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
         }} />
       ) : (
         <div style={{
-          width: sdfw, height: sdfh,
+          width: dfw, height: dfh,
           backgroundImage: `url(${url})`,
-          backgroundPosition: `-${frame * sdfw}px -${Math.round((menuRow ?? 0) * sdfh)}px`,
+          backgroundPosition: `${bpxBase - frame * bfw}px ${bpyBase - Math.round((menuRow ?? 0) * bfh)}px`,
           backgroundSize: `${dsw}px ${dsh}px`,
           backgroundRepeat: 'no-repeat',
           imageRendering: 'pixelated',
           filter: `drop-shadow(0 0 6px ${color}bb)`,
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
         }} />
       )}
     </div>
@@ -313,8 +313,12 @@ const COLLECTION_WEAPONS = [
   },
   {
     id: 'orbital', label: 'Spirit Orb', color: '#44ffcc', icon: '◉',
-    description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 3)',
-    upgrades: [],
+    description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 5)',
+    upgrades: [
+      { id: 'orbSpeed', label: 'Orb Velocity', description: 'Spirit Orbs rotate 25% faster (stackable, up to 3×)' },
+      { id: 'orbPower', label: 'Orb Power',    description: 'Spirit Orbs deal 20% more damage (stackable, up to 3×)' },
+      { id: 'orbRange', label: 'Orb Reach',    description: 'Spirit Orbs orbit at a wider radius, covering more ground (stackable, up to 2×)' },
+    ],
   },
   {
     id: 'boomerang', label: 'Boomerang', color: '#ffaa22', icon: '↩',

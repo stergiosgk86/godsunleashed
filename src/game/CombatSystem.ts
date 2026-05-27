@@ -279,7 +279,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra } = getValidatedCombatState()
+    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -617,13 +617,13 @@ export class CombatSystem {
     // Spirit Orbs
     this.orbGraphic.clear()
     if (orbital > 0) {
-      const ORBIT_RADIUS = 115
-      const ORB_RADIUS = 13
-      const ORB_HIT_RADIUS = 20
+      const ORBIT_RADIUS = 115 + orbRange * 20
+      const ORB_RADIUS = 13 + orbRange * 2
+      const ORB_HIT_RADIUS = 20 + orbRange * 3
       const HIT_COOLDOWN = 500
-      const orbDamage = Math.max(1, Math.floor(weaponBaseDamage(level) * might * 0.65))
+      const orbDamage = Math.max(1, Math.floor(weaponBaseDamage(level) * might * 0.65 * (1 + orbPower * 0.2)))
 
-      this.orbAngle += delta * 0.0018
+      this.orbAngle += delta * 0.0018 * (1 + orbSpeed * 0.25)
 
       // Smooth the orbit center so fast player movement doesn't distort apparent rotation speed
       if (!this.orbCenterInit) { this.orbCenterX = playerX; this.orbCenterY = playerY; this.orbCenterInit = true }
