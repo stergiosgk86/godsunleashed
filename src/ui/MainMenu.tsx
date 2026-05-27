@@ -802,7 +802,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         height: (!mob && view === 'characters') ? 'calc(100vh - 180px)' : undefined,
         width: (!mob && view === 'characters') ? 700 : undefined,
         boxSizing: 'border-box',
-        overflow: 'hidden',
+        overflow: (mob && view === 'characters') ? 'auto' : 'hidden',
       }}>
 
       {view === 'settings' ? (
@@ -948,9 +948,9 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
           `}</style>
 
           {mob ? (
-            // ── Mobile: original vertical list ──
+            // ── Mobile: portrait grid + detail panel ──
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexShrink: 0 }}>
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 6,
                   padding: '4px 14px', borderRadius: 20,
@@ -962,113 +962,131 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                 </div>
               </div>
 
-              <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+              {/* 3-column portrait grid */}
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6,
+                width: '100%', flexShrink: 0,
+              }}>
                 {ALL_CHARACTERS.map((id, i) => {
                   const def = CHARACTER_DEFS[id]
-                  const isSelected = selectedCharacter === id
+                  const isGridSelected = selectedCharacter === id
                   const unlockCost = CHARACTER_UNLOCK_COSTS[id]
                   const achievementRequired = CHARACTER_ACHIEVEMENT_REQUIRED[id]
                   const isLocked = (unlockCost !== undefined || achievementRequired !== undefined) && !unlockedCharacters.includes(id)
-                  const canAfford = coins >= (unlockCost ?? 0)
                   return (
                     <div
                       key={id}
-                      onClick={() => { if (!isLocked) setCharacter(id) }}
+                      onClick={() => {
+                        if (!isLocked) setCharacter(id)
+                        else if (unlockCost !== undefined) { setUnlockError(null); setConfirmUnlock(id) }
+                      }}
                       style={{
                         position: 'relative', overflow: 'hidden',
-                        background: isSelected ? 'rgba(20,20,50,0.8)' : 'rgba(10,10,28,0.6)',
-                        border: `1px solid ${isLocked ? 'rgba(60,30,80,0.4)' : isSelected ? def.color + '66' : 'rgba(40,40,90,0.5)'}`,
-                        borderLeft: `4px solid ${isLocked ? '#44224466' : def.color}`,
-                        borderRadius: 8, padding: '8px 10px',
-                        cursor: isLocked ? 'default' : 'pointer',
-                        transition: 'border-color 0.15s, background 0.15s',
-                        display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'center',
-                        boxShadow: isSelected ? `0 0 20px ${def.color}22` : 'none',
+                        background: isGridSelected ? 'rgba(20,20,50,0.9)' : 'rgba(10,10,28,0.55)',
+                        border: `2px solid ${isLocked ? 'rgba(60,30,80,0.35)' : isGridSelected ? def.color : 'rgba(40,40,90,0.45)'}`,
+                        borderRadius: 10, padding: '8px 4px 6px',
+                        cursor: isLocked ? (unlockCost !== undefined ? 'pointer' : 'default') : 'pointer',
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                        transition: 'all 0.15s ease',
+                        boxShadow: isGridSelected ? `0 0 14px ${def.color}44` : 'none',
                       }}
                     >
-                      {!isLocked && <div style={{
+                      {isGridSelected && <div style={{
                         position: 'absolute', inset: 0, pointerEvents: 'none',
-                        background: `radial-gradient(ellipse at 30% 50%, ${def.color}44 0%, transparent 70%)`,
+                        background: `radial-gradient(ellipse at 50% 40%, ${def.color}22 0%, transparent 70%)`,
                         animation: `char-pulse 2.4s ease-in-out ${i * 0.35}s infinite`,
                       }} />}
-                      {!isLocked && <div style={{
-                        position: 'absolute', top: 0, bottom: 0, width: '30%',
-                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent)',
-                        pointerEvents: 'none',
-                        animation: `char-shimmer ${3.5 + i * 0.4}s ease-in-out ${i * 0.6}s infinite`,
-                      }} />}
-                      {isLocked && <div style={{
-                        position: 'absolute', inset: 0, pointerEvents: 'none',
-                        background: 'linear-gradient(135deg, rgba(10,10,24,0.5) 0%, rgba(26,10,40,0.5) 100%)',
-                      }} />}
-
-                      <div style={{ position: 'relative', flexShrink: 0 }}>
-                        <div style={{ opacity: isLocked ? 0.4 : 1 }}>
-                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} compact staticSprite={def.staticSprite} />
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ opacity: isLocked ? 0.35 : 1 }}>
+                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} compact staticSprite={def.staticSprite} innerScale={id === 'poseidon' ? 1.4 : undefined} />
                         </div>
                         {isLocked && (
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-                            🔒
-                          </div>
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🔒</div>
                         )}
                       </div>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, position: 'relative' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                          {isSelected && <span style={{ color: def.color, fontSize: 9 }}>▶</span>}
-                          <span style={{ color: isLocked ? '#776688' : '#ddddff', fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold' }}>
-                            {def.name.toUpperCase()}
-                          </span>
-                          <span style={{ color: isLocked ? '#443355' : def.color + 'cc', fontFamily: 'monospace', fontSize: 10, fontStyle: 'italic' }}>
-                            {def.trait}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 6px' }}>
-                          {def.statLines.map(line => (
-                            <span key={line.label} style={{
-                              color: isLocked ? (line.positive ? '#1e4430' : '#441818') : (line.positive ? '#44cc66' : '#cc4444'),
-                              fontFamily: 'monospace', fontSize: 10,
-                            }}>
-                              {line.positive ? '▲' : '▼'} {line.label}
-                            </span>
-                          ))}
-                        </div>
-                        {isLocked && achievementRequired !== undefined && (() => {
-                          const ach = ACHIEVEMENT_MAP[achievementRequired]
-                          return (
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginTop: 2 }}>
-                              <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#553377', fontWeight: 'bold', letterSpacing: 1, flexShrink: 0 }}>UNLOCK:</span>
-                              <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#8855bb' }}>
-                                {ach ? `${ach.icon} ${ach.description}` : achievementRequired}
-                              </span>
-                            </div>
-                          )
-                        })()}
-                      </div>
-
-                      {isLocked && unlockCost !== undefined && (
-                        <button
-                          type="button"
-                          onClick={e => { e.stopPropagation(); setUnlockError(null); setConfirmUnlock(id) }}
-                          style={{
-                            flexShrink: 0, position: 'relative', zIndex: 1,
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-                            width: 58, height: 44,
-                            background: canAfford ? 'rgba(30,15,50,0.8)' : 'rgba(15,10,22,0.8)',
-                            border: `1px solid ${canAfford ? def.color + '55' : 'rgba(50,25,70,0.5)'}`,
-                            borderRadius: 8, cursor: 'pointer', transition: 'all 0.18s ease',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = canAfford ? 'rgba(50,25,80,0.9)' : 'rgba(22,14,32,0.9)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = canAfford ? 'rgba(30,15,50,0.8)' : 'rgba(15,10,22,0.8)' }}
-                        >
-                          <span style={{ fontFamily: 'monospace', fontSize: 10, fontWeight: 'bold', color: canAfford ? '#ccaa22' : '#443322', letterSpacing: 1 }}>◈ {unlockCost}</span>
-                          <span style={{ fontFamily: 'monospace', fontSize: 9, fontWeight: 'bold', color: canAfford ? '#44ff88' : '#1a4433', letterSpacing: 1 }}>UNLOCK</span>
-                        </button>
-                      )}
+                      <span style={{
+                        fontFamily: 'monospace', fontSize: 8, fontWeight: 'bold',
+                        letterSpacing: 1, textAlign: 'center',
+                        color: isLocked ? '#443355' : isGridSelected ? def.color : '#7777aa',
+                      }}>
+                        {def.name.toUpperCase()}
+                      </span>
                     </div>
                   )
                 })}
               </div>
+
+              {/* Selected character detail panel */}
+              {(() => {
+                const def = CHARACTER_DEFS[selectedCharacter]
+                const unlockCost = CHARACTER_UNLOCK_COSTS[selectedCharacter]
+                const achievementRequired = CHARACTER_ACHIEVEMENT_REQUIRED[selectedCharacter]
+                const isLocked = (unlockCost !== undefined || achievementRequired !== undefined) && !unlockedCharacters.includes(selectedCharacter)
+                const canAfford = coins >= (unlockCost ?? 0)
+                return (
+                  <div style={{
+                    width: '100%', flexShrink: 0,
+                    background: `radial-gradient(ellipse at 50% 0%, ${def.color}18 0%, transparent 70%)`,
+                    border: `1px solid ${def.color}28`,
+                    borderRadius: 10, padding: '12px 14px',
+                    display: 'flex', flexDirection: 'column', gap: 7,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{
+                        color: def.color, fontFamily: 'monospace', fontSize: 16, fontWeight: 'bold',
+                        letterSpacing: 3, textShadow: `0 0 12px ${def.color}55`,
+                      }}>
+                        {def.name.toUpperCase()}
+                      </span>
+                      <span style={{ color: def.color + '99', fontFamily: 'monospace', fontSize: 10, fontStyle: 'italic' }}>
+                        {def.trait}
+                      </span>
+                    </div>
+                    <div style={{ color: '#5a5a88', fontFamily: 'monospace', fontSize: 10, lineHeight: 1.55 }}>
+                      {def.description}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 10px' }}>
+                      {def.statLines.map(line => (
+                        <span key={line.label} style={{
+                          color: line.positive ? '#44cc66' : '#cc4444',
+                          fontFamily: 'monospace', fontSize: 10,
+                        }}>
+                          {line.positive ? '▲' : '▼'} {line.label}
+                        </span>
+                      ))}
+                    </div>
+                    {isLocked && achievementRequired !== undefined && (() => {
+                      const ach = ACHIEVEMENT_MAP[achievementRequired]
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+                          <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#553377', fontWeight: 'bold', letterSpacing: 1, flexShrink: 0 }}>UNLOCK:</span>
+                          <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#8855bb' }}>
+                            {ach ? `${ach.icon} ${ach.description}` : achievementRequired}
+                          </span>
+                        </div>
+                      )
+                    })()}
+                    {isLocked && unlockCost !== undefined && (
+                      <button
+                        type="button"
+                        onClick={() => { setUnlockError(null); setConfirmUnlock(selectedCharacter) }}
+                        style={{
+                          width: '100%', padding: '10px 0',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          background: canAfford ? 'rgba(30,15,50,0.8)' : 'rgba(15,10,22,0.8)',
+                          border: `1px solid ${canAfford ? def.color + '55' : 'rgba(50,25,70,0.5)'}`,
+                          borderRadius: 8, cursor: 'pointer', transition: 'all 0.18s ease',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = canAfford ? 'rgba(50,25,80,0.9)' : 'rgba(22,14,32,0.9)' }}
+                        onMouseLeave={e => { e.currentTarget.style.background = canAfford ? 'rgba(30,15,50,0.8)' : 'rgba(15,10,22,0.8)' }}
+                      >
+                        <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold', color: canAfford ? '#ccaa22' : '#443322', letterSpacing: 1 }}>◈ {unlockCost}</span>
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold', color: canAfford ? '#44ff88' : '#1a4433', letterSpacing: 1 }}>UNLOCK</span>
+                      </button>
+                    )}
+                  </div>
+                )
+              })()}
 
               {playAfterSelect && (
                 <button
@@ -1080,6 +1098,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                     background: 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)',
                     borderColor: 'rgba(100,80,220,0.5)',
                     boxShadow: '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+                    flexShrink: 0,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(30,30,160,0.95) 0%, rgba(70,30,140,0.95) 100%)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(70,40,200,0.55), inset 0 1px 0 rgba(255,255,255,0.1)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)' }}

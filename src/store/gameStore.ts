@@ -47,7 +47,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'lightningCooldown',label: 'Thunderhaste',      description: 'Thunder Strike fires 1s faster (stackable, up to 2×)' },
   { id: 'might',     label: 'Power',            description: '+10% weapon damage (stackable)' },
   { id: 'axe',      label: 'War Axe',          description: 'Hurls a spinning axe in an arc — hits on the way up and again on the way down' },
-  { id: 'divineShield', label: 'Divine Shield', description: 'Grants a shield that blocks the next hit. After absorbing a hit you are briefly immune, then the shield recharges in 10s' },
+  { id: 'divineShield', label: 'Divine Shield', description: 'Grants periodic invincibility — active for 3s, then recharges for 9s. While active, all damage is blocked.' },
   { id: 'xpGain',       label: 'Gilded Soul',   description: '+8% XP gained from all sources (stackable, up to 5×)' },
   { id: 'magnetRange',  label: 'Astral Pull',   description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },
   { id: 'equinox',      label: 'Equinox',        description: 'Fires sunray bolts in all 4 cardinal directions. Bolts pierce enemies.' },
@@ -57,9 +57,12 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'dualGunExtra', label: 'Solar Barrage',  description: 'Fires one extra staggered burst per gun per volley (stackable, up to 2×)' },
 ]
 
-function xpNeeded(level: number) {
-  // L1=10, L2=24, L3=42, L4=64, L5=90, L10=280, L15=570
-  return Math.floor(level * (level + 4) * 2)
+// XP curve: L1=30, L2=55, L3=80 (+25/level), spikes at L20/L40
+function xpNeeded(level: number): number {
+  const base = 30 + (level - 1) * 25
+  if (level === 20) return base + 600
+  if (level === 40) return base + 2400
+  return base
 }
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
@@ -319,7 +322,8 @@ export const useGameStore = create<GameState>()(
     addXP: (amount) => {
       set(s => {
         if (s.serverDrivenLeveling) {
-          // Server drives level-ups in multiplayer; just fill the XP bar visually
+          // Server drives level-ups; freeze bar while upgrade screen is open (server skips XP grants then)
+          if (s.isLevelUpPending) return {}
           return { xp: Math.min(s.xp + amount, s.xpNeeded) }
         }
         let { xp, xpNeeded: needed, level, isLevelUpPending } = s
@@ -344,10 +348,7 @@ export const useGameStore = create<GameState>()(
       const { hp, isDead, adminInvincible, armor, divineShieldActive, invincibleUntil } = get()
       if (isDead || adminInvincible) return
       if (Date.now() < invincibleUntil) return
-      if (divineShieldActive) {
-        set({ divineShieldActive: false })
-        return
-      }
+      if (divineShieldActive) return
       const now = Date.now()
       const reduced = Math.max(1, amount - armor)
       set({ hp: Math.max(0, hp - reduced), invincibleUntil: now + 240, damageFlashUntil: now + 240, tookDamageThisRun: true })
@@ -357,11 +358,7 @@ export const useGameStore = create<GameState>()(
     takeDamage: (amount) => {
       const { invincibleUntil, hp, isDead, adminInvincible, armor, divineShieldActive } = get()
       if (isDead || adminInvincible) return
-      if (divineShieldActive) {
-        const now = Date.now()
-        set({ divineShieldActive: false, invincibleUntil: now + 1000, damageFlashUntil: now + 300 })
-        return
-      }
+      if (divineShieldActive) return
       if (Date.now() < invincibleUntil) return
       const now = Date.now()
       const reduced = Math.max(1, amount - armor)

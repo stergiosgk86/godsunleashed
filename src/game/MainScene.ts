@@ -128,11 +128,16 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
-    if (window.innerWidth <= 768) this.cameras.main.setZoom(0.7)
+    const camZoom = window.innerWidth <= 768 ? 0.7 : 1.4
+    this.cameras.main.setZoom(camZoom)
 
-
+    // Position fpsText at screen pixel (8, 8) — scrollFactor(0) objects are still
+    // transformed by the zoom matrix, so we must invert it to get screen coords.
+    const W = this.scale.width, H = this.scale.height
+    const fpsX = W / 2 + (8 - W / 2) / camZoom
+    const fpsY = H / 2 + (46 - H / 2) / camZoom
     this.fpsText = this.add
-      .text(110, 14, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' })
+      .text(fpsX, fpsY, '', { fontSize: '12px', color: '#ffffff', fontFamily: 'monospace' })
       .setScrollFactor(0)
       .setDepth(100)
 
@@ -180,20 +185,8 @@ export class MainScene extends Phaser.Scene {
 
     this.setupMultiplayer()
 
-    // sceneAlive must be declared before onEsc so the closure can guard against
-    // the teardown race where resetRun() clears isDead before Phaser is destroyed.
+    // ESC is handled in GameView (App.tsx) so it works before Phaser finishes loading.
     let sceneAlive = true
-
-    // Capture-phase listener fires before Phaser processes the event — reliable
-    // regardless of canvas focus. Resuming is in PauseMenu (same mechanism).
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      if (!sceneAlive) return
-      const gs = useGameStore.getState()
-      if (!gs.isDead && !gs.isWon && !gs.isLevelUpPending) gs.togglePause()
-    }
-    window.addEventListener('keydown', onEsc, { capture: true })
-    this.events.once('shutdown', () => window.removeEventListener('keydown', onEsc, { capture: true }))
 
     // Only resume here — pausing on level-up is handled in update() to avoid
     // calling scene.pause() from within a zustand subscriber mid-update-loop.
@@ -638,9 +631,9 @@ export class MainScene extends Phaser.Scene {
     } else {
       waveLabel = this.spawner.waveLabel()
     }
-    this.fpsText.setText(
-      `FPS: ${Math.round(this.game.loop.actualFps)}  |  ${waveLabel}  |  Enemies: ${enemyCount}`
-    )
+    runData.waveLabel = waveLabel
+    runData.enemyCount = enemyCount
+    this.fpsText.setText(`FPS: ${Math.round(this.game.loop.actualFps)}`)
 
     // Feed minimap
     minimapData.playerX = this.player.x

@@ -6,7 +6,7 @@ export class SunBeam {
   vx: number
   vy: number
   active = true
-  hitRadius = 20
+  hitRadius = 40
   hitTargets = new Set<object>()
   private graphic: Phaser.GameObjects.Graphics
   private age = 0

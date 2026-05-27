@@ -1,9 +1,10 @@
 import Phaser from 'phaser'
 
-const BASE_ATTRACT_RADIUS = 50
+const BASE_ATTRACT_RADIUS = 80
 const ATTRACT_SPEED = 320
-const COLLECT_RADIUS = 20
-const UNCOLLECTABLE_MS = 400
+const COLLECT_RADIUS = 40
+const UNCOLLECTABLE_MS = 350
+const SPAWN_ANIM_MS = 220     // pop-in animation duration
 const NUDGE_DURATION = 260  // ms the orb spends nudging away
 const NUDGE_SPEED = 320     // px/s of the outward nudge
 
@@ -29,32 +30,34 @@ export class XPOrb {
     this.glow = scene.add
       .image(x, y, 'xp_orb_glow')
       .setDepth(0.9)
-      .setAlpha(0.55)
+      .setAlpha(0)
       .setBlendMode(Phaser.BlendModes.ADD)
-    this.graphic = scene.add.image(x, y, 'xp_orb').setDepth(1)
+    this.graphic = scene.add.image(x, y, 'xp_orb').setDepth(1).setScale(0).setAlpha(0)
   }
 
-  // magnetRange 0-3 from run upgrade; each rank adds 50% attract radius
+  // magnetRange 0-3 from run upgrade; each rank multiplies attract radius by 1.5×
   update(playerX: number, playerY: number, delta: number, magnetRange = 0): number {
     const dt = delta / 1000
     this.time += delta
     const dx = playerX - this.x
     const dy = playerY - this.y
     const dist = Math.sqrt(dx * dx + dy * dy)
-    const attractRadius = BASE_ATTRACT_RADIUS * (1 + magnetRange * 0.5)
+    const attractRadius = BASE_ATTRACT_RADIUS * Math.pow(1.5, magnetRange)
 
-    if (dist < COLLECT_RADIUS && this.time >= UNCOLLECTABLE_MS) {
+    const canCollect = this.time >= UNCOLLECTABLE_MS
+
+    if (canCollect && dist < COLLECT_RADIUS) {
       this.spawnCollectEffect()
       this.destroy()
       return this.value
     }
 
+    // No attraction during the uncollectable window — orb stays at spawn position
+    // so the pop-in animation is visible before it moves toward the player.
     const wasAttracted = this.attracted
-    this.attracted = this.lockOn || dist < attractRadius
+    this.attracted = canCollect && (this.lockOn || dist < attractRadius)
 
-    // Fire nudge the first time the player walks into range from outside,
-    // but not for orbs that spawned inside the radius (guard with UNCOLLECTABLE_MS).
-    if (this.attracted && !wasAttracted && !this.hasNudged && this.time >= UNCOLLECTABLE_MS) {
+    if (this.attracted && !wasAttracted && !this.hasNudged) {
       this.nudgeTimer = 0
       this.hasNudged = true
     }
@@ -62,11 +65,9 @@ export class XPOrb {
     if (this.nudgeTimer >= 0) {
       this.nudgeTimer += delta
       if (this.nudgeTimer < NUDGE_DURATION) {
-        // Push away from player
         this.x -= (dx / dist) * NUDGE_SPEED * dt
         this.y -= (dy / dist) * NUDGE_SPEED * dt
       } else {
-        // Nudge done — lock on and pull forever
         this.nudgeTimer = -1
         this.lockOn = true
         this.attracted = true
@@ -74,6 +75,17 @@ export class XPOrb {
     } else if (this.attracted) {
       this.x += (dx / dist) * ATTRACT_SPEED * dt
       this.y += (dy / dist) * ATTRACT_SPEED * dt
+    }
+
+    // Spawn pop-in: Back.Out easing from 0→1 over SPAWN_ANIM_MS, computed in update
+    // so it isn't overwritten by the setScale call below.
+    let spawnScale = 1
+    let spawnAlpha = 1
+    if (this.time < SPAWN_ANIM_MS) {
+      const t = this.time / SPAWN_ANIM_MS
+      const c1 = 1.70158, c3 = c1 + 1
+      spawnScale = Math.max(0, 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2))
+      spawnAlpha = t
     }
 
     const pulse = 1 + 0.15 * Math.sin(this.time * 0.005)
@@ -85,12 +97,13 @@ export class XPOrb {
     )
 
     this.graphic.setPosition(this.x, this.y)
-    this.graphic.setScale(this.attracted ? pulse * 1.15 : pulse)
+    this.graphic.setScale((this.attracted ? pulse * 1.15 : pulse) * spawnScale)
+    this.graphic.setAlpha(spawnAlpha)
     this.graphic.rotation += 0.035 * (delta / 16)
 
     this.glow.setPosition(this.x, this.y)
-    this.glow.setScale(glowScale)
-    this.glow.setAlpha(glowAlpha)
+    this.glow.setScale(glowScale * spawnScale)
+    this.glow.setAlpha(glowAlpha * spawnAlpha)
 
     return 0
   }

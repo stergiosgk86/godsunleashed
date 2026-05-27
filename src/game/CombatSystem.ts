@@ -40,7 +40,8 @@ const POTION_HEAL = 25
 const POTION_MAX = 3
 const POTION_SPAWN_MIN = 180
 const POTION_SPAWN_MAX = 320
-const DIVINE_COOLDOWN_MS = 10000
+const DIVINE_ACTIVE_MS  = 3000
+const DIVINE_COOLDOWN_MS = 9000
 
 interface FlamePool {
   x: number; y: number
@@ -87,8 +88,8 @@ export class CombatSystem {
   private axeDir = 1
   // Flame Trail
   private flamePools: FlamePool[] = []
-  private lastFlameX = -1
-  private lastFlameY = -1
+  private lastFlameX = NaN
+  private lastFlameY = NaN
   private flameTime = 0
   // Blood Nova
   private bloodNovaTimer = 0
@@ -279,7 +280,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, divineShieldActive, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra } = getValidatedCombatState()
+    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -705,7 +706,7 @@ export class CombatSystem {
 
     // === Flame Trail ===
     if (flameTrail) {
-      if (this.lastFlameX < 0) { this.lastFlameX = playerX; this.lastFlameY = playerY }
+      if (isNaN(this.lastFlameX)) { this.lastFlameX = playerX; this.lastFlameY = playerY }
       const fdx = playerX - this.lastFlameX
       const fdy = playerY - this.lastFlameY
       if (fdx * fdx + fdy * fdy >= FLAME_SPAWN_DIST * FLAME_SPAWN_DIST) {
@@ -798,7 +799,7 @@ export class CombatSystem {
       }
     }
 
-    // === Divine Shield ===
+    // === Divine Shield (VS Laurel-style: timed i-frame window) ===
     this.divineGraphic.clear()
     if (divineShield) {
       if (!this.divineInitialized) {
@@ -809,14 +810,15 @@ export class CombatSystem {
       }
 
       this.divineAngle += delta * 0.002
+      this.divineTimer += delta
 
       if (this.divinePhase === 'active') {
-        // Shield was broken by a hit (store flipped divineShieldActive to false)
-        if (!divineShieldActive) {
-          this.divinePhase = 'cooldown'
+        if (this.divineTimer >= DIVINE_ACTIVE_MS) {
           this.divineTimer = 0
+          this.divinePhase = 'cooldown'
+          setDivineShield(false)
         } else {
-          // Active: stays up indefinitely until hit
+          // Active window: pulsing golden ring
           const pulse = 0.8 + 0.2 * Math.sin(this.divineAngle * 1.5)
           const R = 38 * pulse
           this.divineGraphic.fillStyle(0xffee88, 0.12 * pulse)
@@ -842,7 +844,6 @@ export class CombatSystem {
         }
       } else {
         // Cooldown: recharge progress ring
-        this.divineTimer += delta
         if (this.divineTimer >= DIVINE_COOLDOWN_MS) {
           this.divineTimer = 0
           this.divinePhase = 'active'
@@ -1113,9 +1114,12 @@ export class CombatSystem {
     const luckRank = useProfileStore.getState().upgrades.luck
     const coinDropChance = 0.02 + luckRank * 0.01
 
+    const xpDropChance = 0.5 + luckRank * 0.05
     const sa = Math.random() * Math.PI * 2
     const sr = Math.random() * 20
-    this.orbs.push(new XPOrb(this.scene, x + Math.cos(sa) * sr, y + Math.sin(sa) * sr, xpValue))
+    if (isBoss || Math.random() < xpDropChance) {
+      this.orbs.push(new XPOrb(this.scene, x + Math.cos(sa) * sr, y + Math.sin(sa) * sr, xpValue))
+    }
     if (isBoss) {
       const count = 4 + Math.floor(Math.random() * 5)
       for (let i = 0; i < count; i++) {

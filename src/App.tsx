@@ -43,8 +43,16 @@ function parseJwt(token: string): { userId: number; username: string } {
 function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Pausing via Esc is handled inside MainScene (Phaser keyboard).
-  // Resuming via Esc is handled in PauseMenu (window listener, works while Phaser scene is paused).
+  // ESC handler lives here so it's active immediately on mount, before Phaser finishes loading.
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const gs = useGameStore.getState()
+      if (!gs.isDead && !gs.isWon && !gs.isLevelUpPending) gs.togglePause()
+    }
+    window.addEventListener('keydown', onEsc, { capture: true })
+    return () => window.removeEventListener('keydown', onEsc, { capture: true })
+  }, [])
 
   useEffect(() => {
     const config: Phaser.Types.Core.GameConfig = {

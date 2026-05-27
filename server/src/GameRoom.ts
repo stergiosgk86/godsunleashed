@@ -35,9 +35,25 @@ for (const [family, ids] of Object.entries(WEAPON_FAMILIES)) {
   for (const id of ids) UPGRADE_FAMILY[id] = family
 }
 
-// Mirrors client xpNeeded(level) in gameStore.ts
+const BASE_WEAPONS = new Set<string>([
+  'wand', 'aura', 'orbital', 'boomerang', 'flameTrail',
+  'bloodNova', 'lightning', 'axe', 'equinox', 'solstice',
+])
+const WEAPON_CAP = 6
+
+function countOwnedWeapons(u: PlayerUpgrades): number {
+  return [
+    u.wand, u.aura, u.orbital > 0, u.boomerang, u.flameTrail,
+    u.bloodNova, u.lightning, u.axe, u.equinox, u.solstice,
+  ].filter(Boolean).length
+}
+
+// Mirrors client xpNeeded(level) in gameStore.ts — L1=30, L2=55, L3=80 (+25/level)
 function xpNeeded(level: number): number {
-  return Math.floor(level * (level + 4) * 2)
+  const base = 30 + (level - 1) * 25
+  if (level === 20) return base + 600
+  if (level === 40) return base + 2400
+  return base
 }
 
 interface PlayerUpgrades {
@@ -94,30 +110,12 @@ function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
   return {}
 }
 
-function upgradeWeight(id: UpgradeId, u: PlayerUpgrades): number {
-  if ((id === 'multiShot' || id === 'piercing') && u.wand) return 3
-  if ((id === 'auraTick'  || id === 'auraRange') && u.aura) return 3
-  if ((id === 'lightningTargets' || id === 'lightningCooldown') && u.lightning) return 3
-  if (id === 'bloodNovaCD' && u.bloodNova) return 3
-  if ((id === 'dualGunDamage' || id === 'dualGunSpeed' || id === 'dualGunExtra') && (u.equinox || u.solstice)) return 3
-  if (id === 'orbital' && u.orbital > 0) return 2
-  if ((id === 'orbSpeed' || id === 'orbPower' || id === 'orbRange') && u.orbital > 0) return 3
-  if (id === 'might' || id === 'dashCooldown' || id === 'dashDistance') return 2
-  return 1
-}
-
-function weightedPickOne(pool: Array<{ id: string; weight: number }>): number {
-  const total = pool.reduce((s, x) => s + x.weight, 0)
-  let r = Math.random() * total
-  for (let i = 0; i < pool.length; i++) {
-    r -= pool[i].weight
-    if (r <= 0) return i
-  }
-  return pool.length - 1
-}
-
 function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
+  const atWeaponCap = countOwnedWeapons(u) >= WEAPON_CAP
+
   const eligible = ALL_UPGRADE_IDS.filter(id => {
+    // At weapon cap, stop offering new base weapons — only upgrades for owned weapons remain
+    if (atWeaponCap && BASE_WEAPONS.has(id)) return false
     if (isMelee && (id === 'multiShot' || id === 'piercing')) return false
     if (id === 'wand'        && u.wand)              return false
     if (id === 'multiShot'   && !u.wand)             return false
@@ -163,20 +161,20 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     return true
   })
 
-  // Weighted draw without replacement — VS-style: at most one upgrade per weapon family per offer
-  const remaining = eligible.map(id => ({ id: id as string, weight: upgradeWeight(id, u) }))
+  // Uniform random draw without replacement — VS-style: at most one upgrade per weapon family per offer
+  const remaining = [...eligible]
   const choices: string[] = []
   for (let pick = 0; pick < 3 && remaining.length > 0; pick++) {
-    const idx = weightedPickOne(remaining)
+    const idx = Math.floor(Math.random() * remaining.length)
     const chosen = remaining[idx]
-    choices.push(chosen.id)
+    choices.push(chosen)
     remaining.splice(idx, 1)
     // Remove siblings from the same weapon family so they can't appear in this offer
-    const family = UPGRADE_FAMILY[chosen.id]
+    const family = UPGRADE_FAMILY[chosen]
     if (family) {
       const siblings = new Set(WEAPON_FAMILIES[family])
       for (let j = remaining.length - 1; j >= 0; j--) {
-        if (siblings.has(remaining[j].id)) remaining.splice(j, 1)
+        if (siblings.has(remaining[j])) remaining.splice(j, 1)
       }
     }
   }
@@ -580,7 +578,7 @@ export class GameRoom {
     try {
       const alivePlayers = this.players.filter(p => !p.dead)
       const src = alivePlayers.length > 0 ? alivePlayers : this.players
-      const positions = src.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH, aura: p.aura, auraRange: p.upgrades.auraRange }))
+      const positions = src.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH, aura: p.aura, auraRange: p.upgrades.auraRange, level: p.level }))
       this.spawner.update(positions, TICK_MS)
 
       for (const e of this.spawner.all) {

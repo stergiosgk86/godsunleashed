@@ -2,6 +2,33 @@ import { useEffect, useState } from 'react'
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
 import { runData, RUN_DURATION } from '../game/runData'
 
+function WaveLabel() {
+  const [label, setLabel] = useState('')
+  const [enemies, setEnemies] = useState(0)
+  useEffect(() => {
+    let id: number
+    const tick = () => { setLabel(runData.waveLabel); setEnemies(runData.enemyCount); id = requestAnimationFrame(tick) }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [])
+  if (!label) return null
+  const isBoss = label.startsWith('⚠') || label.startsWith('☠')
+  const isSurge = label.startsWith('⚡')
+  const color = isBoss ? '#ff6633' : isSurge ? '#ffcc00' : '#aabbff'
+  return (
+    <div style={{
+      position: 'absolute', top: window.innerWidth <= 768 ? 8 : 16, left: window.innerWidth <= 768 ? 60 : 16,
+      color, fontSize: 11, fontFamily: 'monospace',
+      background: '#05050faa', border: `1px solid ${isBoss ? '#552200' : isSurge ? '#554400' : '#1a1a33'}`,
+      borderRadius: 4, padding: '3px 8px',
+      pointerEvents: 'none',
+      textShadow: isBoss ? '0 0 8px #ff4400' : isSurge ? '0 0 8px #ffaa00' : 'none',
+    }}>
+      {label}  ·  {enemies} enemies
+    </div>
+  )
+}
+
 function fmt(ms: number): string {
   const s = Math.floor(ms / 1000)
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
@@ -230,11 +257,13 @@ export function HUD() {
   const xpNeeded = useGameStore(s => s.xpNeeded)
 
   const hpPct = (hp / maxHp) * 100
-  const xpPct = (xp / xpNeeded) * 100
+  const xpClamped = Math.min(xp, xpNeeded)
+  const xpPct = (xpClamped / xpNeeded) * 100
 
   return (
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
       <PauseButton />
+      <WaveLabel />
       <TimerDisplay />
       <LeftPanel />
 
@@ -259,7 +288,7 @@ export function HUD() {
         </div>
         <div>
           <div style={{ color: '#00ff88', fontSize: 13, fontFamily: 'monospace', marginBottom: 4, textAlign: 'center' }}>
-            XP {xp} / {xpNeeded}
+            XP {xpClamped} / {xpNeeded}
           </div>
           <div style={{ height: 10, background: '#002211', borderRadius: 5, overflow: 'hidden', border: '1px solid #005533' }}>
             <div style={{
