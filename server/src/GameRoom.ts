@@ -239,7 +239,10 @@ export class GameRoom {
       kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
     if (this.isSolo && resumeElapsed > 0) this.resumeElapsed = resumeElapsed
-    if (stage !== 1) this.spawner.disabled = true
+    if (stage !== 1) {
+      this.spawner.disabled = true
+      this.spawner.corridorHalfY = 380
+    }
     this.broadcastWaiting()
     if (this.players.length >= MAX_PLAYERS || this.isSolo) {
       this.startGame()

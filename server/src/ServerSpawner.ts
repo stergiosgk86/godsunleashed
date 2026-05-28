@@ -85,6 +85,7 @@ interface ActiveSurge {
 
 export class ServerSpawner {
   disabled = false  // set true for stages that manage their own enemies
+  corridorHalfY: number | null = null  // non-null in stage 2: clamps enemy Y to ±this value
   private enemies: ServerEnemy[] = []
   private elapsed   = 0
   private laneTimers: number[] = LANE_DEFS.map(l => l.intervalStart)
@@ -218,6 +219,10 @@ export class ServerSpawner {
       if (!e.active) continue
       const nearest = this.nearestPlayerTo(e.x, e.y, players)
       e.update(nearest.x, nearest.y, delta, speedMult)
+      if (this.corridorHalfY !== null) {
+        if (e.y < -this.corridorHalfY) e.y = -this.corridorHalfY
+        else if (e.y > this.corridorHalfY) e.y = this.corridorHalfY
+      }
     }
 
     // ── Boss death detection ──────────────────────────────────────────────────
