@@ -46,7 +46,7 @@ const DIVINE_COOLDOWN_MS = 9000
 interface FlamePool {
   x: number; y: number
   timer: number; tickTimer: number
-  graphic: Phaser.GameObjects.Graphics
+  emitter: Phaser.GameObjects.Particles.ParticleEmitter
 }
 
 export const VAMPIRIC_PERCENT = 0.0025  // 0.25% lifesteal per hit
@@ -90,7 +90,6 @@ export class CombatSystem {
   private flamePools: FlamePool[] = []
   private lastFlameX = NaN
   private lastFlameY = NaN
-  private flameTime = 0
   // Blood Nova
   private bloodNovaTimer = 0
   public novaPaused = false
@@ -623,13 +622,13 @@ export class CombatSystem {
     // Spirit Orbs
     this.orbGraphic.clear()
     if (orbital > 0) {
-      const ORBIT_RADIUS = 75 + orbRange * 20
+      const ORBIT_RADIUS = 100 + orbRange * 30
       const ORB_RADIUS = 13 + orbRange * 2
       const ORB_HIT_RADIUS = 20 + orbRange * 3
       const HIT_COOLDOWN = 500
       const orbDamage = Math.max(1, Math.floor(weaponBaseDamage(level) * might * 0.65 * (1 + orbPower * 0.2)))
 
-      this.orbAngle += delta * 0.0018 * (1 + orbSpeed * 0.25)
+      this.orbAngle += delta * 0.0024 * (1 + orbSpeed * 0.35)
 
       // Smooth the orbit center so fast player movement doesn't distort apparent rotation speed
       if (!this.orbCenterInit) { this.orbCenterX = playerX; this.orbCenterY = playerY; this.orbCenterInit = true }
@@ -726,12 +725,10 @@ export class CombatSystem {
         this.lastFlameX = playerX
         this.lastFlameY = playerY
       }
-      this.flameTime += delta
       const flameDmg = Math.max(1, Math.floor(weaponBaseDamage(level) * might * 0.4))
       for (const f of this.flamePools) {
         f.timer -= delta
         f.tickTimer -= delta
-        f.graphic.setAlpha(0.7 + 0.2 * Math.sin(this.flameTime * 0.007 + f.x * 0.05))
         if (f.tickTimer <= 0) {
           f.tickTimer += FLAME_TICK
           for (const e of enemies) {
@@ -743,7 +740,7 @@ export class CombatSystem {
             }
           }
         }
-        if (f.timer <= 0) f.graphic.destroy()
+        if (f.timer <= 0) f.emitter.destroy()
       }
       this.flamePools = this.flamePools.filter(f => f.timer > 0)
     }
@@ -879,15 +876,23 @@ export class CombatSystem {
   }
 
   private spawnFlame(x: number, y: number) {
-    const g = this.scene.add.graphics().setDepth(1.5).setPosition(x, y)
-    const vr = 30
-    g.fillStyle(0xff3300, 0.9)
-    g.fillCircle(0, 0, vr)
-    g.fillStyle(0xff6600, 0.85)
-    g.fillCircle(0, 0, vr * 0.65)
-    g.fillStyle(0xffaa00, 0.8)
-    g.fillCircle(0, 0, vr * 0.35)
-    this.flamePools.push({ x, y, timer: FLAME_DURATION, tickTimer: 0, graphic: g })
+    const emitter = this.scene.add.particles(x, y, 'flame_particle', {
+      color: [0xff8844, 0xff4500, 0xcc2200, 0x881100],
+      colorEase: 'quad.in',
+      lifespan: { min: 320, max: 580 },
+      speedX: { min: -10, max: 10 },
+      speedY: { min: -120, max: -65 },
+      scaleX: { start: 0.65, end: 0.05 },
+      scaleY: { start: 1.5, end: 0 },
+      alpha: { start: 0.92, end: 0 },
+      quantity: 6,
+      frequency: 38,
+      blendMode: 'ADD',
+      duration: FLAME_DURATION,
+      emitZone: { type: 'random', source: new Phaser.Geom.Ellipse(0, 0, 46, 14) } as any,
+    })
+    emitter.setDepth(1.5)
+    this.flamePools.push({ x, y, timer: FLAME_DURATION + 650, tickTimer: 0, emitter })
   }
 
   private fireLightningBolt(x: number, y: number) {

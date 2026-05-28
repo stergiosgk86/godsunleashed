@@ -243,5 +243,17 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('health_potion_glow', 40, 40)
   g.clear()
 
+  // Flame particle (16x16) — soft white radial for particle emitter tinting
+  g.fillStyle(0xffffff, 0.06)
+  g.fillCircle(8, 8, 8)
+  g.fillStyle(0xffffff, 0.18)
+  g.fillCircle(8, 8, 6)
+  g.fillStyle(0xffffff, 0.45)
+  g.fillCircle(8, 8, 4)
+  g.fillStyle(0xffffff, 0.9)
+  g.fillCircle(8, 8, 2)
+  g.generateTexture('flame_particle', 16, 16)
+  g.clear()
+
   g.destroy()
 }
