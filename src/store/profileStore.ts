@@ -30,6 +30,7 @@ interface ProfileStore {
   coins: number
   upgrades: MetaUpgrades
   unlockedCharacters: string[]
+  maxStage1Level: number
   loaded: boolean
   fetchProfile: () => Promise<void>
   // Optimistic local-only update — server credit happens via POST /api/runs
@@ -46,6 +47,7 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
   coins: 0,
   upgrades: emptyUpgrades(),
   unlockedCharacters: [],
+  maxStage1Level: 0,
   loaded: false,
 
   fetchProfile: async () => {
@@ -73,6 +75,7 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
         coins: data.coins ?? 0,
         upgrades: { ...emptyUpgrades(), ...(data.upgrades ?? {}) },
         unlockedCharacters: Array.isArray(data.unlocked_characters) ? data.unlocked_characters : [],
+        maxStage1Level: typeof data.max_stage1_level === 'number' ? data.max_stage1_level : 0,
         loaded: true,
       })
     } catch { /* network error — keep current state */ }
@@ -151,5 +154,5 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
     } catch { return 'Network error' }
   },
 
-  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), unlockedCharacters: [], loaded: false }),
+  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), unlockedCharacters: [], maxStage1Level: 0, loaded: false }),
 }))

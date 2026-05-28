@@ -66,7 +66,7 @@ function xpToReachLevel(level: number): number {
 
 apiRouter.get('/profile', readRateLimit, async (req: Request, res: Response) => {
   const result = await db.query(
-    `SELECT p.coins, p.upgrades, p.key_bindings, p.unlocked_characters, u.role
+    `SELECT p.coins, p.upgrades, p.key_bindings, p.unlocked_characters, p.max_stage1_level, u.role
      FROM profiles p JOIN users u ON u.id = p.user_id
      WHERE p.user_id = $1`,
     [req.userId],
@@ -448,6 +448,7 @@ apiRouter.post('/runs', writeRateLimit, async (req: Request, res: Response) => {
   const {
     runToken, score, kills, timeSurvived, coins, won, multiplayer,
     bossKills, level, damageDealt, weaponCount, tookDamage, finalHp, maxHp,
+    stage,
   } = req.body ?? {}
 
   if (!isFiniteNumber(score) || score < 0) {
@@ -518,32 +519,45 @@ apiRouter.post('/runs', writeRateLimit, async (req: Request, res: Response) => {
 
   const earned: string[] = []
   // Survival
-  if (safeTime    >= 1  * 60 * 1000) earned.push('initiate')
-  if (safeTime    >= 5  * 60 * 1000) earned.push('survivor_5')
-  if (safeTime    >= 15 * 60 * 1000) earned.push('survivor_15')
-  if (safeTime    >= 30 * 60 * 1000) earned.push('veteran')
+  if (safeTime      >= 1  * 60 * 1000) earned.push('initiate')
+  if (safeTime      >= 3  * 60 * 1000) earned.push('survivor_3')
+  if (safeTime      >= 5  * 60 * 1000) earned.push('survivor_5')
+  if (safeTime      >= 10 * 60 * 1000) earned.push('survivor_10')
+  if (safeTime      >= 15 * 60 * 1000) earned.push('survivor_15')
+  if (safeTime      >= 30 * 60 * 1000) earned.push('veteran')
   // Kills
-  if (safeKills   >= 100)            earned.push('hunter')
-  if (safeKills   >= 250)            earned.push('veteran_hunter')
-  if (safeKills   >= 500)            earned.push('slaughterer')
-  if (safeKills   >= 1000)           earned.push('annihilator')
+  if (safeKills     >= 1)              earned.push('first_blood')
+  if (safeKills     >= 50)             earned.push('bloodthirsty')
+  if (safeKills     >= 100)            earned.push('hunter')
+  if (safeKills     >= 250)            earned.push('veteran_hunter')
+  if (safeKills     >= 500)            earned.push('slaughterer')
+  if (safeKills     >= 1000)           earned.push('annihilator')
   // Bosses
-  if (safeBossKills >= 1)            earned.push('boss_slayer')
-  if (safeBossKills >= 3)            earned.push('boss_hunter')
+  if (safeBossKills >= 1)              earned.push('boss_slayer')
+  if (safeBossKills >= 3)              earned.push('boss_hunter')
+  if (safeBossKills >= 5)              earned.push('boss_bane')
   // Damage
-  if (safeDamage  >= 10_000)         earned.push('destroyer')
-  if (safeDamage  >= 100_000)        earned.push('berserker')
-  if (safeDamage  >= 1_000_000)      earned.push('juggernaut')
+  if (safeDamage    >= 1_000)          earned.push('damage_1k')
+  if (safeDamage    >= 10_000)         earned.push('destroyer')
+  if (safeDamage    >= 50_000)         earned.push('damage_50k')
+  if (safeDamage    >= 100_000)        earned.push('berserker')
+  if (safeDamage    >= 500_000)        earned.push('damage_500k')
+  if (safeDamage    >= 1_000_000)      earned.push('juggernaut')
   // Coins
-  if (safeCoins   >= 100)            earned.push('wealthy')
-  if (safeCoins   >= 500)            earned.push('coin_hoarder')
+  if (safeCoins     >= 50)             earned.push('coin_collector')
+  if (safeCoins     >= 100)            earned.push('wealthy')
+  if (safeCoins     >= 250)            earned.push('coin_250')
+  if (safeCoins     >= 500)            earned.push('coin_hoarder')
   // Leveling
-  if (safeLevel   >= 5)              earned.push('quick_learner')
-  if (safeLevel   >= 10)             earned.push('ascendant')
-  if (safeLevel   >= 20)             earned.push('transcendent')
+  if (safeLevel     >= 3)              earned.push('level_3')
+  if (safeLevel     >= 5)              earned.push('quick_learner')
+  if (safeLevel     >= 10)             earned.push('ascendant')
+  if (safeLevel     >= 20)             earned.push('transcendent')
+  if (safeLevel     >= 30)             earned.push('legendary')
   // Weapons
-  if (safeWeapons >= 5)              earned.push('arsenal')
-  if (safeWeapons >= 8)              earned.push('all_weapons')
+  if (safeWeapons   >= 3)              earned.push('weapon_hoarder')
+  if (safeWeapons   >= 5)              earned.push('arsenal')
+  if (safeWeapons   >= 8)              earned.push('all_weapons')
   // Win conditions
   if (safeWon) {
     earned.push('god_slayer')
@@ -571,10 +585,16 @@ apiRouter.post('/runs', writeRateLimit, async (req: Request, res: Response) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [req.userId, user.rows[0].username, safeScore, safeKills, safeTime, safeCoins, safeWon, safeMulti],
     ),
-    db.query(
-      `UPDATE profiles SET coins = LEAST(coins + $1, $2), active_run_token = NULL, updated_at = NOW() WHERE user_id = $3`,
-      [safeCoins, MAX_PROFILE_COINS, req.userId],
-    ),
+    stage === 1
+      ? db.query(
+          `UPDATE profiles SET coins = LEAST(coins + $1, $2), active_run_token = NULL,
+           max_stage1_level = GREATEST(max_stage1_level, $3), updated_at = NOW() WHERE user_id = $4`,
+          [safeCoins, MAX_PROFILE_COINS, safeLevel, req.userId],
+        )
+      : db.query(
+          `UPDATE profiles SET coins = LEAST(coins + $1, $2), active_run_token = NULL, updated_at = NOW() WHERE user_id = $3`,
+          [safeCoins, MAX_PROFILE_COINS, req.userId],
+        ),
     Promise.all(achievementInserts),
   ])
 

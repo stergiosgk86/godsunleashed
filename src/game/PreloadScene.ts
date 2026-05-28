@@ -61,6 +61,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('ground_tiles', SPRITE_URLS.grassTileset)
     this.load.image('tree', SPRITE_URLS.treeSprite)
     this.load.spritesheet('rock', SPRITE_URLS.rockSprite, { frameWidth: 512, frameHeight: 512 })
+    this.load.image('floor_stage2', SPRITE_URLS.floorStage2)
+    this.load.image('wall_stage2', SPRITE_URLS.wallStage2)
   }
 
   create() {

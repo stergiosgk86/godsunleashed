@@ -14,10 +14,11 @@ import { useAuthStore } from '../store/authStore'
 import { useCharacterStore } from '../store/characterStore'
 import { ALL_CHARACTERS, CHARACTER_DEFS } from '../game/characters'
 import { SPRITE_URLS } from '../game/assets'
-import { ACHIEVEMENTS, ACHIEVEMENT_MAP } from '../game/achievements'
+import { ACHIEVEMENTS, ACHIEVEMENT_MAP, ACHIEVEMENT_CATEGORIES } from '../game/achievements'
 import { AdminPlayersView } from './AdminPlayersView'
 import { ControlsView } from './ControlsView'
 import { SoundsView } from './SoundsView'
+import { useStageStore } from '../store/stageStore'
 
 const CHAR_SPRITE_URL: Record<string, string> = {
   player:          SPRITE_URLS.player,
@@ -609,49 +610,108 @@ function AchievementsView({ onBack }: { onBack: () => void }) {
   return (
     <>
       <ViewHeader color="#8888ff">ACHIEVEMENTS</ViewHeader>
+
       <div style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '3px 12px', borderRadius: 20,
-        background: 'rgba(60,60,120,0.25)', border: '1px solid rgba(80,80,160,0.3)',
-        color: '#6666aa', fontFamily: 'monospace', fontSize: 11, letterSpacing: 2,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
       }}>
-        {unlockedCount} / {ACHIEVEMENTS.length} UNLOCKED
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '3px 12px', borderRadius: 20,
+          background: 'rgba(60,60,120,0.25)', border: '1px solid rgba(80,80,160,0.3)',
+          color: '#6666aa', fontFamily: 'monospace', fontSize: 11, letterSpacing: 2,
+        }}>
+          {unlockedCount} / {ACHIEVEMENTS.length} UNLOCKED
+        </div>
+        <div style={{
+          height: 5, flex: 1, marginLeft: 12, borderRadius: 4,
+          background: 'rgba(40,40,80,0.5)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%', borderRadius: 4,
+            width: `${Math.round((unlockedCount / ACHIEVEMENTS.length) * 100)}%`,
+            background: 'linear-gradient(90deg, #4444aa, #8866ff)',
+            transition: 'width 0.4s ease',
+          }} />
+        </div>
       </div>
 
       {loading ? (
         <div style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>Loading…</div>
       ) : (
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5, flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          {ACHIEVEMENTS.map(a => {
-            const done = unlocked.has(a.id)
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, overflowY: 'auto' }}>
+          {ACHIEVEMENT_CATEGORIES.map(cat => {
+            const catAchs = cat.ids.map(id => ACHIEVEMENT_MAP[id]).filter(Boolean)
+            const catUnlocked = catAchs.filter(a => unlocked.has(a.id)).length
+            const allDone = catUnlocked === catAchs.length
             return (
-              <div key={a.id} style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '9px 13px',
-                background: done ? 'rgba(60,60,140,0.2)' : 'rgba(255,255,255,0.02)',
-                border: `1px solid ${done ? 'rgba(80,80,180,0.3)' : 'rgba(40,40,80,0.5)'}`,
-                borderRadius: 10,
-                opacity: done ? 1 : 0.42,
-                transition: 'all 0.15s ease',
-              }}>
-                <span style={{ fontSize: 18, width: 24, textAlign: 'center', filter: done ? 'none' : 'grayscale(1)' }}>
-                  {a.icon}
-                </span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: done ? '#ccccff' : '#444455', fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold' }}>
-                    {a.name}
-                  </div>
-                  <div style={{ color: done ? '#6677aa' : '#2a2a40', fontFamily: 'monospace', fontSize: 11, marginTop: 1 }}>
-                    {a.description}
-                  </div>
-                </div>
-                {done && (
+              <div key={cat.label} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {/* Category header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                   <span style={{
-                    color: '#33aa55', fontSize: 13, fontWeight: 'bold',
-                    background: 'rgba(40,120,60,0.2)', border: '1px solid rgba(60,160,80,0.3)',
-                    borderRadius: 6, padding: '2px 6px',
-                  }}>✓</span>
-                )}
+                    color: cat.color, fontFamily: 'monospace', fontSize: 10,
+                    fontWeight: 'bold', letterSpacing: 3, flexShrink: 0,
+                  }}>
+                    {cat.label}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: `linear-gradient(to right, ${cat.color}44, transparent)` }} />
+                  <span style={{
+                    fontFamily: 'monospace', fontSize: 10, letterSpacing: 1, flexShrink: 0,
+                    color: allDone ? cat.color : '#44445a',
+                    background: allDone ? `${cat.color}18` : 'rgba(20,20,40,0.4)',
+                    border: `1px solid ${allDone ? cat.color + '44' : 'rgba(40,40,80,0.4)'}`,
+                    borderRadius: 10, padding: '1px 8px',
+                  }}>
+                    {catUnlocked}/{catAchs.length}
+                  </span>
+                </div>
+
+                {/* Achievement rows */}
+                {catAchs.map(a => {
+                  const done = unlocked.has(a.id)
+                  return (
+                    <div key={a.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '7px 11px',
+                      background: done ? `${cat.color}0d` : 'rgba(255,255,255,0.015)',
+                      border: `1px solid ${done ? cat.color + '30' : 'rgba(35,35,65,0.6)'}`,
+                      borderLeft: `2px solid ${done ? cat.color + '88' : 'rgba(50,50,90,0.4)'}`,
+                      borderRadius: 8,
+                      opacity: done ? 1 : 0.38,
+                      transition: 'all 0.15s ease',
+                    }}>
+                      <span style={{
+                        fontSize: 15, width: 20, textAlign: 'center', flexShrink: 0,
+                        color: done ? cat.color : '#555566',
+                        filter: done ? `drop-shadow(0 0 4px ${cat.color}66)` : 'none',
+                      }}>
+                        {a.icon}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          color: done ? '#ccccff' : '#383850',
+                          fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold', letterSpacing: 0.5,
+                        }}>
+                          {a.name}
+                        </div>
+                        <div style={{
+                          color: done ? '#555577' : '#222238',
+                          fontFamily: 'monospace', fontSize: 10, marginTop: 1,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>
+                          {a.description}
+                        </div>
+                      </div>
+                      {done && (
+                        <span style={{
+                          color: '#33aa55', fontSize: 11, fontWeight: 'bold', flexShrink: 0,
+                          background: 'rgba(40,120,60,0.2)', border: '1px solid rgba(60,160,80,0.3)',
+                          borderRadius: 6, padding: '1px 5px',
+                        }}>✓</span>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
@@ -707,10 +767,11 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   onMultiplayer: () => void
   onLogout: () => void
 }) {
-  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades, unlockedCharacters, unlockCharacter } = useProfileStore()
+  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades, unlockedCharacters, unlockCharacter, maxStage1Level } = useProfileStore()
   const username = useAuthStore(s => s.username)
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
+  const { setStage } = useStageStore()
   const { selectedCharacter: _selectedCharacter, setCharacter } = useCharacterStore()
   const unlockCostOfSelected = CHARACTER_UNLOCK_COSTS[_selectedCharacter]
   const isSelectedLocked = (unlockCostOfSelected !== undefined || CHARACTER_ACHIEVEMENT_REQUIRED[_selectedCharacter] !== undefined) && !unlockedCharacters.includes(_selectedCharacter)
@@ -859,7 +920,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
 
             {/* Stage 1 — available */}
             <div
-              onClick={onPlay}
+              onClick={() => { setStage(1); onPlay() }}
               style={{
                 position: 'relative', overflow: 'hidden',
                 background: 'linear-gradient(135deg, rgba(15,15,60,0.95) 0%, rgba(30,10,70,0.95) 100%)',
@@ -895,9 +956,112 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               </div>
             </div>
 
+            {/* Stage 2 — locked until level 25 in Stage 1 */}
+            {(() => {
+              const stage2Unlocked = maxStage1Level >= 25
+              const progress = Math.min(maxStage1Level, 25)
+              return stage2Unlocked ? (
+                <div
+                  onClick={() => { setStage(2); onPlay() }}
+                  style={{
+                    position: 'relative', overflow: 'hidden',
+                    background: 'linear-gradient(135deg, rgba(40,10,10,0.95) 0%, rgba(70,15,15,0.95) 100%)',
+                    border: '1px solid rgba(160,40,40,0.6)',
+                    borderLeft: '4px solid #cc3322',
+                    borderRadius: 12, padding: '18px 20px',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(150,30,20,0.3)',
+                    transition: 'all 0.18s ease',
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(60,15,15,0.98) 0%, rgba(90,20,20,0.98) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 32px rgba(200,50,30,0.45)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(40,10,10,0.95) 0%, rgba(70,15,15,0.95) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 20px rgba(150,30,20,0.3)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#ffffff', letterSpacing: 2 }}>
+                      STAGE 2
+                    </div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                      color: '#ee6644', background: 'rgba(80,20,10,0.5)',
+                      border: '1px solid rgba(160,40,20,0.5)', borderRadius: 20,
+                      padding: '2px 10px',
+                    }}>
+                      AVAILABLE
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#cc8877', lineHeight: 1.5 }}>
+                    Underworld Depths — Fight through the dark corridor
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#cc3322', marginTop: 4, letterSpacing: 1 }}>
+                    ▶ CLICK TO START
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  background: 'rgba(10,10,22,0.7)',
+                  border: '1px solid rgba(80,20,20,0.4)',
+                  borderLeft: '4px solid rgba(100,30,20,0.5)',
+                  borderRadius: 12, padding: '18px 20px',
+                  cursor: 'default',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#553333', letterSpacing: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      🔒 STAGE 2
+                    </div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                      color: '#774444', background: 'rgba(40,10,10,0.6)',
+                      border: '1px solid rgba(80,20,20,0.4)', borderRadius: 20,
+                      padding: '2px 10px',
+                    }}>
+                      LOCKED
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#664444', lineHeight: 1.5 }}>
+                    Underworld Depths — Fight through the dark corridor
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#885544', letterSpacing: 1 }}>
+                    Reach <span style={{ color: '#cc6644', fontWeight: 'bold' }}>Level 25</span> in Stage 1 to unlock
+                  </div>
+                  {/* Progress bar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(40,20,20,0.6)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2,
+                        width: `${(progress / 25) * 100}%`,
+                        background: 'linear-gradient(90deg, #661111, #cc3322)',
+                        transition: 'width 0.4s ease',
+                      }} />
+                    </div>
+                    <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#774444', flexShrink: 0 }}>
+                      Lv {progress} / 25
+                    </span>
+                  </div>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setStage(2); onPlay() }}
+                      style={{
+                        marginTop: 4, padding: '7px 0', width: '100%',
+                        fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 2,
+                        color: '#ffaa22', background: 'rgba(40,25,0,0.7)',
+                        border: '1px solid rgba(180,100,0,0.5)', borderRadius: 7, cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(60,35,0,0.9)'; e.currentTarget.style.color = '#ffcc44' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(40,25,0,0.7)'; e.currentTarget.style.color = '#ffaa22' }}
+                    >
+                      ⚡ ADMIN OVERRIDE
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
+
             {/* Coming soon stages */}
             {[
-              { num: 2, name: 'Underworld Depths' },
               { num: 3, name: 'Sea of Poseidon' },
               { num: 4, name: 'Forge of Hephaestus' },
             ].map(({ num, name }) => (

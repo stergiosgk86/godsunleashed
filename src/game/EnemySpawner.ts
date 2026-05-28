@@ -87,6 +87,8 @@ interface ActiveSurge {
 }
 
 export class EnemySpawner {
+  corridorHalfHeight = 0  // >0 enables corridor mode — restricts spawn Y to ±this value
+  disabled = false        // when true, suppresses all spawning (stage-specific enemies added later)
   private scene: Phaser.Scene
   private enemies: AnyEnemy[] = []
   private laneTimers: number[] = LANE_DEFS.map(l => l.intervalStart)
@@ -237,6 +239,8 @@ export class EnemySpawner {
   }
 
   update(playerX: number, playerY: number, delta: number) {
+    if (this.disabled) return
+
     // Update scale BEFORE spawning so enemies always use the current run's values,
     // not stale values carried over from a previous run in the same session.
     this.elapsed += delta
@@ -379,17 +383,26 @@ export class EnemySpawner {
     this.enemies = this.enemies.filter(e => e.active)
   }
 
+  private corridorY(yRange: number): number {
+    if (this.corridorHalfHeight <= 0) return (Math.random() * 2 - 1) * yRange
+    const limit = Math.min(yRange, this.corridorHalfHeight - 30)
+    return (Math.random() * 2 - 1) * limit
+  }
+
   private edgeSpawnPoint(playerX: number, playerY: number): { x: number; y: number } {
     const cam = this.scene.cameras.main
     const halfW = (cam.width / 2) / cam.zoom + SPAWN_MARGIN
     const halfH = (cam.height / 2) / cam.zoom + SPAWN_MARGIN
-    const edge = Math.floor(Math.random() * 4)
+    // In corridor mode only spawn from left/right edges
+    const edgeCount = this.corridorHalfHeight > 0 ? 2 : 4
+    const edgeChoice = Math.floor(Math.random() * edgeCount)
+    const edge = this.corridorHalfHeight > 0 ? (edgeChoice === 0 ? 2 : 3) : edgeChoice
     let x: number, y: number
     switch (edge) {
       case 0: x = playerX + (Math.random() * 2 - 1) * halfW; y = playerY - halfH; break
       case 1: x = playerX + (Math.random() * 2 - 1) * halfW; y = playerY + halfH; break
-      case 2: x = playerX - halfW; y = playerY + (Math.random() * 2 - 1) * halfH; break
-      default: x = playerX + halfW; y = playerY + (Math.random() * 2 - 1) * halfH; break
+      case 2: x = playerX - halfW; y = playerY + this.corridorY(halfH); break
+      default: x = playerX + halfW; y = playerY + this.corridorY(halfH); break
     }
     return { x, y }
   }
@@ -400,13 +413,17 @@ export class EnemySpawner {
     const cam = this.scene.cameras.main
     const halfW = (cam.width / 2) / cam.zoom + LANE_MARGIN
     const halfH = (cam.height / 2) / cam.zoom + LANE_MARGIN
-    const edge = fixedEdge ?? Math.floor(Math.random() * 4)
+    let edge = fixedEdge ?? Math.floor(Math.random() * 4)
+    // In corridor mode redirect top/bottom edges to left/right
+    if (this.corridorHalfHeight > 0 && (edge === 0 || edge === 1)) {
+      edge = Math.random() < 0.5 ? 2 : 3
+    }
     let x: number, y: number
     switch (edge) {
       case 0: x = playerX + (Math.random() * 2 - 1) * halfW; y = playerY - halfH; break
       case 1: x = playerX + (Math.random() * 2 - 1) * halfW; y = playerY + halfH; break
-      case 2: x = playerX - halfW; y = playerY + (Math.random() * 2 - 1) * halfH; break
-      default: x = playerX + halfW; y = playerY + (Math.random() * 2 - 1) * halfH; break
+      case 2: x = playerX - halfW; y = playerY + this.corridorY(halfH); break
+      default: x = playerX + halfW; y = playerY + this.corridorY(halfH); break
     }
     return { x, y }
   }
@@ -448,12 +465,15 @@ export class EnemySpawner {
     const cam = this.scene.cameras.main
     const halfW = (cam.width / 2) / cam.zoom + SPAWN_MARGIN
     const halfH = (cam.height / 2) / cam.zoom + SPAWN_MARGIN
-    const along = (Math.random() * 2 - 1) * (edge < 2 ? halfW : halfH)
-    switch (edge) {
+    // In corridor mode redirect top/bottom surges to left/right
+    let e = edge
+    if (this.corridorHalfHeight > 0 && (e === 0 || e === 1)) e = e === 0 ? 2 : 3
+    const along = (Math.random() * 2 - 1) * (e < 2 ? halfW : halfH)
+    switch (e) {
       case 0: return { x: playerX + along, y: playerY - halfH }
       case 1: return { x: playerX + along, y: playerY + halfH }
-      case 2: return { x: playerX - halfW, y: playerY + along }
-      default: return { x: playerX + halfW, y: playerY + along }
+      case 2: return { x: playerX - halfW, y: playerY + this.corridorY(halfH) }
+      default: return { x: playerX + halfW, y: playerY + this.corridorY(halfH) }
     }
   }
 

@@ -22,8 +22,11 @@ import { consumePendingRunRestore } from './pendingRunRestore'
 import { TouchJoystick } from './TouchJoystick'
 import { TouchDashButton } from './TouchDashButton'
 import { ChunkManager } from './ChunkManager'
+import { useStageStore } from '../store/stageStore'
+
 const SPAWN_X = 0
 const SPAWN_Y = 0
+const WALL_FRACTION = 0.25  // each wall band takes this fraction of screen height
 
 export class MainScene extends Phaser.Scene {
   private player!: Player
@@ -51,25 +54,35 @@ export class MainScene extends Phaser.Scene {
   private charType = ''
   private joystick!: TouchJoystick
   private dashButton: TouchDashButton | null = null
-  private chunkManager!: ChunkManager
+  private chunkManager: ChunkManager | null = null
+  private selectedStage = 1
+  private cameraProxy = { x: 0, y: 0 }
+  private wallTop: Phaser.GameObjects.TileSprite | null = null
+  private wallBottom: Phaser.GameObjects.TileSprite | null = null
 
   constructor() {
     super({ key: 'MainScene' })
   }
 
   create() {
-    // Effectively infinite physics bounds for the chunk-streamed world
-    this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
+    this.selectedStage = useStageStore.getState().selectedStage
+
     generateAssets(this)
     generatePropTextures(this)
 
-    // Large world-space TileSprite — same coordinate system as trees, no parallax drift
-    this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'ground_tiles')
-      .setOrigin(0.5, 0.5)
-      .setTileScale(0.1, 0.1)
-      .setDepth(-10)
+    if (this.selectedStage === 2) {
+      // Stage 2 background set up after zoom is established (later in create)
+    } else {
+      // Stage 1: open world
+      this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
 
-    this.chunkManager = new ChunkManager(this)
+      this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'ground_tiles')
+        .setOrigin(0.5, 0.5)
+        .setTileScale(0.1, 0.1)
+        .setDepth(-10)
+
+      this.chunkManager = new ChunkManager(this)
+    }
 
     this.effects = new EffectsSystem(this)
     const charType = useCharacterStore.getState().selectedCharacter
@@ -127,9 +140,48 @@ export class MainScene extends Phaser.Scene {
       })
     }
 
-    this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
     const camZoom = window.innerWidth <= 768 ? 0.7 : 1.4
     this.cameras.main.setZoom(camZoom)
+
+    if (this.selectedStage === 2) {
+      // Corridor stage: floor fills world, wall overlays pinned to screen edges
+      const sw = this.scale.width
+      const sh = this.scale.height
+      const wallH = Math.floor(sh * WALL_FRACTION)
+      const corridorHalf = Math.floor((sh / 2 - wallH) / camZoom)
+
+      // Extend bounds by Player's 64px margin so the player walks right up to the visual wall edge
+      const PLAYER_MARGIN = 64
+      this.physics.world.setBounds(-500_000, -(corridorHalf + PLAYER_MARGIN), 1_000_000, (corridorHalf + PLAYER_MARGIN) * 2)
+
+      this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'floor_stage2')
+        .setOrigin(0.5, 0.5)
+        .setTileScale(0.1, 0.1)
+        .setDepth(-10)
+
+      // Screen-space wall overlays (scrollFactor=0 = fixed to screen, depth above all game objects)
+      this.wallTop = this.add.tileSprite(0, 0, sw, wallH, 'wall_stage2')
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setTileScale(0.1, 0.1)
+        .setDepth(90)
+
+      this.wallBottom = this.add.tileSprite(0, sh - wallH, sw, wallH, 'wall_stage2')
+        .setOrigin(0, 0)
+        .setScrollFactor(0)
+        .setTileScale(0.1, 0.1)
+        .setDepth(90)
+
+      // Lock camera Y to world origin — follow proxy only updates X
+      this.cameraProxy.x = SPAWN_X
+      this.cameraProxy.y = 0
+      this.cameras.main.startFollow(this.cameraProxy as unknown as Phaser.GameObjects.GameObject, true, 0.1, 0.1)
+
+      this.spawner.disabled = true  // Stage 2 enemies will be added separately
+      this.spawner.corridorHalfHeight = corridorHalf
+    } else {
+      this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
+    }
 
     // Position fpsText at screen pixel (8, 8) — scrollFactor(0) objects are still
     // transformed by the zoom matrix, so we must invert it to get screen coords.
@@ -236,7 +288,7 @@ export class MainScene extends Phaser.Scene {
       sceneAlive = false
       soundSystem.stopMusic()
       unsubLevelUp(); unsubPause(); unsubDamage(); unsubDead(); unsubWon()
-      this.chunkManager.destroyAll()
+      this.chunkManager?.destroyAll()
       this.joystick.destroy()
       this.dashButton?.destroy()
       runData.elapsed = 0
@@ -531,7 +583,18 @@ export class MainScene extends Phaser.Scene {
       this.handleAdminClearUpgrades()
     }
 
-    this.chunkManager.update(this.player.x, this.player.y)
+    if (this.selectedStage === 2) {
+      // Keep camera locked to corridor center (Y=0), following player on X only
+      this.cameraProxy.x = this.player.x
+      // Scroll wall tile textures horizontally to match world movement
+      if (this.wallTop && this.wallBottom) {
+        const tx = this.cameras.main.scrollX / 0.1
+        this.wallTop.tilePositionX = tx
+        this.wallBottom.tilePositionX = tx
+      }
+    } else {
+      this.chunkManager?.update(this.player.x, this.player.y)
+    }
     this.player.touchVx = this.joystick.vx
     this.player.touchVy = this.joystick.vy
     if (this.dashButton) {

@@ -30,6 +30,8 @@ import axeSprite from '../assets/Sprites/Weapons/Axe.png'
 import grassTileset from '../assets/Sprites/Background/Grass1.png'
 import treeSprite from '../assets/Sprites/Background/Tree.png'
 import rockSprite from '../assets/Sprites/Background/Rocks.png'
+import floorStage2 from '../assets/Sprites/Background/Floor stage 2.png'
+import wallStage2 from '../assets/Sprites/Background/Wall stage 2.png'
 
 export const SPRITE_URLS = {
   player, charRogue, charWitch, charShade, charZeus, charAres, charPoseidon, charApollo, charHades, charChronos,
@@ -53,4 +55,6 @@ export const SPRITE_URLS = {
   grassTileset,
   treeSprite,
   rockSprite,
+  floorStage2,
+  wallStage2,
 }

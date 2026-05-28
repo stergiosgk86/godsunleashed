@@ -13,6 +13,7 @@ import { MainMenu } from './ui/MainMenu'
 import { MultiplayerLobby } from './ui/MultiplayerLobby'
 import { AuthScreen } from './ui/AuthScreen'
 import { useGameStore, DASH_COOLDOWN_MS } from './store/gameStore'
+import { useStageStore } from './store/stageStore'
 import { ACHIEVEMENT_MAP } from './game/achievements'
 import { useProfileStore } from './store/profileStore'
 import { useAuthStore } from './store/authStore'
@@ -266,6 +267,7 @@ function App() {
         won: s.isWon, multiplayer: false, bossKills: s.bossKills, level: s.level,
         damageDealt: s.damageDealt, weaponCount, tookDamage: s.tookDamageThisRun,
         finalHp: s.hp, maxHp: s.maxHp,
+        stage: useStageStore.getState().selectedStage,
       }),
     })
       .then(r => r.json())
