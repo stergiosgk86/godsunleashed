@@ -394,6 +394,12 @@ export class CombatSystem {
         p.destroy()
         continue
       }
+      // Destroy projectiles that cross into the corridor walls
+      const wb = this.scene.physics.world.bounds
+      if (p.y < wb.y || p.y > wb.bottom) {
+        p.destroy()
+        continue
+      }
 
       for (const e of enemies) {
         if (!e.active || p.hitTargets.has(e)) continue

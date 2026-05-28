@@ -26,7 +26,6 @@ import { useStageStore } from '../store/stageStore'
 
 const SPAWN_X = 0
 const SPAWN_Y = 0
-const WALL_FRACTION = 0.25  // each wall band takes this fraction of screen height
 
 export class MainScene extends Phaser.Scene {
   private player!: Player
@@ -56,9 +55,6 @@ export class MainScene extends Phaser.Scene {
   private dashButton: TouchDashButton | null = null
   private chunkManager: ChunkManager | null = null
   private selectedStage = 1
-  private cameraProxy = { x: 0, y: 0 }
-  private wallTop: Phaser.GameObjects.TileSprite | null = null
-  private wallBottom: Phaser.GameObjects.TileSprite | null = null
 
   constructor() {
     super({ key: 'MainScene' })
@@ -144,44 +140,27 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.setZoom(camZoom)
 
     if (this.selectedStage === 2) {
-      // Corridor stage: floor fills world, wall overlays pinned to screen edges
-      const sw = this.scale.width
-      const sh = this.scale.height
-      const wallH = Math.floor(sh * WALL_FRACTION)
-      const corridorHalf = sh / 2 - wallH
-
-      // Extend bounds by Player's 64px margin so the player walks right up to the visual wall edge
-      const PLAYER_MARGIN = 64
-      this.physics.world.setBounds(-500_000, -(corridorHalf + PLAYER_MARGIN), 1_000_000, (corridorHalf + PLAYER_MARGIN) * 2)
+      // Corridor stage — world-space walls above and below the playable strip (VS Inlaid Library style)
+      // CORRIDOR_HALF > viewport half-height so walls are off-screen at spawn (player must walk to find them)
+      const CORRIDOR_HALF = 380  // world units from Y=0 to wall edge
+      const WALL_H = 2000        // thick enough to fill any viewport
 
       this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'floor_stage2')
-        .setOrigin(0.5, 0.5)
-        .setTileScale(0.1, 0.1)
-        .setDepth(-10)
+        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(-10)
 
-      // Screen-space wall overlays (scrollFactor=0 = fixed to screen, depth above all game objects)
-      this.wallTop = this.add.tileSprite(0, 0, sw, wallH, 'wall_stage2')
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setTileScale(0.1, 0.1)
-        .setDepth(90)
+      this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
+        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(2)
+      this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
+        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(2)
 
-      this.wallBottom = this.add.tileSprite(0, sh - wallH, sw, wallH, 'wall_stage2')
-        .setOrigin(0, 0)
-        .setScrollFactor(0)
-        .setTileScale(0.1, 0.1)
-        .setDepth(90)
+      const PLAYER_MARGIN = 64
+      this.physics.world.setBounds(-500_000, -(CORRIDOR_HALF + PLAYER_MARGIN), 1_000_000, (CORRIDOR_HALF + PLAYER_MARGIN) * 2)
 
-      // Lock camera Y to world origin — follow proxy only updates X
-      this.cameraProxy.x = SPAWN_X
-      this.cameraProxy.y = 0
-      this.cameras.main.startFollow(this.cameraProxy as unknown as Phaser.GameObjects.GameObject, true, 0.1, 0.1)
-
-      this.spawner.disabled = true  // Stage 2 enemies will be added separately
-      this.spawner.corridorHalfHeight = corridorHalf
-    } else {
-      this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
+      this.spawner.disabled = true
+      this.spawner.corridorHalfHeight = CORRIDOR_HALF
     }
+
+    this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
 
     // Position fpsText at screen pixel (8, 8) — scrollFactor(0) objects are still
     // transformed by the zoom matrix, so we must invert it to get screen coords.
@@ -583,18 +562,7 @@ export class MainScene extends Phaser.Scene {
       this.handleAdminClearUpgrades()
     }
 
-    if (this.selectedStage === 2) {
-      // Keep camera locked to corridor center (Y=0), following player on X only
-      this.cameraProxy.x = this.player.x
-      // Scroll wall tile textures horizontally to match world movement
-      if (this.wallTop && this.wallBottom) {
-        const tx = this.cameras.main.scrollX / 0.1
-        this.wallTop.tilePositionX = tx
-        this.wallBottom.tilePositionX = tx
-      }
-    } else {
-      this.chunkManager?.update(this.player.x, this.player.y)
-    }
+    this.chunkManager?.update(this.player.x, this.player.y)
     this.player.touchVx = this.joystick.vx
     this.player.touchVy = this.joystick.vy
     if (this.dashButton) {
