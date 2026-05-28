@@ -369,7 +369,7 @@ const COLLECTION_WEAPONS = [
 const COLLECTION_PASSIVES = [
   { id: 'might',       label: 'Power',        color: '#ff6644', icon: '▲', description: '+10% weapon damage (stackable)' },
   { id: 'vampiric',    label: 'Soul Drain',   color: '#cc3355', icon: '♥', description: 'Each hit restores 0.25% of damage dealt as HP (scales well with fast weapons)' },
-  { id: 'echo',        label: 'Echo',         color: '#aaddff', icon: '≋', description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, and sunrays all gain an extra strike (stackable, up to 2×)' },
+  { id: 'echo',        label: 'Echo',         color: '#aaddff', icon: '≋', description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, sunrays, and Thunder Strike all gain an extra strike (stackable, up to 2×)' },
   { id: 'xpGain',      label: 'Gilded Soul',  color: '#ffcc33', icon: '★', description: '+8% XP gained from all sources (stackable, up to 5×)' },
   { id: 'magnetRange', label: 'Astral Pull',  color: '#66ccff', icon: '◎', description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },
   { id: 'dashCooldown',label: 'Swift Dash',   color: '#88aaff', icon: '→', description: '25% shorter dash cooldown' },

@@ -55,7 +55,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'dualGunDamage',label: 'Solar Intensity', description: 'Sunray bolts deal 30% more damage (stackable, up to 3×)' },
   { id: 'dualGunSpeed', label: 'Solar Tempo',    description: 'Sunray guns fire 20% faster (stackable, up to 2×)' },
   { id: 'dualGunExtra', label: 'Solar Barrage',  description: 'Fires one extra staggered burst per gun per volley (stackable, up to 2×)' },
-  { id: 'echo',         label: 'Echo',           description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, and sunrays all gain an extra strike (stackable, up to 2×)' },
+  { id: 'echo',         label: 'Echo',           description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, sunrays, and Thunder Strike all gain an extra strike (stackable, up to 2×)' },
 ]
 
 // XP curve: L1=30, L2=55, L3=80 (+25/level), spikes at L20/L40
