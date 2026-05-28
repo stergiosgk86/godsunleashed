@@ -11,6 +11,7 @@ import { authRouter } from './routes/auth.js'
 import { apiRouter } from './routes/api.js'
 import { saveRunRecord } from './runSaver.js'
 import { db } from './db.js'
+import { userSockets } from './userSockets.js'
 import type { C2SMessage } from './protocol.js'
 
 const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos'])
@@ -131,6 +132,7 @@ wss.on('connection', (ws) => {
   let joined = false
   let wsMsgCount = 0
   let wsMsgWindowStart = Date.now()
+  userSockets.set(authed.userId, ws as unknown as import('ws').WebSocket)
   console.log(`[${label}] connected`)
 
   ws.on('error', (err) => console.error(`[${label}] ws error:`, err))
@@ -234,6 +236,7 @@ wss.on('connection', (ws) => {
   })
 
   ws.on('close', () => {
+    if (userSockets.get(authed.userId) === (ws as unknown as import('ws').WebSocket)) userSockets.delete(authed.userId)
     console.log(`[${label}] disconnected`)
     if (room) {
       const wasOpen = openRoom === room

@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 import { requireAuth } from '../middleware/auth.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 import { db } from '../db.js'
+import { userSockets } from '../userSockets.js'
 
 // 60 reads/min per IP — prevents leaderboard/profile scraping
 const readRateLimit = rateLimit(60, 60_000)
@@ -330,7 +331,12 @@ apiRouter.post('/admin/players/:id/role', async (req: Request, res: Response) =>
     if (targetRes.rows[0]?.role === 'super_admin') {
       res.status(400).json({ error: 'Cannot change a super_admin role' }); return
     }
-    await db.query('UPDATE users SET role = $1 WHERE id = $2', [role ?? 'user', targetId])
+    const newRole = role ?? 'user'
+    await db.query('UPDATE users SET role = $1 WHERE id = $2', [newRole, targetId])
+    const targetWs = userSockets.get(targetId)
+    if (targetWs && targetWs.readyState === 1) {
+      targetWs.send(JSON.stringify({ type: 'roleChanged', role: newRole }))
+    }
     res.json({ ok: true, role })
   } catch (err) {
     console.error('Admin set role error:', err)

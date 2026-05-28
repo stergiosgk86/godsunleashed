@@ -431,6 +431,10 @@ export class MainScene extends Phaser.Scene {
       useGameStore.getState().adminResetUpgrades()
     })
 
+    net.on('roleChanged', (msg) => {
+      useAuthStore.getState().setRole(msg.role)
+    })
+
     net.on('exploderExplode', (msg) => {
       const dx = msg.x - this.player.x
       const dy = msg.y - this.player.y

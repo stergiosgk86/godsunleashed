@@ -58,3 +58,4 @@ export type S2CMessage =
   | { type: 'adminGrantUpgrade'; upgradeId: string }
   | { type: 'adminSetUpgrade'; upgradeId: string; level: number }
   | { type: 'adminClearUpgrades' }
+  | { type: 'roleChanged'; role: string }
