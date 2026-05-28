@@ -164,7 +164,7 @@ const ADMIN_UPGRADE_GROUPS: { label: string; color: string; items: UpgradeDef[] 
       { id: 'might', label: 'Might', max: 5 },
       { id: 'xpGain', label: 'XP Gain', max: 5 },
       { id: 'magnetRange', label: 'Magnet', max: 3 },
-      { id: 'dashCooldown', label: 'Dash CD', max: 3 },
+      { id: 'dashCooldown', label: 'Dash CD', max: 4 },
       { id: 'dashDistance', label: 'Dash Dist', max: 3 },
     ],
   },
