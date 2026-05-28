@@ -42,12 +42,12 @@ export class PreloadScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     this.add.rectangle(width / 2, height / 2, 304, 24)
-      .setStrokeStyle(2, 0x444466)
+      .setStrokeStyle(2, 0x666688)
     const bar = this.add.rectangle(width / 2 - 150, height / 2, 0, 18, 0x00cc66)
+    bar.setOrigin(0, 0.5)
 
     this.load.on('progress', (v: number) => {
       bar.width = 300 * v
-      bar.x = width / 2 - 150 + bar.width / 2
     })
 
     for (const { key, url, frameWidth, frameHeight } of SHEETS) {
