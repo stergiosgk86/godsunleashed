@@ -280,6 +280,15 @@ function App() {
   }
 
   // Submit run to leaderboard on death or win (fallback path only)
+  // Poll for role changes while on the main menu (no WS connection there)
+  useEffect(() => {
+    if (inGame || !token) return
+    const poll = setInterval(fetchProfile, 20_000)
+    const onVisible = () => { if (!document.hidden) fetchProfile() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { clearInterval(poll); document.removeEventListener('visibilitychange', onVisible) }
+  }, [inGame, token, fetchProfile])
+
   useEffect(() => {
     if (!inGame) return
     runSubmittedRef.current = false

@@ -57,7 +57,17 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
       })
       if (!res.ok) return
       const data = await res.json()
-      if (data.role) useAuthStore.getState().setRole(data.role)
+      if (data.role) {
+        const prevRole = useAuthStore.getState().role
+        useAuthStore.getState().setRole(data.role)
+        if (data.role !== prevRole && prevRole !== null) {
+          if (data.role === 'admin' || data.role === 'super_admin') {
+            useAuthStore.getState().showSystemToast('You have been granted admin access', '#88ff88')
+          } else {
+            useAuthStore.getState().showSystemToast('Your admin access has been revoked', '#ffaa44')
+          }
+        }
+      }
       useKeyBindingsStore.getState().loadFromServer(data.key_bindings)
       set({
         coins: data.coins ?? 0,
