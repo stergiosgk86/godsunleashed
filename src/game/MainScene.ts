@@ -55,6 +55,7 @@ export class MainScene extends Phaser.Scene {
   private dashButton: TouchDashButton | null = null
   private chunkManager: ChunkManager | null = null
   private selectedStage = 1
+  corridorHalfY: number | null = null
 
   constructor() {
     super({ key: 'MainScene' })
@@ -163,6 +164,7 @@ export class MainScene extends Phaser.Scene {
       const TOP_BOUND    = CORRIDOR_HALF + 88  // 468
       const BOTTOM_BOUND = CORRIDOR_HALF + 40  // 420
       this.physics.world.setBounds(-500_000, -TOP_BOUND, 1_000_000, TOP_BOUND + BOTTOM_BOUND)
+      this.corridorHalfY = CORRIDOR_HALF  // used by CombatSystem to cull projectiles at visual wall
 
       this.spawner.disabled = true
       this.spawner.corridorHalfHeight = CORRIDOR_HALF

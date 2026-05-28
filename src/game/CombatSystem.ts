@@ -394,9 +394,9 @@ export class CombatSystem {
         p.destroy()
         continue
       }
-      // Destroy projectiles that cross into the corridor walls
-      const wb = this.scene.physics.world.bounds
-      if (p.y < wb.y || p.y > wb.bottom) {
+      // Destroy projectiles at the visual corridor wall edges (stage 2 only)
+      const halfY = (this.scene as any).corridorHalfY as number | null
+      if (halfY !== null && (p.y < -halfY || p.y > halfY)) {
         p.destroy()
         continue
       }
