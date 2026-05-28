@@ -12,7 +12,7 @@ import { useCharacterStore } from '../store/characterStore'
 import { useAuthStore } from '../store/authStore'
 import { CHARACTER_DEFS } from './characters'
 import { minimapData } from './minimapData'
-import { runData } from './runData'
+import { runData, RUN_DURATION } from './runData'
 import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale, computeXpScale } from './difficultyScale'
 import { soundSystem } from './SoundSystem'
 import { activeNetClient } from '../net/netState'
@@ -432,11 +432,18 @@ export class MainScene extends Phaser.Scene {
 
   private showSurgeWarning(type: string) {
     const labels: Record<string, string> = {
-      basic:   '⚡  HORDE INCOMING  ⚡',
-      speeder: '⚡  SPEEDERS INCOMING  ⚡',
-      tank:    '⚡  TANKS INCOMING  ⚡',
-      ghost:   '⚡  GHOST TIDE  ⚡',
-      ranged:  '⚡  RANGED FLOOD  ⚡',
+      basic:     '⚡  HORDE INCOMING  ⚡',
+      speeder:   '⚡  SPEEDERS INCOMING  ⚡',
+      tank:      '⚡  TANKS INCOMING  ⚡',
+      ghost:     '⚡  GHOST TIDE  ⚡',
+      ranged:    '⚡  RANGED FLOOD  ⚡',
+      // Stage 2
+      drifter:   '⚡  DRIFTER RUSH  ⚡',
+      scurrier:  '⚡  SCURRIER SWARM  ⚡',
+      lurker:    '⚡  LURKER TIDE  ⚡',
+      jackal:    '⚡  JACKAL PACK  ⚡',
+      cultist:   '⚡  CULTIST RITUAL  ⚡',
+      golem:     '⚡  GOLEM MARCH  ⚡',
     }
     this.surgeText.setText(labels[type] ?? '⚡  SURGE  ⚡')
     this.tweens.killTweensOf(this.surgeText)
@@ -707,6 +714,13 @@ export class MainScene extends Phaser.Scene {
       // Singleplayer
       if (!novaPaused) {
         runData.elapsed += delta
+        // Stage 2: survive-to-end win (server normally handles this; fallback for offline mode)
+        if (this.selectedStage === 2 && runData.elapsed >= RUN_DURATION) {
+          soundSystem.bossDie()
+          useGameStore.getState().win()
+          this.scene.pause()
+          return
+        }
         this.spawner.update(this.player.x, this.player.y, delta)
         this.combat.update(this.player.x, this.player.y, this.spawner.all, delta)
       }

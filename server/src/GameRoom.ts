@@ -620,7 +620,8 @@ export class GameRoom {
     const timeSurvived = Date.now() - this.startMs
     const results: PlayerRunData[] = this.players.map(p => {
       const u = p.upgrades
-      const weaponCount = 1
+      const weaponCount = 1  // base attack
+        + (u.wand ? 1 : 0)
         + (u.aura ? 1 : 0)
         + (u.orbital > 0 ? 1 : 0)
         + (u.boomerang ? 1 : 0)
@@ -628,6 +629,8 @@ export class GameRoom {
         + (u.bloodNova ? 1 : 0)
         + (u.lightning ? 1 : 0)
         + (u.axe ? 1 : 0)
+        + (u.equinox ? 1 : 0)
+        + (u.solstice ? 1 : 0)
       return {
         userId: p.userId,
         username: p.username,
@@ -651,6 +654,13 @@ export class GameRoom {
       const src = alivePlayers.length > 0 ? alivePlayers : this.players
       const positions = src.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH, aura: p.aura, auraRange: p.upgrades.auraRange, level: p.level }))
       this.spawner.update(positions, TICK_MS)
+
+      // Stage 2: survive-to-end win condition (no final boss in this stage)
+      if (this.spawner.stage2Mode && this.spawner.isFinished && !this.finished) {
+        this.broadcast({ type: 'gameOver', won: true })
+        this.finishGame(true)
+        return
+      }
 
       for (const e of this.spawner.all) {
         if (e.pendingProjectiles.length > 0) {

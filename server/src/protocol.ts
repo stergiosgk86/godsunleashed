@@ -2,6 +2,7 @@
 
 export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'summoner' | 'boss' | 'finalBoss'
   | 'drifter' | 'scurrier' | 'lurker' | 'mummy' | 'jackal' | 'cultist' | 'golem' | 'knight' | 'archfiend'
+  | 'veteran' | 'brute' | 'revenant' | 'warlord' | 'titan'  // client-only fallback types (server never spawns these)
 
 export interface EnemySnapshot {
   id: number

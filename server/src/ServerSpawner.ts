@@ -582,15 +582,19 @@ export class ServerSpawner {
     return Math.round(lane.burstStart + (lane.burstEnd - lane.burstStart) * t)
   }
 
-  // Spawn at left (side=0) or right (side=1) edge of the corridor
+  // Spawn at left (side=0) or right (side=1) edge of the corridor.
+  // Y is relative to the nearest player so enemies always appear near the action,
+  // clamped to the corridor's absolute world-space bounds.
   private corridorEdgePoint(players: SpawnerPlayer[], side: number): { x: number; y: number } {
     const p = players.length > 0
       ? players[Math.floor(Math.random() * players.length)]
       : { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H, aura: 0, auraRange: 0, level: 1 }
-    const zoom   = p.viewW <= 768 ? 0.7 : 1.4
-    const halfW  = (p.viewW / 2) / zoom + LANE_MARGIN
-    const halfCY = (this.corridorHalfY ?? 380) * 0.85
-    const y      = (Math.random() * 2 - 1) * halfCY
+    const zoom      = p.viewW <= 768 ? 0.7 : 1.4
+    const halfW     = (p.viewW / 2) / zoom + LANE_MARGIN
+    const corridorY = this.corridorHalfY ?? 380
+    const halfCY    = corridorY * 0.85
+    const rawY      = p.y + (Math.random() * 2 - 1) * halfCY
+    const y         = Math.max(-corridorY, Math.min(corridorY, rawY))
     return side === 0
       ? { x: p.x - halfW, y }
       : { x: p.x + halfW, y }
