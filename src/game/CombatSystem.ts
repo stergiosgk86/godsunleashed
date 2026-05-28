@@ -754,7 +754,7 @@ export class CombatSystem {
     // === Blood Nova ===
     if (bloodNova) {
       this.bloodNovaTimer += delta
-      const novaInterval = NOVA_INTERVAL - bloodNovaCD * 10000
+      const novaInterval = Math.max(10000, NOVA_INTERVAL - bloodNovaCD * 10000)
       if (this.bloodNovaTimer >= novaInterval) {
         this.bloodNovaTimer = 0
         const novaDmg = Math.floor(weaponBaseDamage(level) * might * 30)

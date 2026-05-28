@@ -256,13 +256,16 @@ function App() {
     const timeMs = runData.elapsed
     const score = s.kills * 10 + s.sessionCoins * 5 + Math.floor(timeMs / 1000) * 2 + (s.isWon ? 5000 : 0)
     const weaponCount = 1 +
+      (s.wand ? 1 : 0) +
       (s.aura > 0 ? 1 : 0) +
       (s.orbital > 0 ? 1 : 0) +
       (s.boomerang ? 1 : 0) +
       (s.flameTrail ? 1 : 0) +
       (s.bloodNova ? 1 : 0) +
       (s.lightning ? 1 : 0) +
-      (s.axe ? 1 : 0)
+      (s.axe ? 1 : 0) +
+      (s.equinox ? 1 : 0) +
+      (s.solstice ? 1 : 0)
     fetch('/api/runs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },

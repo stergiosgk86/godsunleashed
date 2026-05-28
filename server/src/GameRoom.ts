@@ -617,7 +617,8 @@ export class GameRoom {
     this.finished = true
     this.stop()
     if (!this.onGameEnd) return
-    const timeSurvived = Date.now() - this.startMs
+    // spawner.runElapsed is total game time including any pre-refresh portion (resumed runs)
+    const timeSurvived = this.spawner.runElapsed
     const results: PlayerRunData[] = this.players.map(p => {
       const u = p.upgrades
       const weaponCount = 1  // base attack

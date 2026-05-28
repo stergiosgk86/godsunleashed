@@ -500,6 +500,9 @@ export class MainScene extends Phaser.Scene {
       gs.addKill()
       if (isBoss) { gs.addBossKill(); soundSystem.bossDie() }
       else soundSystem.enemyDie()
+      // Apply per-kill flat heal (lifeDrain) — skipped in applyHit because server decides kills
+      const { lifeDrain } = useGameStore.getState()
+      if (lifeDrain > 0) useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + lifeDrain) }))
     })
 
     net.on('surge', (msg) => {
