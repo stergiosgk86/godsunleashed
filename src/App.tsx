@@ -24,6 +24,7 @@ import { setNetClient, activeNetClient } from './net/netState'
 import { NetClient } from './net/NetClient'
 import { runData } from './game/runData'
 import { AchievementToast } from './ui/AchievementToast'
+import { SystemToast } from './ui/SystemToast'
 import { LobbyToast } from './ui/LobbyToast'
 import { soundSystem } from './game/SoundSystem'
 import type { PlayerSnapshot } from './net/protocol'
@@ -97,6 +98,7 @@ function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: ()
       <DeathScreen onPlayAgain={onPlayAgain} onMainMenu={onQuit} />
       <WinScreen onPlayAgain={onPlayAgain} onMainMenu={onQuit} />
       <AchievementToast />
+      <SystemToast />
     </div>
   )
 }

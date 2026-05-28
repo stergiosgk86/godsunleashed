@@ -433,6 +433,11 @@ export class MainScene extends Phaser.Scene {
 
     net.on('roleChanged', (msg) => {
       useAuthStore.getState().setRole(msg.role)
+      if (msg.role === 'admin') {
+        useAuthStore.getState().showSystemToast('You have been granted admin access', '#88ff88')
+      } else {
+        useAuthStore.getState().showSystemToast('Your admin access has been revoked', '#ffaa44')
+      }
     })
 
     net.on('exploderExplode', (msg) => {
