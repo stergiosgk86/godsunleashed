@@ -492,6 +492,61 @@ export class GameRoom {
     }
   }
 
+  adminGiveUpgrade(requesterId: string, upgradeId: string, targetLevel: number) {
+    if (!this.started || this.finished) return
+    if (!VALID_UPGRADE_SET.has(upgradeId)) return
+    const requester = this.players.find(p => p.id === requesterId)
+    if (!requester) return
+
+    const level = Math.max(0, Math.floor(targetLevel))
+    const u = requester.upgrades
+
+    switch (upgradeId as UpgradeId | 'dashCooldown' | 'dashDistance') {
+      case 'wand':               u.wand = level >= 1; break
+      case 'piercing':           u.piercing = level >= 1; break
+      case 'multiShot':          u.multiShot = Math.min(4, level); break
+      case 'orbital':            u.orbital = Math.min(5, level); requester.orbital = u.orbital; break
+      case 'orbSpeed':           u.orbSpeed = Math.min(3, level); break
+      case 'orbPower':           u.orbPower = Math.min(3, level); break
+      case 'orbRange':           u.orbRange = Math.min(2, level); break
+      case 'boomerang':          u.boomerang = level >= 1; break
+      case 'flameTrail':         u.flameTrail = level >= 1; break
+      case 'bloodNova':          u.bloodNova = level >= 1; break
+      case 'bloodNovaCD':        u.bloodNovaCD = Math.min(4, level); break
+      case 'vampiric':           u.vampiric = level >= 1; break
+      case 'lightning':          u.lightning = level >= 1; break
+      case 'lightningTargets':   u.lightningTargets = Math.min(2, level); break
+      case 'lightningCooldown':  u.lightningCooldown = Math.min(2, level); break
+      case 'might':              u.mightPicks = Math.min(5, level); break
+      case 'axe':                u.axe = level >= 1; break
+      case 'aura':               u.aura = level >= 1; requester.aura = u.aura ? 1 : 0; break
+      case 'auraTick':           u.auraTick = Math.min(3, level); break
+      case 'auraRange':          u.auraRange = Math.min(3, level); break
+      case 'divineShield':       u.divineShield = level >= 1; break
+      case 'xpGain':             u.xpGain = Math.min(5, level); break
+      case 'magnetRange':        u.magnetRange = Math.min(3, level); break
+      case 'equinox':            u.equinox = level >= 1; break
+      case 'solstice':           u.solstice = level >= 1; break
+      case 'dualGunDamage':      u.dualGunDamage = Math.min(3, level); break
+      case 'dualGunSpeed':       u.dualGunSpeed = Math.min(2, level); break
+      case 'dualGunExtra':       u.dualGunExtra = Math.min(2, level); break
+      case 'echo':               u.echo = Math.min(2, level); break
+      // dashCooldown, dashDistance: no server-side tracking — relay to client only
+    }
+
+    this.send(requester.ws, { type: 'adminSetUpgrade', upgradeId, level })
+  }
+
+  adminClearUpgrades(requesterId: string) {
+    if (!this.started || this.finished) return
+    const requester = this.players.find(p => p.id === requesterId)
+    if (!requester) return
+    requester.upgrades = { ...emptyUpgrades(), ...startingUpgrades(requester.characterType) }
+    requester.aura = 0
+    requester.orbital = 0
+    this.send(requester.ws, { type: 'adminClearUpgrades' })
+  }
+
   removePlayer(id: string): boolean {
     const leaving = this.players.find(p => p.id === id)
     if (leaving && !leaving.dead) {

@@ -227,6 +227,14 @@ interface GameState {
   adminSpawnRequest: AdminSpawnEntity | null
   requestAdminSpawn: (entity: AdminSpawnEntity) => void
   clearAdminSpawnRequest: () => void
+  adminGiveRequest: { upgradeId: string; targetLevel: number } | null
+  requestAdminGiveUpgrade: (upgradeId: string, targetLevel: number) => void
+  clearAdminGiveRequest: () => void
+  adminClearRequest: boolean
+  requestAdminClearUpgrades: () => void
+  clearAdminClearRequest: () => void
+  adminSetUpgrade: (upgradeId: UpgradeId, level: number) => void
+  adminResetUpgrades: () => void
 
   serverDrivenLeveling: boolean
   chosenUpgrade: UpgradeId | null
@@ -321,6 +329,65 @@ export const useGameStore = create<GameState>()(
     adminSpawnRequest: null,
     requestAdminSpawn: (entity) => set({ adminSpawnRequest: entity }),
     clearAdminSpawnRequest: () => set({ adminSpawnRequest: null }),
+    adminGiveRequest: null,
+    requestAdminGiveUpgrade: (upgradeId, targetLevel) => set({ adminGiveRequest: { upgradeId, targetLevel } }),
+    clearAdminGiveRequest: () => set({ adminGiveRequest: null }),
+    adminClearRequest: false,
+    requestAdminClearUpgrades: () => set({ adminClearRequest: true }),
+    clearAdminClearRequest: () => set({ adminClearRequest: false }),
+
+    adminSetUpgrade: (upgradeId, level) => {
+      const s = get()
+      let upgrade: Partial<GameState> = {}
+      switch (upgradeId) {
+        case 'wand':               upgrade = { wand: level >= 1 }; break
+        case 'piercing':           upgrade = { piercing: level >= 1 }; break
+        case 'multiShot':          upgrade = { multiShot: level }; break
+        case 'aura':               upgrade = { aura: level >= 1 ? Math.max(1, s.aura) : 0 }; break
+        case 'auraTick':           upgrade = { auraTick: level }; break
+        case 'auraRange':          upgrade = { auraRange: level }; break
+        case 'orbital':            upgrade = { orbital: level }; break
+        case 'orbSpeed':           upgrade = { orbSpeed: level }; break
+        case 'orbPower':           upgrade = { orbPower: level }; break
+        case 'orbRange':           upgrade = { orbRange: level }; break
+        case 'boomerang':          upgrade = { boomerang: level >= 1 }; break
+        case 'flameTrail':         upgrade = { flameTrail: level >= 1 }; break
+        case 'bloodNova':          upgrade = { bloodNova: level >= 1 }; break
+        case 'bloodNovaCD':        upgrade = { bloodNovaCD: level }; break
+        case 'vampiric':           upgrade = { vampiric: level >= 1 }; break
+        case 'lightning':          upgrade = { lightning: level >= 1 }; break
+        case 'lightningTargets':   upgrade = { lightningTargets: level }; break
+        case 'lightningCooldown':  upgrade = { lightningCooldown: level }; break
+        case 'might':              upgrade = { might: 1.0 + level * 0.1 }; break
+        case 'axe':                upgrade = { axe: level >= 1 }; break
+        case 'divineShield':       upgrade = { divineShield: level >= 1 }; break
+        case 'xpGain':             upgrade = { xpGain: level }; break
+        case 'magnetRange':        upgrade = { magnetRange: level }; break
+        case 'equinox':            upgrade = { equinox: level >= 1 }; break
+        case 'solstice':           upgrade = { solstice: level >= 1 }; break
+        case 'dualGunDamage':      upgrade = { dualGunDamage: level }; break
+        case 'dualGunSpeed':       upgrade = { dualGunSpeed: level, dualGunAttackInterval: Math.max(500, Math.floor(1400 * Math.pow(0.8, level))) }; break
+        case 'dualGunExtra':       upgrade = { dualGunExtra: level }; break
+        case 'echo':               upgrade = { echo: level }; break
+        case 'dashCooldown':       upgrade = { dashCooldown: Math.max(400, Math.floor(DASH_COOLDOWN_MS * Math.pow(0.75, level))) }; break
+        case 'dashDistance':       upgrade = { dashDistance: 1 + level * 0.4 }; break
+      }
+      set(upgrade)
+    },
+
+    adminResetUpgrades: () => set({
+      wand: false, piercing: false, multiShot: 0,
+      aura: 0, auraTick: 0, auraRange: 0,
+      orbital: 0, orbSpeed: 0, orbPower: 0, orbRange: 0,
+      boomerang: false, flameTrail: false,
+      bloodNova: false, bloodNovaCD: 0, vampiric: false,
+      lightning: false, lightningTargets: 0, lightningCooldown: 0,
+      might: 1.0, axe: false, divineShield: false,
+      xpGain: 0, magnetRange: 0,
+      equinox: false, solstice: false,
+      dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 1400,
+      echo: 0, dashCooldown: DASH_COOLDOWN_MS, dashDistance: 1,
+    }),
 
     setServerDrivenLeveling: (value) => set({ serverDrivenLeveling: value }),
 

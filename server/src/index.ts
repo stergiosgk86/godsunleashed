@@ -209,6 +209,24 @@ wss.on('connection', (ws) => {
           })
           .catch(() => {})
       }
+    } else if (msg.type === 'adminGiveUpgrade') {
+      const r = room; const { upgradeId, targetLevel } = msg
+      if (r) {
+        db.query('SELECT role FROM users WHERE id = $1', [authed.userId])
+          .then(res => {
+            if (res.rows[0]?.role === 'super_admin') r.adminGiveUpgrade(playerId, upgradeId, targetLevel)
+          })
+          .catch(() => {})
+      }
+    } else if (msg.type === 'adminClearUpgrades') {
+      const r = room
+      if (r) {
+        db.query('SELECT role FROM users WHERE id = $1', [authed.userId])
+          .then(res => {
+            if (res.rows[0]?.role === 'super_admin') r.adminClearUpgrades(playerId)
+          })
+          .catch(() => {})
+      }
     }
   })
 

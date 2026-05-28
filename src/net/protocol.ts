@@ -33,6 +33,8 @@ export type C2SMessage =
   | { type: 'pause' }
   | { type: 'resume' }
   | { type: 'adminSpawn'; entity: string }
+  | { type: 'adminGiveUpgrade'; upgradeId: string; targetLevel: number }
+  | { type: 'adminClearUpgrades' }
 
 // Server → Client
 export type S2CMessage =
@@ -54,3 +56,5 @@ export type S2CMessage =
   | { type: 'exploderExplode'; x: number; y: number }
   | { type: 'adminSpawnItem'; entity: string; x: number; y: number }
   | { type: 'adminGrantUpgrade'; upgradeId: string }
+  | { type: 'adminSetUpgrade'; upgradeId: string; level: number }
+  | { type: 'adminClearUpgrades' }

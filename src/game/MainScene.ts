@@ -273,6 +273,25 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
+  private handleAdminGiveUpgrade(upgradeId: string, targetLevel: number) {
+    const net = activeNetClient
+    if (net) {
+      net.send({ type: 'adminGiveUpgrade', upgradeId, targetLevel })
+      return
+    }
+    // Solo: apply directly on the client
+    useGameStore.getState().adminSetUpgrade(upgradeId as any, targetLevel)
+  }
+
+  private handleAdminClearUpgrades() {
+    const net = activeNetClient
+    if (net) {
+      net.send({ type: 'adminClearUpgrades' })
+      return
+    }
+    useGameStore.getState().adminResetUpgrades()
+  }
+
   private showWarning() {
     this.warningText.setAlpha(1)
     // Pulse the warning text
@@ -404,6 +423,14 @@ export class MainScene extends Phaser.Scene {
       useGameStore.getState().chooseUpgrade(msg.upgradeId as any)
     })
 
+    net.on('adminSetUpgrade', (msg) => {
+      useGameStore.getState().adminSetUpgrade(msg.upgradeId as any, msg.level)
+    })
+
+    net.on('adminClearUpgrades', () => {
+      useGameStore.getState().adminResetUpgrades()
+    })
+
     net.on('exploderExplode', (msg) => {
       const dx = msg.x - this.player.x
       const dy = msg.y - this.player.y
@@ -482,6 +509,17 @@ export class MainScene extends Phaser.Scene {
     if (spawnRequest) {
       useGameStore.getState().clearAdminSpawnRequest()
       this.handleAdminSpawn(spawnRequest)
+    }
+
+    const giveRequest = useGameStore.getState().adminGiveRequest
+    if (giveRequest) {
+      useGameStore.getState().clearAdminGiveRequest()
+      this.handleAdminGiveUpgrade(giveRequest.upgradeId, giveRequest.targetLevel)
+    }
+
+    if (useGameStore.getState().adminClearRequest) {
+      useGameStore.getState().clearAdminClearRequest()
+      this.handleAdminClearUpgrades()
     }
 
     this.chunkManager.update(this.player.x, this.player.y)

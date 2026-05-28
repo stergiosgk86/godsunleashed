@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 function useIsMobile() {
   const [mob, setMob] = useState(() => window.innerWidth <= 768)
@@ -9,7 +9,8 @@ function useIsMobile() {
   }, [])
   return mob
 }
-import { useGameStore, weaponBaseDamage, type AdminSpawnEntity } from '../store/gameStore'
+import { useGameStore, weaponBaseDamage, DASH_COOLDOWN_MS, type AdminSpawnEntity, type UpgradeId } from '../store/gameStore'
+import { activeNetClient } from '../net/netState'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { AdminPlayersView } from './AdminPlayersView'
@@ -119,11 +120,195 @@ const SPAWN_GROUPS: { label: string; color: string; items: { label: string; enti
   },
 ]
 
+type UpgradeDef = { id: UpgradeId; label: string; max: number }
+const ADMIN_UPGRADE_GROUPS: { label: string; color: string; items: UpgradeDef[] }[] = [
+  {
+    label: 'WEAPONS', color: '#cc88ff',
+    items: [
+      { id: 'wand', label: 'Wand', max: 1 },
+      { id: 'boomerang', label: 'Boomerang', max: 1 },
+      { id: 'flameTrail', label: 'Flame Trail', max: 1 },
+      { id: 'bloodNova', label: 'Blood Nova', max: 1 },
+      { id: 'vampiric', label: 'Soul Drain', max: 1 },
+      { id: 'lightning', label: 'Thunder', max: 1 },
+      { id: 'axe', label: 'War Axe', max: 1 },
+      { id: 'aura', label: 'Aura', max: 1 },
+      { id: 'orbital', label: 'Spirit Orb', max: 5 },
+      { id: 'equinox', label: 'Equinox', max: 1 },
+      { id: 'solstice', label: 'Solstice', max: 1 },
+      { id: 'divineShield', label: 'D.Shield', max: 1 },
+    ],
+  },
+  {
+    label: 'UPGRADES', color: '#88aaff',
+    items: [
+      { id: 'multiShot', label: 'Multi Shot', max: 4 },
+      { id: 'piercing', label: 'Piercing', max: 1 },
+      { id: 'auraTick', label: 'Aura Tempo', max: 3 },
+      { id: 'auraRange', label: 'Aura Range', max: 3 },
+      { id: 'orbSpeed', label: 'Orb Speed', max: 3 },
+      { id: 'orbPower', label: 'Orb Power', max: 3 },
+      { id: 'orbRange', label: 'Orb Range', max: 2 },
+      { id: 'bloodNovaCD', label: 'Dark Conv', max: 4 },
+      { id: 'lightningTargets', label: 'Storm +', max: 2 },
+      { id: 'lightningCooldown', label: 'Thunderhaste', max: 2 },
+      { id: 'dualGunDamage', label: 'Solar Dmg', max: 3 },
+      { id: 'dualGunSpeed', label: 'Solar Spd', max: 2 },
+      { id: 'dualGunExtra', label: 'Solar Extra', max: 2 },
+      { id: 'echo', label: 'Echo', max: 2 },
+    ],
+  },
+  {
+    label: 'STATS', color: '#44ff88',
+    items: [
+      { id: 'might', label: 'Might', max: 5 },
+      { id: 'xpGain', label: 'XP Gain', max: 5 },
+      { id: 'magnetRange', label: 'Magnet', max: 3 },
+      { id: 'dashCooldown', label: 'Dash CD', max: 3 },
+      { id: 'dashDistance', label: 'Dash Dist', max: 3 },
+    ],
+  },
+]
+
+function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getState>): number {
+  switch (id) {
+    case 'wand':              return s.wand ? 1 : 0
+    case 'piercing':          return s.piercing ? 1 : 0
+    case 'multiShot':         return s.multiShot
+    case 'aura':              return s.aura > 0 ? 1 : 0
+    case 'auraTick':          return s.auraTick
+    case 'auraRange':         return s.auraRange
+    case 'orbital':           return s.orbital
+    case 'orbSpeed':          return s.orbSpeed
+    case 'orbPower':          return s.orbPower
+    case 'orbRange':          return s.orbRange
+    case 'boomerang':         return s.boomerang ? 1 : 0
+    case 'flameTrail':        return s.flameTrail ? 1 : 0
+    case 'bloodNova':         return s.bloodNova ? 1 : 0
+    case 'bloodNovaCD':       return s.bloodNovaCD
+    case 'vampiric':          return s.vampiric ? 1 : 0
+    case 'lightning':         return s.lightning ? 1 : 0
+    case 'lightningTargets':  return s.lightningTargets
+    case 'lightningCooldown': return s.lightningCooldown
+    case 'might':             return Math.round((s.might - 1.0) / 0.1)
+    case 'axe':               return s.axe ? 1 : 0
+    case 'divineShield':      return s.divineShield ? 1 : 0
+    case 'xpGain':            return s.xpGain
+    case 'magnetRange':       return s.magnetRange
+    case 'equinox':           return s.equinox ? 1 : 0
+    case 'solstice':          return s.solstice ? 1 : 0
+    case 'dualGunDamage':     return s.dualGunDamage
+    case 'dualGunSpeed':      return s.dualGunSpeed
+    case 'dualGunExtra':      return s.dualGunExtra
+    case 'echo':              return s.echo
+    case 'dashCooldown':      return Math.round(Math.log(s.dashCooldown / DASH_COOLDOWN_MS) / Math.log(0.75))
+    case 'dashDistance':      return Math.round((s.dashDistance - 1) / 0.4)
+    default:                  return 0
+  }
+}
+
+function UpgradesView({ onBack }: { onBack: () => void }) {
+  const s = useGameStore(s => s)
+
+  const give = useCallback((id: UpgradeId, level: number) => {
+    if (activeNetClient) {
+      activeNetClient.send({ type: 'adminGiveUpgrade', upgradeId: id, targetLevel: level })
+    } else {
+      useGameStore.getState().adminSetUpgrade(id, level)
+    }
+  }, [])
+
+  const clearAll = useCallback(() => {
+    if (activeNetClient) {
+      activeNetClient.send({ type: 'adminClearUpgrades' })
+    } else {
+      useGameStore.getState().adminResetUpgrades()
+    }
+  }, [])
+
+  const levelBtnStyle = (active: boolean, color: string): React.CSSProperties => ({
+    padding: '2px 7px', fontSize: 11, fontFamily: 'monospace', fontWeight: 'bold',
+    border: `1px solid ${active ? color : '#333355'}`,
+    borderRadius: 4, cursor: 'pointer',
+    background: active ? color + '44' : '#0a0a1a',
+    color: active ? color : '#555577',
+    minWidth: 26, textAlign: 'center',
+  })
+
+  return (
+    <>
+      <div style={{
+        color: '#cc88ff', fontSize: 20, fontFamily: 'monospace', fontWeight: 'bold',
+        letterSpacing: 3, textShadow: '0 0 10px #8844cc',
+      }}>
+        UPGRADES
+      </div>
+
+      <button
+        onClick={clearAll}
+        style={{
+          width: '100%', padding: '8px 0', fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
+          border: '1px solid #661111', borderRadius: 6, cursor: 'pointer', letterSpacing: 2,
+          background: '#1a0808', color: '#ff6666',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#2a0808')}
+        onMouseLeave={e => (e.currentTarget.style.background = '#1a0808')}
+      >
+        CLEAR ALL
+      </button>
+
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', maxHeight: '58vh' }}>
+        {ADMIN_UPGRADE_GROUPS.map(group => (
+          <div key={group.label}>
+            <div style={{ color: group.color, fontFamily: 'monospace', fontSize: 10, letterSpacing: 2, marginBottom: 5 }}>
+              {group.label}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {group.items.map(item => {
+                const cur = getCurrentLevel(item.id, s)
+                return (
+                  <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ color: '#aaaacc', fontFamily: 'monospace', fontSize: 11, minWidth: 90, flexShrink: 0 }}>
+                      {item.label}
+                    </span>
+                    <div style={{ display: 'flex', gap: 3 }}>
+                      {Array.from({ length: item.max + 1 }, (_, i) => (
+                        <button
+                          key={i}
+                          onClick={() => give(item.id, i)}
+                          style={levelBtnStyle(cur === i, group.color)}
+                          onMouseEnter={e => { if (cur !== i) e.currentTarget.style.background = '#111133' }}
+                          onMouseLeave={e => { if (cur !== i) e.currentTarget.style.background = '#0a0a1a' }}
+                        >
+                          {i}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={onBack}
+        style={{ ...{ width: '100%', padding: '12px 0', fontSize: 15, fontFamily: 'monospace', fontWeight: 'bold', border: '2px solid #4444cc', borderRadius: 8, cursor: 'pointer', letterSpacing: 2 }, color: '#aaaaff', background: 'transparent', boxShadow: 'none', marginTop: 8 }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      >
+        ← BACK
+      </button>
+    </>
+  )
+}
+
 function AdminPanel({ onBack }: { onBack: () => void }) {
   const adminInvincible = useGameStore(s => s.adminInvincible)
   const setAdminInvincible = useGameStore(s => s.setAdminInvincible)
   const requestAdminSpawn = useGameStore(s => s.requestAdminSpawn)
-  const [subView, setSubView] = useState<'main' | 'players' | 'spawn'>('main')
+  const [subView, setSubView] = useState<'main' | 'players' | 'spawn' | 'upgrades'>('main')
   const mob = useIsMobile()
 
   const toggleStyle: React.CSSProperties = {
@@ -135,6 +320,10 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
 
   if (subView === 'players') {
     return <AdminPlayersView onBack={() => setSubView('main')} />
+  }
+
+  if (subView === 'upgrades') {
+    return <UpgradesView onBack={() => setSubView('main')} />
   }
 
   if (subView === 'spawn') {
@@ -242,6 +431,12 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
         <div style={toggleStyle} onClick={() => setSubView('spawn')}>
           <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>
             SPAWN
+          </span>
+          <span style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>→</span>
+        </div>
+        <div style={toggleStyle} onClick={() => setSubView('upgrades')}>
+          <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>
+            UPGRADES
           </span>
           <span style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>→</span>
         </div>
