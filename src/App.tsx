@@ -58,8 +58,10 @@ function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: ()
   useEffect(() => {
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
-      width: window.innerWidth,
-      height: window.innerHeight,
+      scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
       backgroundColor: '#11112a',
       physics: { default: 'arcade', arcade: { debug: false } },
       input: { activePointers: 3 },
