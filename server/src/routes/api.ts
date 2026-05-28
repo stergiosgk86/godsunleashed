@@ -330,7 +330,7 @@ apiRouter.post('/admin/players/:id/role', async (req: Request, res: Response) =>
     if (targetRes.rows[0]?.role === 'super_admin') {
       res.status(400).json({ error: 'Cannot change a super_admin role' }); return
     }
-    await db.query('UPDATE users SET role = $1 WHERE id = $2', [role, targetId])
+    await db.query('UPDATE users SET role = $1 WHERE id = $2', [role ?? 'user', targetId])
     res.json({ ok: true, role })
   } catch (err) {
     console.error('Admin set role error:', err)
