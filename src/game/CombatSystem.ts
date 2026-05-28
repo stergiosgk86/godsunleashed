@@ -800,7 +800,7 @@ export class CombatSystem {
         const boltDmg = Math.floor(weaponBaseDamage(level) * might * LIGHTNING_DAMAGE_MULT)
         const cam = this.scene.cameras.main.worldView
         const active = enemies.filter(e => e.active && cam.contains(e.x, e.y))
-        const targetCount = LIGHTNING_TARGETS + lightningTargets
+        const targetCount = LIGHTNING_TARGETS + lightningTargets + echo
         const targets: AnyEnemy[] = []
         const pool = [...active]
         for (let i = 0; i < targetCount && pool.length > 0; i++) {
