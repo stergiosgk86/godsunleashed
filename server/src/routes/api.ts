@@ -66,7 +66,7 @@ function xpToReachLevel(level: number): number {
 
 apiRouter.get('/profile', readRateLimit, async (req: Request, res: Response) => {
   const result = await db.query(
-    `SELECT p.coins, p.upgrades, p.key_bindings, p.unlocked_characters, p.max_stage1_level, u.role
+    `SELECT p.coins, p.upgrades, p.key_bindings, p.unlocked_characters, p.max_stage1_level, p.unlocked_stages, u.role
      FROM profiles p JOIN users u ON u.id = p.user_id
      WHERE p.user_id = $1`,
     [req.userId],
@@ -298,7 +298,7 @@ apiRouter.get('/admin/players', async (req: Request, res: Response) => {
     }
     const result = await db.query(
       `SELECT u.id, u.username, u.role, u.created_at,
-              p.coins, p.upgrades, p.updated_at AS last_active
+              p.coins, p.upgrades, p.updated_at AS last_active, p.unlocked_stages
        FROM users u LEFT JOIN profiles p ON p.user_id = u.id
        ORDER BY u.id`,
     )
@@ -408,6 +408,33 @@ apiRouter.delete('/admin/players/:id/runs', async (req: Request, res: Response) 
     res.json({ ok: true, deleted: result.rowCount })
   } catch (err) {
     console.error('Admin delete runs error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+apiRouter.post('/admin/players/:id/stages', async (req: Request, res: Response) => {
+  try {
+    const userRes = await db.query('SELECT role FROM users WHERE id = $1', [req.userId])
+    if (userRes.rows[0]?.role !== 'super_admin') {
+      res.status(403).json({ error: 'Forbidden' }); return
+    }
+    const targetId = parseInt(req.params.id, 10)
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      res.status(400).json({ error: 'Invalid user id' }); return
+    }
+    const { stage, unlock } = req.body ?? {}
+    const stageNum = parseInt(stage, 10)
+    if (!Number.isInteger(stageNum) || stageNum < 2 || stageNum > 10) {
+      res.status(400).json({ error: 'Invalid stage' }); return
+    }
+    const sql = unlock
+      ? `UPDATE profiles SET unlocked_stages = array_append(array_remove(unlocked_stages, $1), $1), updated_at = NOW() WHERE user_id = $2 RETURNING unlocked_stages`
+      : `UPDATE profiles SET unlocked_stages = array_remove(unlocked_stages, $1), updated_at = NOW() WHERE user_id = $2 RETURNING unlocked_stages`
+    const result = await db.query(sql, [stageNum, targetId])
+    if (result.rowCount === 0) { res.status(404).json({ error: 'Profile not found' }); return }
+    res.json({ ok: true, unlocked_stages: result.rows[0].unlocked_stages })
+  } catch (err) {
+    console.error('Admin stage unlock error:', err)
     res.status(500).json({ error: 'Internal server error' })
   }
 })

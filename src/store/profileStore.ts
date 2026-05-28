@@ -30,6 +30,7 @@ interface ProfileStore {
   coins: number
   upgrades: MetaUpgrades
   unlockedCharacters: string[]
+  unlockedStages: number[]
   maxStage1Level: number
   loaded: boolean
   fetchProfile: () => Promise<void>
@@ -47,6 +48,7 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
   coins: 0,
   upgrades: emptyUpgrades(),
   unlockedCharacters: [],
+  unlockedStages: [],
   maxStage1Level: 0,
   loaded: false,
 
@@ -75,6 +77,7 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
         coins: data.coins ?? 0,
         upgrades: { ...emptyUpgrades(), ...(data.upgrades ?? {}) },
         unlockedCharacters: Array.isArray(data.unlocked_characters) ? data.unlocked_characters : [],
+        unlockedStages: Array.isArray(data.unlocked_stages) ? data.unlocked_stages.filter((s: unknown) => typeof s === 'number') : [],
         maxStage1Level: typeof data.max_stage1_level === 'number' ? data.max_stage1_level : 0,
         loaded: true,
       })
@@ -154,5 +157,5 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
     } catch { return 'Network error' }
   },
 
-  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), unlockedCharacters: [], maxStage1Level: 0, loaded: false }),
+  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), unlockedCharacters: [], unlockedStages: [], maxStage1Level: 0, loaded: false }),
 }))

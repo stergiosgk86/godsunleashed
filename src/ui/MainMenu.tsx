@@ -767,7 +767,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   onMultiplayer: () => void
   onLogout: () => void
 }) {
-  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades, unlockedCharacters, unlockCharacter, maxStage1Level } = useProfileStore()
+  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades, unlockedCharacters, unlockCharacter, maxStage1Level, unlockedStages } = useProfileStore()
   const username = useAuthStore(s => s.username)
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
@@ -958,7 +958,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
 
             {/* Stage 2 — locked until level 25 in Stage 1 */}
             {(() => {
-              const stage2Unlocked = maxStage1Level >= 25
+              const stage2Unlocked = maxStage1Level >= 25 || unlockedStages.includes(2)
               const progress = Math.min(maxStage1Level, 25)
               return stage2Unlocked ? (
                 <div

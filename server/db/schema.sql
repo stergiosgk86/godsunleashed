@@ -30,6 +30,9 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS run_snapshot JSONB;
 -- Migration: track highest level reached in Stage 1 for Stage 2 unlock
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS max_stage1_level INT NOT NULL DEFAULT 0;
 
+-- Migration: admin-granted stage unlocks (bypasses level requirements)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_stages INT[] NOT NULL DEFAULT '{}';
+
 -- One profile per user
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_user_id_idx ON profiles(user_id);
 

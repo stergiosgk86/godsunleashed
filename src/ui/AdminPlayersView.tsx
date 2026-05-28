@@ -10,6 +10,7 @@ export interface PlayerRow {
   coins: number | null
   upgrades: Record<string, number> | null
   last_active: string | null
+  unlocked_stages: number[] | null
 }
 
 const UPGRADE_KEYS = ['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed'] as const
@@ -349,6 +350,99 @@ function ConfirmRoleModal({ player, grant, onConfirm, onCancel }: {
   )
 }
 
+const STAGE_DEFS = [
+  { num: 2, name: 'Underworld Depths' },
+]
+
+function StageUnlockModal({ player, onToggle, toggling, onClose }: {
+  player: PlayerRow
+  onToggle: (stage: number, unlock: boolean) => void
+  toggling: boolean
+  onClose: () => void
+}) {
+  const label = player.username ?? `#${player.id}`
+  const unlockedStages = player.unlocked_stages ?? []
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 10, borderRadius: 'inherit',
+    }}>
+      <div style={{
+        background: '#0d0d1a', border: '2px solid #334455',
+        borderRadius: 10, padding: '24px 28px',
+        display: 'flex', flexDirection: 'column', gap: 14,
+        boxShadow: '0 0 30px #4488aa55', minWidth: 300,
+      }}>
+        <div style={{ color: '#88ccff', fontSize: 14, fontFamily: 'monospace', letterSpacing: 2, fontWeight: 'bold' }}>
+          STAGE ACCESS
+        </div>
+        <div style={{ color: '#8888aa', fontSize: 12, fontFamily: 'monospace' }}>
+          Player: <span style={{ color: '#ffffff', fontWeight: 'bold' }}>{label}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {STAGE_DEFS.map(({ num, name }) => {
+            const unlocked = unlockedStages.includes(num)
+            return (
+              <div key={num} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                background: 'rgba(255,255,255,0.03)', borderRadius: 6, padding: '8px 12px',
+                border: `1px solid ${unlocked ? 'rgba(60,160,80,0.35)' : 'rgba(80,80,120,0.3)'}`,
+              }}>
+                <div>
+                  <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#ccccff', fontWeight: 'bold' }}>Stage {num}</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#555577', marginLeft: 8 }}>{name}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 10, letterSpacing: 1, color: unlocked ? '#44ff88' : '#664444' }}>
+                    {unlocked ? 'UNLOCKED' : 'LOCKED'}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={toggling}
+                    onClick={() => onToggle(num, !unlocked)}
+                    style={{
+                      padding: '3px 10px', fontSize: 10, fontFamily: 'monospace',
+                      color: unlocked ? '#ffaa44' : '#44ff88', background: 'transparent',
+                      border: `1px solid ${unlocked ? '#443322' : '#224422'}`, borderRadius: 4,
+                      cursor: toggling ? 'default' : 'pointer',
+                      opacity: toggling ? 0.4 : 1, letterSpacing: 1,
+                      transition: 'background 0.15s, color 0.15s',
+                    }}
+                    onMouseEnter={e => {
+                      if (toggling) return
+                      e.currentTarget.style.background = unlocked ? '#3a2000' : '#003a00'
+                    }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {unlocked ? 'REVOKE' : 'UNLOCK'}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            padding: '6px 0', fontSize: 11, fontFamily: 'monospace',
+            color: '#aaaaff', background: 'transparent',
+            border: '1px solid #2a2a50', borderRadius: 5,
+            cursor: 'pointer', letterSpacing: 1,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          CLOSE
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const token = useAuthStore(s => s.token)
   const myId = useAuthStore(s => s.userId)
@@ -365,6 +459,8 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const [confirmClearRuns, setConfirmClearRuns] = useState<PlayerRow | null>(null)
   const [giveCoinsTarget, setGiveCoinsTarget] = useState<PlayerRow | null>(null)
   const [roleTarget, setRoleTarget] = useState<PlayerRow | null>(null)
+  const [stageTarget, setStageTarget] = useState<PlayerRow | null>(null)
+  const [togglingStage, setTogglingStage] = useState(false)
   const [toast, setToast] = useState<{ msg: string; color: string } | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -469,6 +565,34 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
     }
   }
 
+  async function executeToggleStage(p: PlayerRow, stage: number, unlock: boolean) {
+    setTogglingStage(true)
+    try {
+      const res = await fetch(`/api/admin/players/${p.id}/stages`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage, unlock }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      const updatedStages: number[] = data.unlocked_stages ?? []
+      setPlayers(prev => prev.map(row =>
+        row.id === p.id ? { ...row, unlocked_stages: updatedStages } : row
+      ))
+      setStageTarget(prev => prev?.id === p.id ? { ...prev, unlocked_stages: updatedStages } : prev)
+      showToast(
+        unlock
+          ? `Stage ${stage} unlocked for ${p.username ?? `#${p.id}`}`
+          : `Stage ${stage} revoked from ${p.username ?? `#${p.id}`}`,
+        unlock ? '#44ff88' : '#ffaa44',
+      )
+    } catch {
+      showToast('Failed to update stage access', '#ff4444')
+    } finally {
+      setTogglingStage(false)
+    }
+  }
+
   return (
     <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, overflowY: 'auto' }}>
       {toast && (
@@ -512,6 +636,14 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
           grant={roleTarget.role !== 'admin'}
           onConfirm={() => executeRoleChange(roleTarget)}
           onCancel={() => setRoleTarget(null)}
+        />
+      )}
+      {stageTarget && (
+        <StageUnlockModal
+          player={stageTarget}
+          onToggle={(stage, unlock) => executeToggleStage(stageTarget, stage, unlock)}
+          toggling={togglingStage}
+          onClose={() => setStageTarget(null)}
         />
       )}
 
@@ -669,6 +801,29 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                       }}
                     >
                       CLR LB
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStageTarget(p)}
+                      style={{
+                        padding: '2px 8px', fontSize: 10, fontFamily: 'monospace',
+                        color: '#88ccff', background: 'transparent',
+                        border: '1px solid #223344', borderRadius: 4,
+                        cursor: 'pointer', letterSpacing: 1,
+                        transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = '#001a2a'
+                        e.currentTarget.style.borderColor = '#88ccff'
+                        e.currentTarget.style.color = '#aaddff'
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent'
+                        e.currentTarget.style.borderColor = '#223344'
+                        e.currentTarget.style.color = '#88ccff'
+                      }}
+                    >
+                      STAGES
                     </button>
                     {p.role !== 'super_admin' && (
                       <button
