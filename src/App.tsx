@@ -412,6 +412,7 @@ function App() {
     return <>
       <MainMenu onPlay={handlePlay} onMultiplayer={handleMultiplayer} onLogout={handleLogout} />
       {lobbyToastEl}
+      <SystemToast />
     </>
   }
 
