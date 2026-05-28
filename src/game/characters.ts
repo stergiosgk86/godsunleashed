@@ -55,7 +55,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
     startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: true,
-    scale: 0.85,
+    scale: 1.0,
   },
   rogue: {
     id: 'rogue', name: 'Rogue', trait: 'Shadow Step',
@@ -123,7 +123,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.3, startAura: 0, lifeDrain: 0, startLightning: true, startBoomerang: false,
     startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, frontArcOnly: false,
-    scale: 0.65,
+    scale: 0.8,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 768 },
   },
   poseidon: {
@@ -199,7 +199,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.2, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
     startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: true, startSolstice: true, frontArcOnly: false,
-    scale: 0.5,
+    scale: 0.65,
     menuFrame: { fw: 80, fh: 80, sw: 240, sh: 320 },
     menuRow: 1,
   },

@@ -46,6 +46,7 @@ export class Player {
   private idleFrames: Record<Direction, number>
   private staticSprite: boolean
   private nameLabel: Phaser.GameObjects.Text | null = null
+  private nameLabelOffsetY = 28
 
   constructor(scene: Phaser.Scene, x: number, y: number, spriteKey = 'player', username = '', scale = 1.5, staticSprite = false) {
     this.x = x
@@ -58,7 +59,8 @@ export class Player {
     this.bounds = scene.physics.world.bounds
     this.graphic = scene.add.sprite(x, y, spriteKey).setDepth(4).setScale(scale)
     if (username) {
-      this.nameLabel = scene.add.text(x, y - 28, username, {
+      this.nameLabelOffsetY = this.graphic.displayHeight / 2 + 6
+      this.nameLabel = scene.add.text(x, y - this.nameLabelOffsetY, username, {
         fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
         stroke: '#000000', strokeThickness: 3,
       }).setOrigin(0.5).setDepth(5)
@@ -150,7 +152,7 @@ export class Player {
     this.x = Phaser.Math.Clamp(this.x, this.bounds.x + margin, this.bounds.right - margin)
     this.y = Phaser.Math.Clamp(this.y, this.bounds.y + margin, this.bounds.bottom - margin)
     this.graphic.setPosition(this.x, this.y)
-    this.nameLabel?.setPosition(this.x, this.y - 28)
+    this.nameLabel?.setPosition(this.x, this.y - this.nameLabelOffsetY)
 
     this.isMoving = moving
     if (moving) { this.facingVx = vx; this.facingVy = vy }
