@@ -148,17 +148,21 @@ export class MainScene extends Phaser.Scene {
       this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'floor_stage2')
         .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(-10)
 
-      // depth 4.5 renders above player (4) and projectiles (3) so the wall
-      // visually clips any sprite/projectile that briefly overlaps the boundary
+      // Top wall: depth 3.5 — renders UNDER player (4) so the player sprite stays
+      // visible when walking toward the north wall (standard top-down: north wall behind player).
       this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
-        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(4.5)
+        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(3.5)
+      // Bottom wall: depth 4.5 — renders OVER player (4) so it clips feet walking
+      // toward the south wall (standard top-down: south wall in front of player).
       this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
         .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(4.5)
 
-      // PLAYER_MARGIN lets player center reach ±(CORRIDOR_HALF+40-64)=±356;
-      // small sprites (24px half) stop exactly at wall, large sprites clip
-      // a few pixels in but wall depth 4.5 covers them visually.
-      this.physics.world.setBounds(-500_000, -(CORRIDOR_HALF + 40), 1_000_000, (CORRIDOR_HALF + 40) * 2)
+      // Asymmetric Y bounds: top extended so feet (y+24) reach -CORRIDOR_HALF,
+      // bottom lets feet reach +CORRIDOR_HALF for small sprites (wall covers larger ones).
+      // Player.ts margin=64: top center_min = -(CORRIDOR_HALF+88)+64 = -(CORRIDOR_HALF+24), feet = -CORRIDOR_HALF ✓
+      const TOP_BOUND    = CORRIDOR_HALF + 88  // 468
+      const BOTTOM_BOUND = CORRIDOR_HALF + 40  // 420
+      this.physics.world.setBounds(-500_000, -TOP_BOUND, 1_000_000, TOP_BOUND + BOTTOM_BOUND)
 
       this.spawner.disabled = true
       this.spawner.corridorHalfHeight = CORRIDOR_HALF
