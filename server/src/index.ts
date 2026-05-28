@@ -205,7 +205,8 @@ wss.on('connection', (ws) => {
       if (r) {
         db.query('SELECT role FROM users WHERE id = $1', [authed.userId])
           .then(res => {
-            if (res.rows[0]?.role === 'super_admin') r.adminSpawn(msg.entity, playerId)
+            const role = res.rows[0]?.role
+            if (role === 'super_admin' || role === 'admin') r.adminSpawn(msg.entity, playerId)
           })
           .catch(() => {})
       }
@@ -214,7 +215,8 @@ wss.on('connection', (ws) => {
       if (r) {
         db.query('SELECT role FROM users WHERE id = $1', [authed.userId])
           .then(res => {
-            if (res.rows[0]?.role === 'super_admin') r.adminGiveUpgrade(playerId, upgradeId, targetLevel)
+            const role = res.rows[0]?.role
+            if (role === 'super_admin' || role === 'admin') r.adminGiveUpgrade(playerId, upgradeId, targetLevel)
           })
           .catch(() => {})
       }
@@ -223,7 +225,8 @@ wss.on('connection', (ws) => {
       if (r) {
         db.query('SELECT role FROM users WHERE id = $1', [authed.userId])
           .then(res => {
-            if (res.rows[0]?.role === 'super_admin') r.adminClearUpgrades(playerId)
+            const role = res.rows[0]?.role
+            if (role === 'super_admin' || role === 'admin') r.adminClearUpgrades(playerId)
           })
           .catch(() => {})
       }

@@ -296,7 +296,7 @@ apiRouter.get('/admin/players', async (req: Request, res: Response) => {
       res.status(403).json({ error: 'Forbidden' }); return
     }
     const result = await db.query(
-      `SELECT u.id, u.username, u.created_at,
+      `SELECT u.id, u.username, u.role, u.created_at,
               p.coins, p.upgrades, p.updated_at AS last_active
        FROM users u LEFT JOIN profiles p ON p.user_id = u.id
        ORDER BY u.id`,
@@ -304,6 +304,36 @@ apiRouter.get('/admin/players', async (req: Request, res: Response) => {
     res.json({ players: result.rows })
   } catch (err) {
     console.error('Admin players error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
+apiRouter.post('/admin/players/:id/role', async (req: Request, res: Response) => {
+  try {
+    const userRes = await db.query('SELECT role FROM users WHERE id = $1', [req.userId])
+    if (userRes.rows[0]?.role !== 'super_admin') {
+      res.status(403).json({ error: 'Forbidden' }); return
+    }
+    const targetId = parseInt(req.params.id, 10)
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      res.status(400).json({ error: 'Invalid user id' }); return
+    }
+    if (targetId === req.userId) {
+      res.status(400).json({ error: 'Cannot change your own role' }); return
+    }
+    const { role } = req.body ?? {}
+    if (role !== 'admin' && role !== null) {
+      res.status(400).json({ error: 'Invalid role' }); return
+    }
+    // Prevent demoting another super_admin
+    const targetRes = await db.query('SELECT role FROM users WHERE id = $1', [targetId])
+    if (targetRes.rows[0]?.role === 'super_admin') {
+      res.status(400).json({ error: 'Cannot change a super_admin role' }); return
+    }
+    await db.query('UPDATE users SET role = $1 WHERE id = $2', [role, targetId])
+    res.json({ ok: true, role })
+  } catch (err) {
+    console.error('Admin set role error:', err)
     res.status(500).json({ error: 'Internal server error' })
   }
 })

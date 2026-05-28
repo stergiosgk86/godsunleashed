@@ -308,6 +308,8 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
   const adminInvincible = useGameStore(s => s.adminInvincible)
   const setAdminInvincible = useGameStore(s => s.setAdminInvincible)
   const requestAdminSpawn = useGameStore(s => s.requestAdminSpawn)
+  const role = useAuthStore(s => s.role)
+  const isSuperAdmin = role === 'super_admin'
   const [subView, setSubView] = useState<'main' | 'players' | 'spawn' | 'upgrades'>('main')
   const mob = useIsMobile()
 
@@ -440,12 +442,14 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
           </span>
           <span style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>→</span>
         </div>
-        <div style={toggleStyle} onClick={() => setSubView('players')}>
-          <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>
-            PLAYERS
-          </span>
-          <span style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>→</span>
-        </div>
+        {isSuperAdmin && (
+          <div style={toggleStyle} onClick={() => setSubView('players')}>
+            <span style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>
+              PLAYERS
+            </span>
+            <span style={{ color: '#555577', fontFamily: 'monospace', fontSize: 13 }}>→</span>
+          </div>
+        )}
       </div>
 
       <button
@@ -468,7 +472,7 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
   const togglePause = useGameStore(s => s.togglePause)
   const depositCoins = useProfileStore(s => s.depositCoins)
   const role = useAuthStore(s => s.role)
-  const isSuperAdmin = role === 'super_admin'
+  const isAdmin = role === 'super_admin' || role === 'admin'
   const [view, setView] = useState<'main' | 'settings' | 'controls' | 'stats' | 'sounds' | 'admin'>('main')
   function handleQuit() {
     const { sessionCoins, resetRun } = useGameStore.getState()
@@ -534,7 +538,7 @@ export function PauseMenu({ onQuit }: { onQuit: () => void }) {
             SETTINGS
           </button>
 
-          {isSuperAdmin && (
+          {isAdmin && (
             <button
               onClick={() => setView('admin')}
               style={{ ...btnBase, color: '#ff6666', background: 'transparent', boxShadow: 'none', borderColor: '#661111' }}

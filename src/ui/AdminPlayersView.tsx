@@ -5,6 +5,7 @@ import { useProfileStore } from '../store/profileStore'
 export interface PlayerRow {
   id: number
   username: string | null
+  role: string | null
   created_at: string
   coins: number | null
   upgrades: Record<string, number> | null
@@ -299,6 +300,55 @@ function GiveCoinsModal({ player, onConfirm, onCancel }: {
   )
 }
 
+function ConfirmRoleModal({ player, grant, onConfirm, onCancel }: {
+  player: PlayerRow
+  grant: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const label = player.username ?? `#${player.id}`
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: 'rgba(0,0,0,0.75)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 10, borderRadius: 'inherit',
+    }}>
+      <div style={{
+        background: '#0d0d1a', border: `2px solid ${grant ? '#334433' : '#443322'}`,
+        borderRadius: 10, padding: '28px 32px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        boxShadow: `0 0 30px ${grant ? '#44ff8855' : '#ff884455'}`,
+        minWidth: 260,
+      }}>
+        <div style={{ color: grant ? '#88ff88' : '#ffaa44', fontSize: 14, fontFamily: 'monospace', letterSpacing: 2, fontWeight: 'bold' }}>
+          {grant ? 'GRANT ADMIN' : 'REVOKE ADMIN'}
+        </div>
+        <div style={{ color: '#ccccff', fontSize: 12, fontFamily: 'monospace', textAlign: 'center', lineHeight: 1.6 }}>
+          {grant
+            ? <>{`Give `}<span style={{ color: '#aaaaff', fontWeight: 'bold' }}>{label}</span>{` access to the in-game admin panel?`}</>
+            : <>{`Remove admin access from `}<span style={{ color: '#aaaaff', fontWeight: 'bold' }}>{label}</span>{`?`}</>
+          }
+        </div>
+        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+          <button type="button" onClick={onConfirm} style={{
+            padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+            color: grant ? '#88ff88' : '#ffaa44', background: 'transparent',
+            border: `1px solid ${grant ? '#334433' : '#443322'}`, borderRadius: 5,
+            cursor: 'pointer', letterSpacing: 1,
+          }}>CONFIRM</button>
+          <button type="button" onClick={onCancel} style={{
+            padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+            color: '#aaaaff', background: 'transparent',
+            border: '1px solid #2a2a50', borderRadius: 5,
+            cursor: 'pointer', letterSpacing: 1,
+          }}>CANCEL</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const token = useAuthStore(s => s.token)
   const myId = useAuthStore(s => s.userId)
@@ -309,9 +359,11 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const [resetting, setResetting] = useState<Set<number>>(new Set())
   const [clearingRuns, setClearingRuns] = useState<Set<number>>(new Set())
   const [givingCoins, setGivingCoins] = useState<Set<number>>(new Set())
+  const [togglingRole, setTogglingRole] = useState<Set<number>>(new Set())
   const [confirmTarget, setConfirmTarget] = useState<PlayerRow | null>(null)
   const [confirmClearRuns, setConfirmClearRuns] = useState<PlayerRow | null>(null)
   const [giveCoinsTarget, setGiveCoinsTarget] = useState<PlayerRow | null>(null)
+  const [roleTarget, setRoleTarget] = useState<PlayerRow | null>(null)
   const [toast, setToast] = useState<{ msg: string; color: string } | null>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -390,6 +442,32 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
     }
   }
 
+  async function executeRoleChange(p: PlayerRow) {
+    const grant = p.role !== 'admin'
+    setRoleTarget(null)
+    setTogglingRole(prev => new Set(prev).add(p.id))
+    try {
+      const res = await fetch(`/api/admin/players/${p.id}/role`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: grant ? 'admin' : null }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setPlayers(prev => prev.map(row =>
+        row.id === p.id ? { ...row, role: data.role } : row
+      ))
+      showToast(
+        grant ? `${p.username ?? `#${p.id}`} is now an admin` : `Admin revoked from ${p.username ?? `#${p.id}`}`,
+        grant ? '#88ff88' : '#ffaa44',
+      )
+    } catch (e: unknown) {
+      showToast(e instanceof Error ? e.message : 'Failed to change role', '#ff4444')
+    } finally {
+      setTogglingRole(prev => { const next = new Set(prev); next.delete(p.id); return next })
+    }
+  }
+
   return (
     <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, overflowY: 'auto' }}>
       {toast && (
@@ -425,6 +503,14 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
           player={giveCoinsTarget}
           onConfirm={(amount) => executeGiveCoins(giveCoinsTarget, amount)}
           onCancel={() => setGiveCoinsTarget(null)}
+        />
+      )}
+      {roleTarget && (
+        <ConfirmRoleModal
+          player={roleTarget}
+          grant={roleTarget.role !== 'admin'}
+          onConfirm={() => executeRoleChange(roleTarget)}
+          onCancel={() => setRoleTarget(null)}
         />
       )}
 
@@ -467,7 +553,23 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
               ) : players.map(p => (
                 <tr key={p.id}>
                   <td style={{ ...tdStyle, textAlign: 'left', color: '#555577' }}>{p.id}</td>
-                  <td style={{ ...tdStyle, textAlign: 'left', color: '#aaaaff' }}>{p.username ?? '—'}</td>
+                  <td style={{ ...tdStyle, textAlign: 'left', color: '#aaaaff' }}>
+                    {p.username ?? '—'}
+                    {p.role === 'admin' && (
+                      <span style={{
+                        marginLeft: 6, fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold',
+                        color: '#88ff88', border: '1px solid #336633', borderRadius: 3,
+                        padding: '1px 4px', letterSpacing: 1,
+                      }}>ADMIN</span>
+                    )}
+                    {p.role === 'super_admin' && (
+                      <span style={{
+                        marginLeft: 6, fontSize: 9, fontFamily: 'monospace', fontWeight: 'bold',
+                        color: '#ff8844', border: '1px solid #664422', borderRadius: 3,
+                        padding: '1px 4px', letterSpacing: 1,
+                      }}>OWNER</span>
+                    )}
+                  </td>
                   <td style={{ ...tdStyle, color: '#ffcc44' }}>{p.coins ?? 0}</td>
                   {UPGRADE_KEYS.map(k => {
                     const rank = p.upgrades?.[k] ?? 0
@@ -562,6 +664,29 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                     >
                       CLR LB
                     </button>
+                    {p.role !== 'super_admin' && (
+                      <button
+                        type="button"
+                        disabled={togglingRole.has(p.id)}
+                        onClick={() => setRoleTarget(p)}
+                        style={{
+                          padding: '2px 8px', fontSize: 10, fontFamily: 'monospace',
+                          color: p.role === 'admin' ? '#ffaa44' : '#88ff88', background: 'transparent',
+                          border: `1px solid ${p.role === 'admin' ? '#443322' : '#336633'}`, borderRadius: 4,
+                          cursor: togglingRole.has(p.id) ? 'default' : 'pointer',
+                          opacity: togglingRole.has(p.id) ? 0.4 : 1,
+                          letterSpacing: 1,
+                          transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                        }}
+                        onMouseEnter={e => {
+                          if (togglingRole.has(p.id)) return
+                          e.currentTarget.style.background = p.role === 'admin' ? '#3a2000' : '#003a00'
+                        }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                      >
+                        {p.role === 'admin' ? 'REVOKE' : 'ADMIN'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
