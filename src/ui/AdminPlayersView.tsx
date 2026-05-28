@@ -356,6 +356,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const [players, setPlayers] = useState<PlayerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
+  const [hoveredRow, setHoveredRow] = useState<number | null>(null)
   const [resetting, setResetting] = useState<Set<number>>(new Set())
   const [clearingRuns, setClearingRuns] = useState<Set<number>>(new Set())
   const [givingCoins, setGivingCoins] = useState<Set<number>>(new Set())
@@ -551,7 +552,12 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                   <td colSpan={12} style={{ ...tdStyle, color: '#444466', padding: 20 }}>No players</td>
                 </tr>
               ) : players.map(p => (
-                <tr key={p.id}>
+                <tr
+                  key={p.id}
+                  onMouseEnter={() => setHoveredRow(p.id)}
+                  onMouseLeave={() => setHoveredRow(null)}
+                  style={{ background: hoveredRow === p.id ? '#151528' : 'transparent', transition: 'background 0.1s' }}
+                >
                   <td style={{ ...tdStyle, textAlign: 'left', color: '#555577' }}>{p.id}</td>
                   <td style={{ ...tdStyle, textAlign: 'left', color: '#aaaaff' }}>
                     {p.username ?? '—'}
