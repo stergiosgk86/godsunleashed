@@ -17,7 +17,7 @@ import { difficultyScale, computeSpeedScale, computeHpScale, computeDamageScale,
 import { soundSystem } from './SoundSystem'
 import { activeNetClient } from '../net/netState'
 import type { EnemySnapshot, PlayerSnapshot } from '../net/protocol'
-import { saveRun, clearRun } from './runSave'
+import { saveRun, clearRun, type RunSnapshot } from './runSave'
 import { consumePendingRunRestore } from './pendingRunRestore'
 import { TouchJoystick } from './TouchJoystick'
 import { TouchDashButton } from './TouchDashButton'
@@ -26,6 +26,18 @@ import { useStageStore } from '../store/stageStore'
 
 const SPAWN_X = 0
 const SPAWN_Y = 0
+
+function stage2WaveLabel(elapsed: number): string {
+  const t = elapsed
+  if (t < 30_000)  return 'Wave 1 — Drifters & Scurriers'
+  if (t < 60_000)  return 'Wave 2 — + Lurkers'
+  if (t < 90_000)  return 'Wave 3 — + Mummies'
+  if (t < 150_000) return 'Wave 4 — + Jackals'
+  if (t < 240_000) return 'Wave 5 — + Cultists'
+  if (t < 360_000) return 'Wave 6 — + Golems'
+  if (t < 480_000) return 'Wave 7 — + Knights'
+  return 'Wave 8 — + Archfiends'
+}
 
 export class MainScene extends Phaser.Scene {
   private player!: Player
@@ -50,6 +62,7 @@ export class MainScene extends Phaser.Scene {
   private netSurgeTimer = 0
   private saveTimer = 0
   private readonly SAVE_INTERVAL = 10_000
+  private beforeUnloadHandler: (() => void) | null = null
   private charType = ''
   private joystick!: TouchJoystick
   private dashButton: TouchDashButton | null = null
@@ -134,6 +147,18 @@ export class MainScene extends Phaser.Scene {
         sessionCoins: savedRun.sessionCoins,
         kills: savedRun.kills ?? 0,
         bossKills: savedRun.bossKills ?? 0,
+        xpGain: savedRun.xpGain ?? 0,
+        magnetRange: savedRun.magnetRange ?? 0,
+        orbSpeed: savedRun.orbSpeed ?? 0,
+        orbPower: savedRun.orbPower ?? 0,
+        orbRange: savedRun.orbRange ?? 0,
+        equinox: savedRun.equinox ?? false,
+        solstice: savedRun.solstice ?? false,
+        dualGunDamage: savedRun.dualGunDamage ?? 0,
+        dualGunSpeed: savedRun.dualGunSpeed ?? 0,
+        dualGunExtra: savedRun.dualGunExtra ?? 0,
+        dualGunAttackInterval: savedRun.dualGunAttackInterval ?? 1400,
+        echo: savedRun.echo ?? 0,
       })
     }
 
@@ -151,12 +176,14 @@ export class MainScene extends Phaser.Scene {
 
       // Top wall: depth 3.5 — renders UNDER player (4) so the player sprite stays
       // visible when walking toward the north wall (standard top-down: north wall behind player).
+      // tilePositionY=857: shifts texture so its decorated bottom aligns with the corridor edge.
+      // Derived from: round(1254 - (2000/0.3) % 1254) = 857
       this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
-        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(3.5)
-      // Bottom wall: depth 4.5 — renders OVER player (4) so it clips feet walking
-      // toward the south wall (standard top-down: south wall in front of player).
+        .setOrigin(0.5, 0.5).setTileScale(0.3, 0.3).setDepth(3.5).setTilePosition(0, 857)
+      // Bottom wall: flipped Y so the decorated edge (torches/border) faces the corridor.
+      // depth 4.5 — renders OVER player (4) so it clips feet walking toward the south wall.
       this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
-        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(4.5)
+        .setOrigin(0.5, 0.5).setTileScale(0.3, 0.3).setDepth(4.5).setFlipY(true).setTilePosition(0, 857)
 
       // Asymmetric Y bounds: top extended so feet (y+24) reach -CORRIDOR_HALF,
       // bottom lets feet reach +CORRIDOR_HALF for small sprites (wall covers larger ones).
@@ -273,10 +300,25 @@ export class MainScene extends Phaser.Scene {
     const unsubDead = useGameStore.subscribe(s => s.isDead, isDead => { if (isDead) clearRun() })
     const unsubWon  = useGameStore.subscribe(s => s.isWon,  isWon  => { if (isWon)  clearRun() })
 
+    // Save immediately so a refresh within the first 10s can still restore.
+    const initSnap = this.buildSnapshot()
+    if (initSnap) saveRun(initSnap)
+
+    // Also save on beforeunload so a refresh between periodic saves restores correctly.
+    this.beforeUnloadHandler = () => {
+      const snap = this.buildSnapshot()
+      if (snap) saveRun(snap)
+    }
+    window.addEventListener('beforeunload', this.beforeUnloadHandler)
+
     this.events.once('shutdown', () => {
       sceneAlive = false
       soundSystem.stopMusic()
       unsubLevelUp(); unsubPause(); unsubDamage(); unsubDead(); unsubWon()
+      if (this.beforeUnloadHandler) {
+        window.removeEventListener('beforeunload', this.beforeUnloadHandler)
+        this.beforeUnloadHandler = null
+      }
       this.chunkManager?.destroyAll()
       this.joystick.destroy()
       this.dashButton?.destroy()
@@ -287,6 +329,39 @@ export class MainScene extends Phaser.Scene {
       this.remoteProjectiles = []
       this.clientEnemies.clear()
     })
+  }
+
+  private buildSnapshot(): RunSnapshot | null {
+    const gs = useGameStore.getState()
+    if (gs.isDead || gs.isWon) return null
+    const base = {
+      character: this.charType,
+      stage: this.selectedStage as 1 | 2,
+      elapsed: runData.elapsed,
+      playerX: this.player.x,
+      playerY: this.player.y,
+      kills: gs.kills, bossKills: gs.bossKills,
+      xp: gs.xp, xpNeeded: gs.xpNeeded, level: gs.level,
+      hp: gs.hp, maxHp: gs.maxHp,
+      might: gs.might, attackInterval: gs.attackInterval, moveSpeed: gs.moveSpeed,
+      dashCooldown: gs.dashCooldown, dashDistance: gs.dashDistance,
+      multiShot: gs.multiShot, piercing: gs.piercing, aura: gs.aura, auraTick: gs.auraTick, auraRange: gs.auraRange,
+      orbital: gs.orbital, wand: gs.wand, boomerang: gs.boomerang, flameTrail: gs.flameTrail,
+      bloodNova: gs.bloodNova, bloodNovaCD: gs.bloodNovaCD, vampiric: gs.vampiric, lightning: gs.lightning,
+      lightningTargets: gs.lightningTargets, lightningCooldown: gs.lightningCooldown,
+      axe: gs.axe, divineShield: gs.divineShield, armor: gs.armor, hpRegen: gs.hpRegen, lifeDrain: gs.lifeDrain,
+      sessionCoins: gs.sessionCoins,
+      xpGain: gs.xpGain, magnetRange: gs.magnetRange,
+      orbSpeed: gs.orbSpeed, orbPower: gs.orbPower, orbRange: gs.orbRange,
+      equinox: gs.equinox, solstice: gs.solstice,
+      dualGunDamage: gs.dualGunDamage, dualGunSpeed: gs.dualGunSpeed, dualGunExtra: gs.dualGunExtra,
+      dualGunAttackInterval: gs.dualGunAttackInterval, echo: gs.echo,
+    }
+    if (activeNetClient) {
+      return { ...base, nextBossAt: 0, warningFired: false, finalBossWarningFired: false, bossAlive: false, finalBossAlive: false, enemies: [] }
+    }
+    const sp = this.spawner.getSnapshot()
+    return { ...base, nextBossAt: sp.nextBossAt, warningFired: sp.warningFired, finalBossWarningFired: sp.finalBossWarningFired, bossAlive: sp.bossAlive, finalBossAlive: sp.finalBossAlive, enemies: this.spawner.getSaveableEnemies() }
   }
 
   private handleAdminSpawn(entity: AdminSpawnEntity) {
@@ -625,31 +700,8 @@ export class MainScene extends Phaser.Scene {
       this.saveTimer += delta
       if (this.saveTimer >= this.SAVE_INTERVAL) {
         this.saveTimer = 0
-        const s = useGameStore.getState()
-        saveRun({
-          character: this.charType,
-          stage: this.selectedStage as 1 | 2,
-          elapsed: runData.elapsed,
-          nextBossAt: 0,
-          warningFired: false,
-          finalBossWarningFired: false,
-          bossAlive: false,
-          finalBossAlive: false,
-          playerX: this.player.x,
-          playerY: this.player.y,
-          enemies: [],
-          kills: s.kills, bossKills: s.bossKills,
-          xp: s.xp, xpNeeded: s.xpNeeded, level: s.level,
-          hp: s.hp, maxHp: s.maxHp,
-          might: s.might, attackInterval: s.attackInterval, moveSpeed: s.moveSpeed,
-          dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
-          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick, auraRange: s.auraRange,
-          orbital: s.orbital, wand: s.wand, boomerang: s.boomerang, flameTrail: s.flameTrail,
-          bloodNova: s.bloodNova, bloodNovaCD: s.bloodNovaCD, vampiric: s.vampiric, lightning: s.lightning,
-          lightningTargets: s.lightningTargets, lightningCooldown: s.lightningCooldown,
-          axe: s.axe, divineShield: s.divineShield, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
-          sessionCoins: s.sessionCoins,
-        })
+        const snap = this.buildSnapshot()
+        if (snap) saveRun(snap)
       }
     } else {
       // Singleplayer
@@ -662,32 +714,8 @@ export class MainScene extends Phaser.Scene {
       this.saveTimer += delta
       if (this.saveTimer >= this.SAVE_INTERVAL) {
         this.saveTimer = 0
-        const s = useGameStore.getState()
-        const sp = this.spawner.getSnapshot()
-        saveRun({
-          character: this.charType,
-          stage: this.selectedStage as 1 | 2,
-          elapsed: runData.elapsed,
-          nextBossAt: sp.nextBossAt,
-          warningFired: sp.warningFired,
-          finalBossWarningFired: sp.finalBossWarningFired,
-          bossAlive: sp.bossAlive,
-          finalBossAlive: sp.finalBossAlive,
-          playerX: this.player.x,
-          playerY: this.player.y,
-          enemies: this.spawner.getSaveableEnemies(),
-          kills: s.kills, bossKills: s.bossKills,
-          xp: s.xp, xpNeeded: s.xpNeeded, level: s.level,
-          hp: s.hp, maxHp: s.maxHp,
-          might: s.might, attackInterval: s.attackInterval, moveSpeed: s.moveSpeed,
-          dashCooldown: s.dashCooldown, dashDistance: s.dashDistance,
-          multiShot: s.multiShot, piercing: s.piercing, aura: s.aura, auraTick: s.auraTick, auraRange: s.auraRange,
-          orbital: s.orbital, wand: s.wand, boomerang: s.boomerang, flameTrail: s.flameTrail,
-          bloodNova: s.bloodNova, bloodNovaCD: s.bloodNovaCD, vampiric: s.vampiric, lightning: s.lightning,
-          lightningTargets: s.lightningTargets, lightningCooldown: s.lightningCooldown,
-          axe: s.axe, divineShield: s.divineShield, armor: s.armor, hpRegen: s.hpRegen, lifeDrain: s.lifeDrain,
-          sessionCoins: s.sessionCoins,
-        })
+        const snap = this.buildSnapshot()
+        if (snap) saveRun(snap)
       }
     }
 
@@ -718,9 +746,13 @@ export class MainScene extends Phaser.Scene {
       if (this.netFinalBossAlive) waveLabel = '☠ THE DEATH'
       else if (this.netBossAlive) waveLabel = this.netBossIsSummoner ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
       else if (this.netSurgeTimer > 0) waveLabel = '⚡ SURGE!'
-      else waveLabel = this.spawner.waveLabel(runData.elapsed)
+      else waveLabel = this.selectedStage === 2
+        ? stage2WaveLabel(runData.elapsed)
+        : this.spawner.waveLabel(runData.elapsed)
     } else {
-      waveLabel = this.spawner.waveLabel()
+      waveLabel = this.selectedStage === 2
+        ? stage2WaveLabel(runData.elapsed)
+        : this.spawner.waveLabel()
     }
     runData.waveLabel = waveLabel
     runData.enemyCount = enemyCount

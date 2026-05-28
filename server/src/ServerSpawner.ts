@@ -30,8 +30,15 @@ function computeHpScale(elapsed: number, maxLevel: number): number {
 // ── Player info passed to the spawner each tick ───────────────────────────────
 type SpawnerPlayer = { x: number; y: number; viewW: number; viewH: number; aura: number; auraRange: number; level: number }
 
+// ── Stage 2 HP scaling ────────────────────────────────────────────────────────
+function computeStage2HpScale(elapsed: number): number {
+  const t = Math.min(elapsed / RUN_DURATION, 1)  // 0→1 over 30 min
+  return 1 + t * 5                                // 1× at start, 6× at 30 min
+}
+
 // ── Lane definitions (mirrors EnemySpawner.ts LANE_DEFS) ─────────────────────
 type SpawnKind = 'basic' | 'speeder' | 'tank' | 'exploder' | 'ghost' | 'ranged' | 'charger' | 'necromancer'
+type Stage2Kind = 'drifter' | 'scurrier' | 'lurker' | 'mummy' | 'jackal' | 'cultist' | 'golem' | 'knight' | 'archfiend'
 
 interface LaneDef {
   type: SpawnKind
@@ -41,6 +48,43 @@ interface LaneDef {
   burstStart: number
   burstEnd: number
 }
+
+interface Stage2LaneDef {
+  type: Stage2Kind
+  startTime: number
+  intervalStart: number
+  intervalEnd: number
+  burstStart: number
+  burstEnd: number
+}
+
+// VS Inlaid Library–inspired: left/right only, 9 progressive enemy types
+// Intervals ramp from slow → fast over 30 min. Burst size grows to match VS density escalation.
+const STAGE2_LANE_DEFS: Stage2LaneDef[] = [
+  { type: 'drifter',   startTime: 0,         intervalStart: 1600, intervalEnd: 350,  burstStart: 1, burstEnd: 7  },
+  { type: 'scurrier',  startTime: 0,         intervalStart: 1400, intervalEnd: 280,  burstStart: 1, burstEnd: 9  },
+  { type: 'lurker',    startTime: 30_000,    intervalStart: 2200, intervalEnd: 500,  burstStart: 1, burstEnd: 4  },
+  { type: 'mummy',     startTime: 60_000,    intervalStart: 4500, intervalEnd: 1500, burstStart: 1, burstEnd: 2  },
+  { type: 'jackal',    startTime: 90_000,    intervalStart: 1500, intervalEnd: 320,  burstStart: 2, burstEnd: 8  },
+  { type: 'cultist',   startTime: 150_000,   intervalStart: 3200, intervalEnd: 800,  burstStart: 1, burstEnd: 3  },
+  { type: 'golem',     startTime: 240_000,   intervalStart: 7000, intervalEnd: 3000, burstStart: 1, burstEnd: 1  },
+  { type: 'knight',    startTime: 360_000,   intervalStart: 5500, intervalEnd: 2200, burstStart: 1, burstEnd: 2  },
+  { type: 'archfiend', startTime: 480_000,   intervalStart: 9000, intervalEnd: 3500, burstStart: 1, burstEnd: 2  },
+]
+
+// Scripted mass-rush events — all from one side, faster than normal (SURGE_SPEED_MULT)
+const STAGE2_SURGE_EVENTS: SurgeDef[] = [
+  { triggerTime:  2 * 60_000, type: 'drifter'  as unknown as SpawnKind, count: 50,  spawnInterval: 28  },
+  { triggerTime:  5 * 60_000, type: 'scurrier' as unknown as SpawnKind, count: 60,  spawnInterval: 22  },
+  { triggerTime:  8 * 60_000, type: 'drifter'  as unknown as SpawnKind, count: 80,  spawnInterval: 18  },
+  { triggerTime: 11 * 60_000, type: 'jackal'   as unknown as SpawnKind, count: 70,  spawnInterval: 25  },
+  { triggerTime: 15 * 60_000, type: 'lurker'   as unknown as SpawnKind, count: 60,  spawnInterval: 30  },
+  { triggerTime: 18 * 60_000, type: 'scurrier' as unknown as SpawnKind, count: 120, spawnInterval: 15  },
+  { triggerTime: 20 * 60_000, type: 'golem'    as unknown as SpawnKind, count: 20,  spawnInterval: 200 },
+  { triggerTime: 23 * 60_000, type: 'jackal'   as unknown as SpawnKind, count: 100, spawnInterval: 18  },
+  { triggerTime: 25 * 60_000, type: 'cultist'  as unknown as SpawnKind, count: 50,  spawnInterval: 35  },
+  { triggerTime: 27 * 60_000, type: 'drifter'  as unknown as SpawnKind, count: 160, spawnInterval: 12  },
+]
 
 const LANE_DEFS: LaneDef[] = [
   { type: 'basic',       startTime: 0,        intervalStart: 1000,  intervalEnd: 250,  burstStart: 1, burstEnd: 8  },
@@ -85,6 +129,7 @@ interface ActiveSurge {
 
 export class ServerSpawner {
   disabled = false  // set true for stages that manage their own enemies
+  stage2Mode = false  // VS Inlaid Library style — left/right only, 9 unique enemy types
   corridorHalfY: number | null = null  // non-null in stage 2: clamps enemy Y to ±this value
   private enemies: ServerEnemy[] = []
   private elapsed   = 0
@@ -97,6 +142,11 @@ export class ServerSpawner {
   private surgesFired       = new Set<number>()
   private surgeQueue: ActiveSurge[] = []
   private initialFillDone   = false
+  // Stage 2 state
+  private stage2LaneTimers: number[] = STAGE2_LANE_DEFS.map(l => l.intervalStart)
+  private stage2SurgesFired = new Set<number>()
+  private stage2SurgeQueue: ActiveSurge[] = []
+  private stage2InitialFillDone = false
 
   onBossWarning?:       (final: boolean) => void
   onBossSpawn?:         (e: ServerEnemy) => void
@@ -107,15 +157,22 @@ export class ServerSpawner {
 
   get all(): ServerEnemy[]  { return this.enemies }
   get runElapsed(): number   { return this.elapsed }
-  get isFinished(): boolean  { return this.elapsed >= RUN_DURATION && !this.finalBossAlive }
+  get isFinished(): boolean  {
+    if (this.stage2Mode) return this.elapsed >= RUN_DURATION
+    return this.elapsed >= RUN_DURATION && !this.finalBossAlive
+  }
 
   // Fast-forward to a mid-run point without firing any surge/boss events.
   // Called when a solo player reconnects after a page refresh.
   resumeFrom(ms: number) {
     this.elapsed = ms
-    this.initialFillDone = true  // skip initial fill; server will re-populate naturally
+    this.initialFillDone = true
+    this.stage2InitialFillDone = true
     for (const surge of SURGE_EVENTS) {
       if (surge.triggerTime <= ms) this.surgesFired.add(surge.triggerTime)
+    }
+    for (const surge of STAGE2_SURGE_EVENTS) {
+      if (surge.triggerTime <= ms) this.stage2SurgesFired.add(surge.triggerTime)
     }
     // Advance nextBossAt past all boss cycles that would have completed
     while (this.nextBossAt <= ms) {
@@ -129,6 +186,7 @@ export class ServerSpawner {
   update(players: SpawnerPlayer[], delta: number) {
     if (this.disabled) { this.elapsed += delta; return }
     this.elapsed += delta
+    if (this.stage2Mode) { this.updateStage2(players, delta); return }
 
     const speedMult   = computeSpeedScale(this.elapsed)
     const maxLevel    = players.length > 0 ? Math.max(...players.map(p => p.level)) : 1
@@ -399,6 +457,143 @@ export class ServerSpawner {
       const side = Math.sin(angle) >= 0 ? 1 : -1
       return { x: p.x + along * halfW, y: p.y + side * halfH }
     }
+  }
+
+  // ── Stage 2 update loop ───────────────────────────────────────────────────
+
+  private updateStage2(players: SpawnerPlayer[], delta: number) {
+    const hpMult   = computeStage2HpScale(this.elapsed)
+    const MAX_S2   = 400
+
+    // Initial fill — a small cluster from each side
+    if (!this.stage2InitialFillDone && players.length > 0) {
+      this.stage2InitialFillDone = true
+      for (let i = 0; i < 3; i++) {
+        const side = i < 2 ? i : Math.round(Math.random())
+        const pos  = this.corridorEdgePoint(players, side)
+        this.enemies.push(new ServerEnemy('drifter', pos.x, pos.y, hpMult))
+      }
+    }
+
+    // Per-lane spawning — each lane independent, burst from one side
+    for (let i = 0; i < STAGE2_LANE_DEFS.length; i++) {
+      const lane = STAGE2_LANE_DEFS[i]
+      if (this.elapsed < lane.startTime) continue
+      this.stage2LaneTimers[i] -= delta
+      if (this.stage2LaneTimers[i] <= 0 && this.enemies.length < MAX_S2) {
+        this.stage2LaneTimers[i] = this.stage2LaneInterval(lane)
+        const count = Math.min(this.stage2LaneBurst(lane), MAX_S2 - this.enemies.length)
+        const side  = Math.round(Math.random())
+        for (let j = 0; j < count; j++) {
+          const pos = this.corridorEdgePoint(players, side)
+          this.enemies.push(new ServerEnemy(lane.type as EnemyKind, pos.x, pos.y, hpMult))
+        }
+      }
+    }
+
+    // Scripted surge events — all enemies from one fixed side with speed boost
+    for (const surge of STAGE2_SURGE_EVENTS) {
+      if (!this.stage2SurgesFired.has(surge.triggerTime) && this.elapsed >= surge.triggerTime) {
+        this.stage2SurgesFired.add(surge.triggerTime)
+        this.onSurge?.(surge.type)
+        this.stage2SurgeQueue.push({
+          type: surge.type, remaining: surge.count, timer: 0,
+          spawnInterval: surge.spawnInterval,
+          angle: Math.random() < 0.5 ? 0 : Math.PI,  // 0 = right edge, π = left edge
+        })
+      }
+    }
+    for (const surge of this.stage2SurgeQueue) {
+      surge.timer -= delta
+      if (surge.timer <= 0 && surge.remaining > 0 && this.enemies.length < MAX_S2 + 100) {
+        surge.timer += surge.spawnInterval
+        const side = Math.cos(surge.angle) >= 0 ? 1 : 0
+        const pos  = this.corridorEdgePoint(players, side)
+        const e    = new ServerEnemy(surge.type as EnemyKind, pos.x, pos.y, hpMult)
+        e.speedMult = SURGE_SPEED_MULT
+        this.enemies.push(e)
+        surge.remaining--
+      }
+    }
+    this.stage2SurgeQueue = this.stage2SurgeQueue.filter(s => s.remaining > 0)
+
+    // Move all enemies and clamp to corridor
+    for (const e of this.enemies) {
+      if (!e.active) continue
+      const nearest = this.nearestPlayerTo(e.x, e.y, players)
+      e.update(nearest.x, nearest.y, delta, 1)
+      if (this.corridorHalfY !== null) {
+        if (e.y < -this.corridorHalfY) e.y = -this.corridorHalfY
+        else if (e.y > this.corridorHalfY) e.y = this.corridorHalfY
+      }
+    }
+
+    // Recycle enemies that wandered off-screen — reposition to left or right edge
+    if (players.length > 0) {
+      for (const e of this.enemies) {
+        if (!e.active) continue
+        let minDist2 = Infinity
+        for (const p of players) {
+          const zoom   = p.viewW <= 768 ? 0.7 : 1.4
+          const rHalfW = (p.viewW / 2) / zoom + SPAWN_MARGIN + RECYCLE_EXTRA
+          const rHalfH = (p.viewH / 2) / zoom + SPAWN_MARGIN + RECYCLE_EXTRA
+          const dx = Math.abs(e.x - p.x), dy = Math.abs(e.y - p.y)
+          const d2 = Math.max(dx / rHalfW, dy / rHalfH)
+          if (d2 < minDist2) minDist2 = d2
+        }
+        if (minDist2 > 1) {
+          const pos = this.corridorEdgePoint(players, Math.round(Math.random()))
+          e.x = pos.x
+          e.y = pos.y
+        }
+      }
+    }
+
+    // Separation
+    const SEP_RADIUS = 32, SEP_FORCE = 0.9
+    const active = this.enemies.filter(e => e.active)
+    for (let i = 0; i < active.length; i++) {
+      for (let j = i + 1; j < active.length; j++) {
+        const a = active[i], b = active[j]
+        const dx = a.x - b.x, dy = a.y - b.y
+        const d2 = dx * dx + dy * dy
+        if (d2 < SEP_RADIUS * SEP_RADIUS && d2 > 0) {
+          const d    = Math.sqrt(d2)
+          const push = (SEP_RADIUS - d) * SEP_FORCE
+          const nx = dx / d, ny = dy / d
+          a.x += nx * push; a.y += ny * push
+          b.x -= nx * push; b.y -= ny * push
+        }
+      }
+    }
+
+    this.enemies = this.enemies.filter(e => e.active)
+  }
+
+  private stage2LaneInterval(lane: Stage2LaneDef): number {
+    if (this.elapsed <= lane.startTime) return lane.intervalStart
+    const t = Math.min((this.elapsed - lane.startTime) / (RUN_DURATION - lane.startTime), 1)
+    return lane.intervalStart + (lane.intervalEnd - lane.intervalStart) * t
+  }
+
+  private stage2LaneBurst(lane: Stage2LaneDef): number {
+    if (this.elapsed <= lane.startTime) return lane.burstStart
+    const t = Math.min((this.elapsed - lane.startTime) / (RUN_DURATION - lane.startTime), 1)
+    return Math.round(lane.burstStart + (lane.burstEnd - lane.burstStart) * t)
+  }
+
+  // Spawn at left (side=0) or right (side=1) edge of the corridor
+  private corridorEdgePoint(players: SpawnerPlayer[], side: number): { x: number; y: number } {
+    const p = players.length > 0
+      ? players[Math.floor(Math.random() * players.length)]
+      : { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H, aura: 0, auraRange: 0, level: 1 }
+    const zoom   = p.viewW <= 768 ? 0.7 : 1.4
+    const halfW  = (p.viewW / 2) / zoom + LANE_MARGIN
+    const halfCY = (this.corridorHalfY ?? 380) * 0.85
+    const y      = (Math.random() * 2 - 1) * halfCY
+    return side === 0
+      ? { x: p.x - halfW, y }
+      : { x: p.x + halfW, y }
   }
 
   adminSpawnEnemy(kind: string, players: SpawnerPlayer[]): ServerEnemy | null {

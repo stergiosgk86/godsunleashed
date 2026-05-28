@@ -1,6 +1,7 @@
 // Mirrors src/net/protocol.ts — keep in sync
 
 export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'summoner' | 'boss' | 'finalBoss'
+  | 'drifter' | 'scurrier' | 'lurker' | 'mummy' | 'jackal' | 'cultist' | 'golem' | 'knight' | 'archfiend'
 
 export interface EnemySnapshot {
   id: number
@@ -23,7 +24,7 @@ export interface PlayerSnapshot {
 }
 
 export type C2SMessage =
-  | { type: 'join'; characterType: string; solo?: boolean; viewportW?: number; viewportH?: number; resumeElapsed?: number; resumeLevel?: number; resumeXp?: number }
+  | { type: 'join'; characterType: string; solo?: boolean; stage?: number; viewportW?: number; viewportH?: number; resumeElapsed?: number; resumeLevel?: number; resumeXp?: number }
   | { type: 'input'; x: number; y: number; aura: number; orbital: number }
   | { type: 'hit'; enemyId: number; damage: number }
   | { type: 'auraHit'; enemyId: number; damage: number }

@@ -1,4 +1,5 @@
 export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'veteran' | 'brute' | 'revenant' | 'warlord' | 'titan' | 'summoner' | 'boss' | 'finalBoss'
+  | 'drifter' | 'scurrier' | 'lurker' | 'mummy' | 'jackal' | 'cultist' | 'golem' | 'knight' | 'archfiend'
 
 export interface EnemySnapshot {
   id: number

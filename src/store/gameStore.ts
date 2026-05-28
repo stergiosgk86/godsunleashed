@@ -28,7 +28,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'dashCooldown',  label: 'Swift Dash',      description: '25% shorter dash cooldown' },
   { id: 'dashDistance',  label: 'Longer Dash',     description: '40% further dash distance' },
   { id: 'wand',          label: 'Arcane Wand',     description: 'Fires a magic bolt at the nearest enemy' },
-  { id: 'multiShot',     label: 'Multi Shot',      description: 'Wand fires an extra bolt per attack (stackable, up to 3×)' },
+  { id: 'multiShot',     label: 'Multi Shot',      description: 'Wand fires an extra bolt per attack (stackable, up to 4×)' },
   { id: 'piercing',      label: 'Piercing',        description: 'Wand bolts pass through enemies' },
   { id: 'aura',          label: 'Aura',            description: 'Pulses damage to all enemies in range and knocks them back' },
   { id: 'auraTick',     label: 'Aura Tempo',      description: 'Aura pulses 100ms faster (stackable, up to 3×)' },
@@ -68,7 +68,7 @@ function xpNeeded(level: number): number {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number }
+type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number; dashCooldown: number; dashDistance: number }
 
 function upgradeWeight(id: UpgradeId, s: PickState): number {
   if ((id === 'multiShot' || id === 'piercing') && s.wand) return 10
@@ -97,7 +97,9 @@ function pickChoices(state: PickState): Upgrade[] {
   const eligible = UPGRADE_POOL.filter(u => {
     if (u.id === 'wand'       && state.wand)            return false
     if (u.id === 'multiShot'  && !state.wand)           return false
-    if (u.id === 'multiShot'  && state.multiShot >= 3)  return false
+    if (u.id === 'multiShot'  && state.multiShot >= 4)  return false
+    if (u.id === 'dashCooldown' && state.dashCooldown <= Math.max(400, Math.floor(DASH_COOLDOWN_MS * Math.pow(0.75, 4)))) return false
+    if (u.id === 'dashDistance' && state.dashDistance >= 1 + 3 * 0.4 - 0.001) return false
     if (u.id === 'piercing'   && !state.wand)           return false
     if (u.id === 'piercing'   && state.piercing)        return false
     if (u.id === 'orbital'    && state.orbital >= 5)    return false
@@ -536,7 +538,7 @@ export function getValidatedCombatState() {
     might:          Math.min(4.0, Math.max(1.0, s.might)),
     attackInterval:     Math.max(250, s.attackInterval),
     wandAttackInterval: Math.max(250, s.wandAttackInterval),
-    multiShot:      Math.min(3, Math.max(0, Math.floor(s.multiShot))),
+    multiShot:      Math.min(4, Math.max(0, Math.floor(s.multiShot))),
     aura:           Math.min(1, Math.max(0, Math.floor(s.aura))),
     auraTick:       Math.min(3, Math.max(0, Math.floor(s.auraTick))),
     auraRange:      Math.min(3, Math.max(0, Math.floor(s.auraRange))),

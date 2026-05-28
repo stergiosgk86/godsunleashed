@@ -52,6 +52,18 @@ export interface RunSnapshot {
   hpRegen: number
   lifeDrain: number
   sessionCoins: number
+  xpGain?: number
+  magnetRange?: number
+  orbSpeed?: number
+  orbPower?: number
+  orbRange?: number
+  equinox?: boolean
+  solstice?: boolean
+  dualGunDamage?: number
+  dualGunSpeed?: number
+  dualGunExtra?: number
+  dualGunAttackInterval?: number
+  echo?: number
 }
 
 function authHeader(): HeadersInit {
@@ -66,6 +78,7 @@ export function saveRun(snap: RunSnapshot): void {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify({ snapshot: snap }),
+    keepalive: true,  // survives page unload so beforeunload saves reach the server
   }).catch(() => {})
 }
 

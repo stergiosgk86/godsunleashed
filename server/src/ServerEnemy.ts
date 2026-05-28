@@ -43,6 +43,16 @@ const CONFIGS: Record<EnemyKind, Cfg> = {
   summoner:    { speed: 45,   maxHp: 2500, xpValue: 150, isBoss: true  },
   boss:        { speed: 55,   maxHp: 2500, xpValue: 80,  isBoss: true  },
   finalBoss:   { speed: 72,   maxHp: 5000, xpValue: 500, isBoss: true  },
+  // ── Stage 2 enemies — pure chasers, no attacks ────────────────────────────
+  drifter:   { speed: 115,  maxHp: 4,   xpValue: 2,  isBoss: false },
+  scurrier:  { speed: 150,  maxHp: 1,   xpValue: 1,  isBoss: false },
+  lurker:    { speed: 135,  maxHp: 10,  xpValue: 3,  isBoss: false },
+  mummy:     { speed: 62,   maxHp: 25,  xpValue: 5,  isBoss: false },
+  jackal:    { speed: 165,  maxHp: 7,   xpValue: 2,  isBoss: false },
+  cultist:   { speed: 82,   maxHp: 50,  xpValue: 7,  isBoss: false },
+  golem:     { speed: 48,   maxHp: 100, xpValue: 13, isBoss: false },
+  knight:    { speed: 90,   maxHp: 180, xpValue: 20, isBoss: false },
+  archfiend: { speed: 118,  maxHp: 300, xpValue: 30, isBoss: false },
 }
 
 let _nextId = 1
@@ -153,6 +163,19 @@ export class ServerEnemy {
       case 'basic':
       case 'speeder':
       case 'tank':
+        this.x += (dx / dist) * this.speed * eff * dt
+        this.y += (dy / dist) * this.speed * eff * dt
+        break
+
+      case 'drifter':
+      case 'scurrier':
+      case 'lurker':
+      case 'mummy':
+      case 'jackal':
+      case 'cultist':
+      case 'golem':
+      case 'knight':
+      case 'archfiend':
         this.x += (dx / dist) * this.speed * eff * dt
         this.y += (dy / dist) * this.speed * eff * dt
         break

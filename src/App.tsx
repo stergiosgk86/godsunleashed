@@ -186,11 +186,14 @@ function App() {
       const currentToken = useAuthStore.getState().token
       if (currentToken) {
         await fetchProfile()
-        const snap = await loadRun()
-        if (snap) {
-          setPendingRunRestore(snap)
-          if (snap.stage) useStageStore.getState().setStage(snap.stage)
-          await handlePlay(true)
+        const wasInGame = sessionStorage.getItem('gods_in_game') === '1'
+        if (wasInGame) {
+          const snap = await loadRun()
+          if (snap) {
+            setPendingRunRestore(snap)
+            if (snap.stage) useStageStore.getState().setStage(snap.stage)
+            await handlePlay(true)
+          }
         }
       }
 
@@ -342,6 +345,7 @@ function App() {
         }))
       })
     }
+    sessionStorage.setItem('gods_in_game', '1')
     setInGame(true)
   }
 
@@ -370,6 +374,7 @@ function App() {
     setNetClient(null)
     useGameStore.getState().resetRun()
     sessionStorage.removeItem('gods_menu_view')
+    sessionStorage.removeItem('gods_in_game')
     setInGame(false)
     // Sync profile after server has had time to process the WS close and save the run.
     setTimeout(() => useProfileStore.getState().fetchProfile(), 2000)
@@ -385,6 +390,7 @@ function App() {
     runData.elapsed = 0
     if (wasMultiplayer) {
       useGameStore.getState().resetRun()
+      sessionStorage.removeItem('gods_in_game')
       setInGame(false)
       setInLobby(true)
     } else {
@@ -396,6 +402,7 @@ function App() {
     useAuthStore.getState().clearAuth()
     useProfileStore.getState().reset()
     sessionStorage.removeItem('gods_menu_view')
+    sessionStorage.removeItem('gods_in_game')
     setInGame(false)
     setInLobby(false)
   }

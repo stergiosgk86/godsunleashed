@@ -80,7 +80,9 @@ interface PlayerUpgrades {
   auraRange: number   // 0–3
   divineShield: boolean
   xpGain: number      // 0–5, each +8% XP
-  magnetRange: number // 0–3, client-only visual effect
+  magnetRange: number // 0–3
+  dashCooldownPicks: number // 0–4, client-only stat but tracked for cap
+  dashDistancePicks: number // 0–3, client-only stat but tracked for cap
   equinox: boolean
   solstice: boolean
   dualGunDamage: number  // 0–3
@@ -95,6 +97,7 @@ function emptyUpgrades(): PlayerUpgrades {
     boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0,
     vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, mightPicks: 0,
     axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false, xpGain: 0, magnetRange: 0,
+    dashCooldownPicks: 0, dashDistancePicks: 0,
     equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, echo: 0,
   }
 }
@@ -146,7 +149,9 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'axe'         && u.axe)               return false
     if (id === 'divineShield'&& u.divineShield)      return false
     if (id === 'xpGain'      && u.xpGain >= 5)      return false
-    if (id === 'magnetRange' && u.magnetRange >= 3) return false
+    if (id === 'magnetRange'    && u.magnetRange >= 3)       return false
+    if (id === 'dashCooldown'   && u.dashCooldownPicks >= 4) return false
+    if (id === 'dashDistance'   && u.dashDistancePicks >= 3) return false
     if (id === 'aura'        && u.aura)              return false
     if (id === 'auraTick'    && !u.aura)             return false
     if (id === 'auraTick'    && u.auraTick >= 3)     return false
@@ -240,7 +245,7 @@ export class GameRoom {
     })
     if (this.isSolo && resumeElapsed > 0) this.resumeElapsed = resumeElapsed
     if (stage !== 1) {
-      this.spawner.disabled = true
+      this.spawner.stage2Mode = true
       this.spawner.corridorHalfY = 380
     }
     this.broadcastWaiting()
@@ -427,8 +432,10 @@ export class GameRoom {
       case 'dualGunExtra': u.dualGunExtra = Math.min(2, u.dualGunExtra + 1); break
       case 'echo':         u.echo = Math.min(2, u.echo + 1); break
       case 'divineShield':u.divineShield = true; break
-      case 'xpGain':      u.xpGain = Math.min(5, u.xpGain + 1); break
-      // dashCooldown, dashDistance, magnetRange: no server-side tracking needed
+      case 'xpGain':        u.xpGain = Math.min(5, u.xpGain + 1); break
+      case 'magnetRange':   u.magnetRange = Math.min(3, u.magnetRange + 1); break
+      case 'dashCooldown':  u.dashCooldownPicks = Math.min(4, u.dashCooldownPicks + 1); break
+      case 'dashDistance':  u.dashDistancePicks = Math.min(3, u.dashDistancePicks + 1); break
 
     }
   }
@@ -529,13 +536,14 @@ export class GameRoom {
       case 'divineShield':       u.divineShield = level >= 1; break
       case 'xpGain':             u.xpGain = Math.min(5, level); break
       case 'magnetRange':        u.magnetRange = Math.min(3, level); break
+      case 'dashCooldown':       u.dashCooldownPicks = Math.min(4, level); break
+      case 'dashDistance':       u.dashDistancePicks = Math.min(3, level); break
       case 'equinox':            u.equinox = level >= 1; break
       case 'solstice':           u.solstice = level >= 1; break
       case 'dualGunDamage':      u.dualGunDamage = Math.min(3, level); break
       case 'dualGunSpeed':       u.dualGunSpeed = Math.min(2, level); break
       case 'dualGunExtra':       u.dualGunExtra = Math.min(2, level); break
       case 'echo':               u.echo = Math.min(2, level); break
-      // dashCooldown, dashDistance: no server-side tracking — relay to client only
     }
 
     this.send(requester.ws, { type: 'adminSetUpgrade', upgradeId, level })

@@ -27,6 +27,16 @@ const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight:
   { key: 'enemy_warlord',     url: SPRITE_URLS.enemyWarlord,    frameWidth: 32, frameHeight: 32 },
   { key: 'enemy_titan',       url: SPRITE_URLS.enemyTitan,      frameWidth: 32, frameHeight: 32 },
   { key: 'boss',              url: SPRITE_URLS.boss,             frameWidth: 96, frameHeight: 96, frameRate: 6 },
+  // Stage 2 enemies — 4-directional walk sheets (32×32 per frame)
+  { key: 'enemy_drifter',   url: SPRITE_URLS.enemyDrifter,   frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_scurrier',  url: SPRITE_URLS.enemyScurrier,  frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_lurker',    url: SPRITE_URLS.enemyLurker,    frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_mummy',     url: SPRITE_URLS.enemyMummy,     frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_jackal',    url: SPRITE_URLS.enemyJackal,    frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_cultist',   url: SPRITE_URLS.enemyCultist,   frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_golem',     url: SPRITE_URLS.enemyGolem,     frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_knight',    url: SPRITE_URLS.enemyKnight,    frameWidth: 32, frameHeight: 32 },
+  { key: 'enemy_archfiend', url: SPRITE_URLS.enemyArchfiend, frameWidth: 32, frameHeight: 32 },
 ]
 
 export class PreloadScene extends Phaser.Scene {

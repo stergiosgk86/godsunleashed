@@ -25,13 +25,23 @@ import enemyRevenant from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Ene
 import enemyWarlord  from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 12-1.png'
 import enemyTitan    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 13-1.png'
 import boss from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Boss/Boss 01.png'
+// Stage 2 enemies (Enemy 14–22, all 96×128 4-directional sheets)
+import enemyDrifter   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 14-1.png'
+import enemyScurrier  from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 18.png'
+import enemyLurker    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 15-1.png'
+import enemyMummy     from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 19.png'
+import enemyJackal    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 21.png'
+import enemyCultist   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 22.png'
+import enemyGolem     from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 20.png'
+import enemyKnight    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 16-1.png'
+import enemyArchfiend from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 17-1.png'
 import boomerangSprite from '../assets/Sprites/Weapons/Boomerang.png'
 import axeSprite from '../assets/Sprites/Weapons/Axe.png'
 import grassTileset from '../assets/Sprites/Background/Grass1.png'
 import treeSprite from '../assets/Sprites/Background/Tree.png'
 import rockSprite from '../assets/Sprites/Background/Rocks.png'
-import floorStage2 from '../assets/Sprites/Background/Floor stage 2.png'
-import wallStage2 from '../assets/Sprites/Background/Wall stage 2.png'
+import floorStage2 from '../assets/Sprites/Background/Floor_new stage 2.png'
+import wallStage2 from '../assets/Sprites/Background/Wall_new_stage 2.png'
 
 export const SPRITE_URLS = {
   player, charRogue, charWitch, charShade, charZeus, charAres, charPoseidon, charApollo, charHades, charChronos,
@@ -50,6 +60,15 @@ export const SPRITE_URLS = {
   enemyWarlord,
   enemyTitan,
   boss,
+  enemyDrifter,
+  enemyScurrier,
+  enemyLurker,
+  enemyMummy,
+  enemyJackal,
+  enemyCultist,
+  enemyGolem,
+  enemyKnight,
+  enemyArchfiend,
   boomerangSprite,
   axeSprite,
   grassTileset,
