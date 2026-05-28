@@ -33,6 +33,7 @@ export class Player {
   touchDashPressed = false
   facingVx = 0
   facingVy = 1
+  isMoving = false
   private lastDir: Direction = 'down'
   private isDashing = false
   private dashTimeLeft = 0
@@ -151,6 +152,7 @@ export class Player {
     this.graphic.setPosition(this.x, this.y)
     this.nameLabel?.setPosition(this.x, this.y - 28)
 
+    this.isMoving = moving
     if (moving) { this.facingVx = vx; this.facingVy = vy }
     const dir = moving ? getDirection(vx, vy) : this.lastDir
     this.lastDir = playDir(this.graphic, this.spriteKey, dir, this.lastDir, moving, this.idleFrames, this.staticSprite)

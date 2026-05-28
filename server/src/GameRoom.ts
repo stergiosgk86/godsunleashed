@@ -17,6 +17,7 @@ const ALL_UPGRADE_IDS = [
   'lightning', 'lightningTargets', 'lightningCooldown', 'might', 'axe', 'divineShield',
   'xpGain', 'magnetRange',
   'equinox', 'solstice', 'dualGunDamage', 'dualGunSpeed', 'dualGunExtra',
+  'echo',
 ] as const
 type UpgradeId = typeof ALL_UPGRADE_IDS[number]
 const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
@@ -85,6 +86,7 @@ interface PlayerUpgrades {
   dualGunDamage: number  // 0–3
   dualGunSpeed: number   // 0–2
   dualGunExtra: number   // 0–2
+  echo: number           // 0–2
 }
 
 function emptyUpgrades(): PlayerUpgrades {
@@ -93,7 +95,7 @@ function emptyUpgrades(): PlayerUpgrades {
     boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0,
     vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, mightPicks: 0,
     axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false, xpGain: 0, magnetRange: 0,
-    equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0,
+    equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, echo: 0,
   }
 }
 
@@ -158,6 +160,7 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'dualGunSpeed'  && u.dualGunSpeed >= 2)               return false
     if (id === 'dualGunExtra'  && !u.equinox && !u.solstice)         return false
     if (id === 'dualGunExtra'  && u.dualGunExtra >= 2)               return false
+    if (id === 'echo'          && u.echo >= 2)                        return false
     return true
   })
 
@@ -418,6 +421,7 @@ export class GameRoom {
       case 'dualGunDamage':u.dualGunDamage = Math.min(3, u.dualGunDamage + 1); break
       case 'dualGunSpeed': u.dualGunSpeed = Math.min(2, u.dualGunSpeed + 1); break
       case 'dualGunExtra': u.dualGunExtra = Math.min(2, u.dualGunExtra + 1); break
+      case 'echo':         u.echo = Math.min(2, u.echo + 1); break
       case 'divineShield':u.divineShield = true; break
       case 'xpGain':      u.xpGain = Math.min(5, u.xpGain + 1); break
       // dashCooldown, dashDistance, magnetRange: no server-side tracking needed

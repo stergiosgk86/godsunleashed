@@ -6,7 +6,7 @@ export class SunBeam {
   vx: number
   vy: number
   active = true
-  hitRadius = 40
+  hitRadius = 16
   hitTargets = new Set<object>()
   private graphic: Phaser.GameObjects.Graphics
   private age = 0
@@ -20,27 +20,29 @@ export class SunBeam {
     this.vx = vx
     this.vy = vy
     this.gold = gold
-    this.graphic = scene.add.graphics().setDepth(3).setRotation(Math.atan2(vy, vx))
-    this.drawBeam()
+    this.graphic = scene.add.graphics().setDepth(3)
+    this.drawOrb()
     this.graphic.setPosition(x, y)
   }
 
-  private drawBeam() {
+  private drawOrb() {
     const g = this.graphic
     g.clear()
     if (this.gold) {
-      g.fillStyle(0xffd700, 0.2)
-      g.fillRect(-24, -12, 48, 24)
-      g.fillStyle(0xffcc00, 0.6)
-      g.fillRect(-21, -8, 42, 16)
+      g.fillStyle(0xffaa00, 0.25)
+      g.fillCircle(0, 0, 16)
+      g.fillStyle(0xffcc00, 0.7)
+      g.fillCircle(0, 0, 10)
+      g.fillStyle(0xffffff, 0.95)
+      g.fillCircle(0, 0, 5)
     } else {
-      g.fillStyle(0x00eeff, 0.2)
-      g.fillRect(-24, -12, 48, 24)
-      g.fillStyle(0x00aaff, 0.6)
-      g.fillRect(-21, -8, 42, 16)
+      g.fillStyle(0x0088ff, 0.25)
+      g.fillCircle(0, 0, 16)
+      g.fillStyle(0x00aaff, 0.7)
+      g.fillCircle(0, 0, 10)
+      g.fillStyle(0xffffff, 0.95)
+      g.fillCircle(0, 0, 5)
     }
-    g.fillStyle(0xffffff, 0.9)
-    g.fillRect(-18, -4, 36, 8)
   }
 
   update(delta: number) {

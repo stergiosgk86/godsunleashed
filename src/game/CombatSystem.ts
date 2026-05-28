@@ -32,7 +32,7 @@ const NOVA_INTERVAL = 90000
 const LIGHTNING_INTERVAL = 4500
 const LIGHTNING_TARGETS = 2
 const LIGHTNING_DAMAGE_MULT = 3.5
-const DUAL_GUN_SPEED = 600
+const DUAL_GUN_SPEED = 350
 const DUAL_GUN_DAMAGE_MULT = 0.6
 const DUAL_GUN_BURST_DELAY = 200  // ms between each staggered gun shot (VS: 0.2s)
 const POTION_KILL_THRESHOLD = 100
@@ -99,6 +99,7 @@ export class CombatSystem {
   private frontArcOnly: boolean
   private facingVx = 0
   private facingVy = 1
+  private playerMoving = false
   private arcGraphic: Phaser.GameObjects.Graphics
   // Divine Shield
   private divineTimer = 0
@@ -120,6 +121,10 @@ export class CombatSystem {
   setFacing(vx: number, vy: number) {
     const mag = Math.sqrt(vx * vx + vy * vy)
     if (mag > 0) { this.facingVx = vx / mag; this.facingVy = vy / mag }
+  }
+
+  setMoving(moving: boolean) {
+    this.playerMoving = moving
   }
 
   private static readonly SLASH_RANGE = 120
@@ -280,7 +285,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra } = getValidatedCombatState()
+    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra, echo } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -309,7 +314,7 @@ export class CombatSystem {
         if (target) {
           const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
           const spreadRad = 15 * (Math.PI / 180)
-          for (let i = 0; i <= multiShot; i++) {
+          for (let i = 0; i <= multiShot + echo; i++) {
             const side = i % 2 === 1 ? 1 : -1
             const offset = i === 0 ? 0 : Math.ceil(i / 2) * side * spreadRad
             const angle = baseAngle + offset
@@ -333,7 +338,7 @@ export class CombatSystem {
         soundSystem.shootWand()
         // Build shot sequence: equinox=gold, solstice=cyan, repeated per dualGunExtra
         const shots: boolean[] = []  // true = gold (equinox), false = cyan (solstice)
-        for (let burst = 0; burst <= dualGunExtra; burst++) {
+        for (let burst = 0; burst <= dualGunExtra + echo; burst++) {
           if (equinox)  shots.push(true)
           if (solstice) shots.push(false)
         }
@@ -618,7 +623,7 @@ export class CombatSystem {
     // Spirit Orbs
     this.orbGraphic.clear()
     if (orbital > 0) {
-      const ORBIT_RADIUS = 115 + orbRange * 20
+      const ORBIT_RADIUS = 75 + orbRange * 20
       const ORB_RADIUS = 13 + orbRange * 2
       const ORB_HIT_RADIUS = 20 + orbRange * 3
       const HIT_COOLDOWN = 500
@@ -632,9 +637,10 @@ export class CombatSystem {
       this.orbCenterX += (playerX - this.orbCenterX) * lag
       this.orbCenterY += (playerY - this.orbCenterY) * lag
 
+      const orbCount = orbital + echo
       const now = Date.now()
-      for (let i = 0; i < orbital; i++) {
-        const angle = this.orbAngle + (i / orbital) * Math.PI * 2
+      for (let i = 0; i < orbCount; i++) {
+        const angle = this.orbAngle + (i / orbCount) * Math.PI * 2
         const ox = this.orbCenterX + Math.cos(angle) * ORBIT_RADIUS
         const oy = this.orbCenterY + Math.sin(angle) * ORBIT_RADIUS
 
@@ -682,7 +688,13 @@ export class CombatSystem {
         this.boomerangTimer = 0
         const target = this.findNearest(playerX, playerY, enemies)
         if (target) {
-          this.boomerangs.push(new Boomerang(this.scene, playerX, playerY, target.x, target.y))
+          const toTarget = Math.atan2(target.y - playerY, target.x - playerX)
+          const perpX = -Math.sin(toTarget)
+          const perpY = Math.cos(toTarget)
+          for (let ei = 0; ei <= echo; ei++) {
+            const offset = (ei - echo / 2) * 24
+            this.boomerangs.push(new Boomerang(this.scene, playerX + perpX * offset, playerY + perpY * offset, target.x, target.y))
+          }
           soundSystem.shootBoomerang()
         }
       }
@@ -755,7 +767,10 @@ export class CombatSystem {
         const target = this.findNearest(playerX, playerY, enemies)
         const dirX = target ? Math.sign(target.x - playerX) || this.axeDir : this.axeDir
         this.axeDir = -dirX
-        this.axes.push(new Axe(this.scene, playerX, playerY, dirX))
+        for (let ei = 0; ei <= echo; ei++) {
+          const yOff = (ei - echo / 2) * 24
+          this.axes.push(new Axe(this.scene, playerX, playerY + yOff, dirX))
+        }
         soundSystem.shootAxe()
       }
       const axeDamage = Math.floor(weaponBaseDamage(level) * might * AXE_DAMAGE_MULT)
@@ -931,9 +946,12 @@ export class CombatSystem {
   }
 
   private fireSunBeams(px: number, py: number, gold: boolean) {
+    const MOVE_OFFSET = 20
+    const spawnX = this.playerMoving ? px + this.facingVx * MOVE_OFFSET : px
+    const spawnY = this.playerMoving ? py + this.facingVy * MOVE_OFFSET : py
     const d = DUAL_GUN_SPEED * 0.707
     for (const [vx, vy] of [[d, -d], [d, d], [-d, d], [-d, -d]] as [number, number][]) {
-      this.sunBeams.push(new SunBeam(this.scene, px, py, vx, vy, gold))
+      this.sunBeams.push(new SunBeam(this.scene, spawnX, spawnY, vx, vy, gold))
     }
   }
 

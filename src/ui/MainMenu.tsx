@@ -313,7 +313,7 @@ const COLLECTION_WEAPONS = [
   },
   {
     id: 'orbital', label: 'Spirit Orb', color: '#44ffcc', icon: '◉',
-    description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 5)',
+    description: 'An orb orbits you, damaging and knocking back enemies on contact (+1 orb per pick, max 5)',
     upgrades: [
       { id: 'orbSpeed', label: 'Orb Velocity', description: 'Spirit Orbs rotate 25% faster (stackable, up to 3×)' },
       { id: 'orbPower', label: 'Orb Power',    description: 'Spirit Orbs deal 20% more damage (stackable, up to 3×)' },
@@ -352,12 +352,12 @@ const COLLECTION_WEAPONS = [
   },
   {
     id: 'divineShield', label: 'Divine Shield', color: '#ffee66', icon: '◈',
-    description: 'Grants a shield that blocks the next hit. Recharges in 10s after absorbing a hit',
+    description: 'Grants periodic invincibility — active for 3s, then recharges for 9s. While active, all damage is blocked.',
     upgrades: [],
   },
   {
     id: 'dualGun', label: 'Dual Sunrays', color: '#ffcc00', icon: '✦✦',
-    description: 'Equinox fires piercing bolts in the 4 cardinal directions; Solstice covers the 4 diagonals. Pick both for full coverage',
+    description: 'Both Equinox (gold) and Solstice (cyan) fire piercing bolts in all 4 diagonal directions. Pick both for staggered double volleys.',
     upgrades: [
       { id: 'dualGunDamage', label: 'Solar Intensity', description: 'Sunray bolts deal 30% more damage (stackable, up to 3×)' },
       { id: 'dualGunSpeed',  label: 'Solar Tempo',     description: 'Sunray guns fire 20% faster (stackable, up to 2×)' },
@@ -368,7 +368,8 @@ const COLLECTION_WEAPONS = [
 
 const COLLECTION_PASSIVES = [
   { id: 'might',       label: 'Power',        color: '#ff6644', icon: '▲', description: '+10% weapon damage (stackable)' },
-  { id: 'vampiric',    label: 'Soul Drain',   color: '#cc3355', icon: '♥', description: 'Each hit restores 8% of damage dealt as HP' },
+  { id: 'vampiric',    label: 'Soul Drain',   color: '#cc3355', icon: '♥', description: 'Each hit restores 0.25% of damage dealt as HP (scales well with fast weapons)' },
+  { id: 'echo',        label: 'Echo',         color: '#aaddff', icon: '≋', description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, and sunrays all gain an extra strike (stackable, up to 2×)' },
   { id: 'xpGain',      label: 'Gilded Soul',  color: '#ffcc33', icon: '★', description: '+8% XP gained from all sources (stackable, up to 5×)' },
   { id: 'magnetRange', label: 'Astral Pull',  color: '#66ccff', icon: '◎', description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },
   { id: 'dashCooldown',label: 'Swift Dash',   color: '#88aaff', icon: '→', description: '25% shorter dash cooldown' },

@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo'
 
 export type AdminSpawnEntity =
   | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
@@ -33,7 +33,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'aura',          label: 'Aura',            description: 'Pulses damage to all enemies in range and knocks them back' },
   { id: 'auraTick',     label: 'Aura Tempo',      description: 'Aura pulses 100ms faster (stackable, up to 3×)' },
   { id: 'auraRange',    label: 'Aura Range',      description: 'Expands the aura radius (stackable, up to 3×)' },
-  { id: 'orbital',      label: 'Spirit Orb',      description: 'An orb orbits you, damaging enemies on contact (+1 orb per pick, max 5)' },
+  { id: 'orbital',      label: 'Spirit Orb',      description: 'An orb orbits you, damaging and knocking back enemies on contact (+1 orb per pick, max 5)' },
   { id: 'orbSpeed',     label: 'Orb Velocity',    description: 'Spirit Orbs rotate 25% faster (stackable, up to 3×)' },
   { id: 'orbPower',     label: 'Orb Power',       description: 'Spirit Orbs deal 20% more damage (stackable, up to 3×)' },
   { id: 'orbRange',     label: 'Orb Reach',       description: 'Spirit Orbs orbit at a wider radius, covering more ground (stackable, up to 2×)' },
@@ -41,7 +41,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'flameTrail',  label: 'Flame Trail',      description: 'Leaves burning patches as you move that damage nearby enemies' },
   { id: 'bloodNova',   label: 'Blood Nova',       description: 'Every 90s wipes all enemies on screen in a massive dark shockwave' },
   { id: 'bloodNovaCD', label: 'Dark Convergence', description: 'Blood Nova triggers 10s sooner (stackable, up to 4×, down to 50s)' },
-  { id: 'vampiric',   label: 'Soul Drain',       description: 'Each hit restores 8% of damage dealt as HP' },
+  { id: 'vampiric',   label: 'Soul Drain',       description: 'Each hit restores 0.25% of damage dealt as HP (scales well with fast weapons)' },
   { id: 'lightning',        label: 'Thunder Strike',    description: 'Every 4.5s lightning bolts strike 2 random enemies for heavy damage' },
   { id: 'lightningTargets', label: 'Storm Surge',       description: 'Thunder Strike hits 1 additional enemy (stackable, up to +2)' },
   { id: 'lightningCooldown',label: 'Thunderhaste',      description: 'Thunder Strike fires 1s faster (stackable, up to 2×)' },
@@ -50,11 +50,12 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'divineShield', label: 'Divine Shield', description: 'Grants periodic invincibility — active for 3s, then recharges for 9s. While active, all damage is blocked.' },
   { id: 'xpGain',       label: 'Gilded Soul',   description: '+8% XP gained from all sources (stackable, up to 5×)' },
   { id: 'magnetRange',  label: 'Astral Pull',   description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },
-  { id: 'equinox',      label: 'Equinox',        description: 'Fires sunray bolts in all 4 cardinal directions. Bolts pierce enemies.' },
-  { id: 'solstice',     label: 'Solstice',       description: 'Fires sunray bolts in all 4 diagonal directions. Bolts pierce enemies.' },
+  { id: 'equinox',      label: 'Equinox',        description: 'Fires gold piercing sunray bolts in all 4 diagonal directions.' },
+  { id: 'solstice',     label: 'Solstice',       description: 'Fires cyan piercing sunray bolts in all 4 diagonal directions. Pick both for staggered double volleys.' },
   { id: 'dualGunDamage',label: 'Solar Intensity', description: 'Sunray bolts deal 30% more damage (stackable, up to 3×)' },
   { id: 'dualGunSpeed', label: 'Solar Tempo',    description: 'Sunray guns fire 20% faster (stackable, up to 2×)' },
   { id: 'dualGunExtra', label: 'Solar Barrage',  description: 'Fires one extra staggered burst per gun per volley (stackable, up to 2×)' },
+  { id: 'echo',         label: 'Echo',           description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, and sunrays all gain an extra strike (stackable, up to 2×)' },
 ]
 
 // XP curve: L1=30, L2=55, L3=80 (+25/level), spikes at L20/L40
@@ -67,7 +68,7 @@ function xpNeeded(level: number): number {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number }
+type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number }
 
 function upgradeWeight(id: UpgradeId, s: PickState): number {
   if ((id === 'multiShot' || id === 'piercing') && s.wand) return 10
@@ -75,6 +76,7 @@ function upgradeWeight(id: UpgradeId, s: PickState): number {
   if ((id === 'lightningTargets' || id === 'lightningCooldown') && s.lightning) return 10
   if (id === 'bloodNovaCD' && s.bloodNova) return 10
   if ((id === 'dualGunDamage' || id === 'dualGunSpeed' || id === 'dualGunExtra') && (s.equinox || s.solstice)) return 10
+  if (id === 'echo' && (s.wand || s.boomerang || s.axe || s.equinox || s.solstice)) return 10
   if (id === 'orbital' && s.orbital > 0) return 8
   if ((id === 'orbSpeed' || id === 'orbPower' || id === 'orbRange') && s.orbital > 0) return 10
   if (id === 'might' || id === 'dashCooldown' || id === 'dashDistance') return 4
@@ -134,6 +136,7 @@ function pickChoices(state: PickState): Upgrade[] {
     if (u.id === 'dualGunSpeed'  && state.dualGunSpeed >= 2)                return false
     if (u.id === 'dualGunExtra'  && !state.equinox && !state.solstice)      return false
     if (u.id === 'dualGunExtra'  && state.dualGunExtra >= 2)                return false
+    if (u.id === 'echo' && state.echo >= 2)                                 return false
     return true
   })
 
@@ -196,6 +199,7 @@ interface GameState {
   dualGunSpeed: number
   dualGunExtra: number
   dualGunAttackInterval: number
+  echo: number
   flameTrail: boolean
   bloodNova: boolean
   bloodNovaCD: number
@@ -266,6 +270,7 @@ export const useGameStore = create<GameState>()(
     dualGunSpeed: 0,
     dualGunExtra: 0,
     dualGunAttackInterval: 1400,
+    echo: 0,
     moveSpeed: 160,
     isLevelUpPending: false,
     upgradeChoices: [],
@@ -406,7 +411,7 @@ export const useGameStore = create<GameState>()(
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, auraRange: 0, orbital: 0, orbSpeed: 0, orbPower: 0, orbRange: 0,
       wand: false, boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0, vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, axe: false, divineShield: false, divineShieldActive: false, xpGain: 0, magnetRange: 0, armor: 0,
-      equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 800,
+      equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 800, echo: 0,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
     }),
@@ -446,6 +451,7 @@ export const useGameStore = create<GameState>()(
           case 'dualGunDamage':upgrade = { dualGunDamage: Math.min(3, s.dualGunDamage + 1) }; break
           case 'dualGunSpeed': upgrade = { dualGunSpeed: Math.min(2, s.dualGunSpeed + 1), dualGunAttackInterval: Math.max(500, Math.floor(s.dualGunAttackInterval * 0.8)) }; break
           case 'dualGunExtra': upgrade = { dualGunExtra: Math.min(2, s.dualGunExtra + 1) }; break
+          case 'echo':         upgrade = { echo: Math.min(2, s.echo + 1) }; break
           default:             upgrade = {}
         }
         return { ...upgrade, isLevelUpPending: false, chosenUpgrade: id }
@@ -480,5 +486,6 @@ export function getValidatedCombatState() {
     dualGunSpeed:       Math.min(2, Math.max(0, Math.floor(s.dualGunSpeed))),
     dualGunAttackInterval: Math.max(500, s.dualGunAttackInterval),
     dualGunExtra:          Math.min(2, Math.max(0, Math.floor(s.dualGunExtra))),
+    echo:               Math.min(2, Math.max(0, Math.floor(s.echo))),
   }
 }

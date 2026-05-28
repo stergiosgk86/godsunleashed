@@ -494,6 +494,7 @@ export class MainScene extends Phaser.Scene {
     const novaPaused = this.combat.novaPaused
     if (!novaPaused) this.player.update(delta, this.effects)
     this.combat.setFacing(this.player.facingVx, this.player.facingVy)
+    this.combat.setMoving(this.player.isMoving)
     this.effects.update(delta)
 
     const net = activeNetClient
