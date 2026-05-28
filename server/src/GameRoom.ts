@@ -230,7 +230,7 @@ export class GameRoom {
 
   constructor(isSolo = false) { this.isSolo = isSolo }
 
-  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720, resumeLevel = 1, resumeXp = 0, resumeElapsed = 0) {
+  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720, resumeLevel = 1, resumeXp = 0, resumeElapsed = 0, stage = 1) {
     if (this.started) return
     const isHost = this.players.length === 0
     this.players.push({
@@ -239,6 +239,7 @@ export class GameRoom {
       kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
     if (this.isSolo && resumeElapsed > 0) this.resumeElapsed = resumeElapsed
+    if (stage !== 1) this.spawner.disabled = true
     this.broadcastWaiting()
     if (this.players.length >= MAX_PLAYERS || this.isSolo) {
       this.startGame()

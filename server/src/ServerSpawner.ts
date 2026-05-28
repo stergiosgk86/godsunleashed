@@ -84,6 +84,7 @@ interface ActiveSurge {
 }
 
 export class ServerSpawner {
+  disabled = false  // set true for stages that manage their own enemies
   private enemies: ServerEnemy[] = []
   private elapsed   = 0
   private laneTimers: number[] = LANE_DEFS.map(l => l.intervalStart)
@@ -125,6 +126,7 @@ export class ServerSpawner {
   }
 
   update(players: SpawnerPlayer[], delta: number) {
+    if (this.disabled) { this.elapsed += delta; return }
     this.elapsed += delta
 
     const speedMult   = computeSpeedScale(this.elapsed)

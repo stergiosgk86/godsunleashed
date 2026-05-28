@@ -330,6 +330,7 @@ function App() {
           type: 'join',
           characterType: charType,
           solo: true,
+          stage: useStageStore.getState().selectedStage,
           viewportW: window.innerWidth,
           viewportH: window.innerHeight,
           ...(savedRun && {

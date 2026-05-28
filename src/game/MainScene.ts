@@ -148,7 +148,7 @@ export class MainScene extends Phaser.Scene {
       const sw = this.scale.width
       const sh = this.scale.height
       const wallH = Math.floor(sh * WALL_FRACTION)
-      const corridorHalf = Math.floor((sh / 2 - wallH) / camZoom)
+      const corridorHalf = sh / 2 - wallH
 
       // Extend bounds by Player's 64px margin so the player walks right up to the visual wall edge
       const PLAYER_MARGIN = 64

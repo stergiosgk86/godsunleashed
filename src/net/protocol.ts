@@ -22,7 +22,7 @@ export interface PlayerSnapshot {
 
 // Client → Server
 export type C2SMessage =
-  | { type: 'join'; characterType: string; solo?: boolean; viewportW?: number; viewportH?: number; resumeElapsed?: number; resumeLevel?: number; resumeXp?: number }
+  | { type: 'join'; characterType: string; solo?: boolean; stage?: number; viewportW?: number; viewportH?: number; resumeElapsed?: number; resumeLevel?: number; resumeXp?: number }
   | { type: 'input'; x: number; y: number; aura: number; orbital: number }
   | { type: 'hit'; enemyId: number; damage: number }
   | { type: 'auraHit'; enemyId: number; damage: number }
