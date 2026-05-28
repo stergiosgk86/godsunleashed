@@ -153,8 +153,7 @@ export class MainScene extends Phaser.Scene {
       this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
         .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(2)
 
-      const PLAYER_MARGIN = 64
-      this.physics.world.setBounds(-500_000, -(CORRIDOR_HALF + PLAYER_MARGIN), 1_000_000, (CORRIDOR_HALF + PLAYER_MARGIN) * 2)
+      this.physics.world.setBounds(-500_000, -CORRIDOR_HALF, 1_000_000, CORRIDOR_HALF * 2)
 
       this.spawner.disabled = true
       this.spawner.corridorHalfHeight = CORRIDOR_HALF
