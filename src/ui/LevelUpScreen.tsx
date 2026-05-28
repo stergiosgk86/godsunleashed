@@ -21,6 +21,42 @@ const KEYFRAMES = `
 @keyframes lu-hint  { from { opacity:0 } to { opacity:1 } }
 `
 
+// Returns { current, max } for pip display. max=0 → no pips shown.
+function upgradeLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getState>): { current: number; max: number } {
+  switch (id) {
+    case 'wand':             return { current: s.wand ? 1 : 0,         max: 1 }
+    case 'piercing':         return { current: s.piercing ? 1 : 0,     max: 1 }
+    case 'boomerang':        return { current: s.boomerang ? 1 : 0,    max: 1 }
+    case 'flameTrail':       return { current: s.flameTrail ? 1 : 0,   max: 1 }
+    case 'bloodNova':        return { current: s.bloodNova ? 1 : 0,    max: 1 }
+    case 'vampiric':         return { current: s.vampiric ? 1 : 0,     max: 1 }
+    case 'lightning':        return { current: s.lightning ? 1 : 0,    max: 1 }
+    case 'axe':              return { current: s.axe ? 1 : 0,          max: 1 }
+    case 'aura':             return { current: s.aura > 0 ? 1 : 0,     max: 1 }
+    case 'divineShield':     return { current: s.divineShield ? 1 : 0, max: 1 }
+    case 'equinox':          return { current: s.equinox ? 1 : 0,      max: 1 }
+    case 'solstice':         return { current: s.solstice ? 1 : 0,     max: 1 }
+    case 'multiShot':        return { current: s.multiShot,            max: 3 }
+    case 'orbital':          return { current: s.orbital,              max: 5 }
+    case 'orbSpeed':         return { current: s.orbSpeed,             max: 3 }
+    case 'orbPower':         return { current: s.orbPower,             max: 3 }
+    case 'orbRange':         return { current: s.orbRange,             max: 2 }
+    case 'bloodNovaCD':      return { current: s.bloodNovaCD,          max: 4 }
+    case 'lightningTargets': return { current: s.lightningTargets,     max: 2 }
+    case 'lightningCooldown':return { current: s.lightningCooldown,    max: 2 }
+    case 'might':            return { current: Math.min(5, Math.round((s.might - 1) / 0.1)), max: 5 }
+    case 'auraTick':         return { current: s.auraTick,             max: 3 }
+    case 'auraRange':        return { current: s.auraRange,            max: 3 }
+    case 'xpGain':           return { current: s.xpGain,              max: 5 }
+    case 'magnetRange':      return { current: s.magnetRange,          max: 3 }
+    case 'dualGunDamage':    return { current: s.dualGunDamage,        max: 3 }
+    case 'dualGunSpeed':     return { current: s.dualGunSpeed,         max: 2 }
+    case 'dualGunExtra':     return { current: s.dualGunExtra,         max: 2 }
+    case 'echo':             return { current: s.echo,                 max: 2 }
+    default:                 return { current: 0,                      max: 0 }
+  }
+}
+
 export function LevelUpScreen() {
   const isLevelUpPending = useGameStore(s => s.isLevelUpPending)
   const upgradeChoices   = useGameStore(s => s.upgradeChoices)
@@ -38,6 +74,7 @@ function LevelUpOverlay({ level, choices, onChoose }: {
 }) {
   const isMobile = window.innerWidth <= 768
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const gs = useGameStore.getState()
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -171,29 +208,41 @@ function LevelUpOverlay({ level, choices, onChoose }: {
           alignItems: 'stretch',
           width: isMobile ? '85%' : 'auto',
         }}>
-          {choices.map((u, i) => (
-            <div key={u.id} style={{
-              display: 'flex',
-              animation: `lu-card 0.5s cubic-bezier(0.34,1.56,0.64,1) ${360 + i * 110}ms both`,
-            }}>
-              <UpgradeCard label={u.label} description={u.description} mobile={isMobile} onClick={() => onChoose(u.id)} />
-            </div>
-          ))}
+          {choices.map((u, i) => {
+            const { current, max } = upgradeLevel(u.id, gs)
+            return (
+              <div key={u.id} style={{
+                display: 'flex',
+                animation: `lu-card 0.5s cubic-bezier(0.34,1.56,0.64,1) ${360 + i * 110}ms both`,
+              }}>
+                <UpgradeCard
+                  label={u.label}
+                  description={u.description}
+                  mobile={isMobile}
+                  current={current}
+                  max={max}
+                  onClick={() => onChoose(u.id)}
+                />
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
   )
 }
 
-function UpgradeCard({ label, description, mobile, onClick }: {
-  label: string; description: string; mobile?: boolean; onClick: () => void
+function UpgradeCard({ label, description, mobile, current, max, onClick }: {
+  label: string; description: string; mobile?: boolean
+  current: number; max: number
+  onClick: () => void
 }) {
   return (
     <button
       onClick={onClick}
       style={{
         width: mobile ? '100%' : 190,
-        padding: mobile ? '16px 20px' : '28px 20px',
+        padding: mobile ? '16px 20px' : '28px 20px 20px',
         height: '100%', boxSizing: 'border-box',
         background: '#0d0d2e', border: '2px solid #3333aa',
         borderRadius: 14, color: '#ffffff', fontFamily: 'monospace',
@@ -215,7 +264,33 @@ function UpgradeCard({ label, description, mobile, onClick }: {
       }}
     >
       <span style={{ fontSize: 20, fontWeight: 'bold', color: '#aaddff' }}>{label}</span>
-      <span style={{ fontSize: 13, color: '#888888', lineHeight: 1.4 }}>{description}</span>
+      <span style={{ fontSize: 13, color: '#888888', lineHeight: 1.4, flex: 1 }}>{description}</span>
+      {max > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 4 }}>
+          {max > 1 && (
+            <span style={{ fontSize: 10, color: '#ffdd44', letterSpacing: 2, fontFamily: 'monospace' }}>
+              LV. {current + 1} / {max}
+            </span>
+          )}
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            {Array.from({ length: max }, (_, i) => {
+              const filled = i < current
+              const gaining = i === current
+              return (
+                <div key={i} style={{
+                  width: gaining ? 10 : 8,
+                  height: gaining ? 10 : 8,
+                  borderRadius: '50%',
+                  background: filled ? '#6688cc' : gaining ? '#ffdd44' : 'transparent',
+                  border: `2px solid ${filled ? '#6688cc' : gaining ? '#ffdd44' : '#334466'}`,
+                  boxShadow: gaining ? '0 0 6px #ffdd44' : 'none',
+                  transition: 'all 0.15s',
+                }} />
+              )
+            })}
+          </div>
+        </div>
+      )}
     </button>
   )
 }
