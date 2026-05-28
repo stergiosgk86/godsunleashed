@@ -148,12 +148,17 @@ export class MainScene extends Phaser.Scene {
       this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'floor_stage2')
         .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(-10)
 
+      // depth 4.5 renders above player (4) and projectiles (3) so the wall
+      // visually clips any sprite/projectile that briefly overlaps the boundary
       this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
-        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(2)
+        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(4.5)
       this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
-        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(2)
+        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(4.5)
 
-      this.physics.world.setBounds(-500_000, -CORRIDOR_HALF, 1_000_000, CORRIDOR_HALF * 2)
+      // PLAYER_MARGIN lets player center reach ±(CORRIDOR_HALF+40-64)=±356;
+      // small sprites (24px half) stop exactly at wall, large sprites clip
+      // a few pixels in but wall depth 4.5 covers them visually.
+      this.physics.world.setBounds(-500_000, -(CORRIDOR_HALF + 40), 1_000_000, (CORRIDOR_HALF + 40) * 2)
 
       this.spawner.disabled = true
       this.spawner.corridorHalfHeight = CORRIDOR_HALF
