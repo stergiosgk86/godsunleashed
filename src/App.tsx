@@ -280,14 +280,25 @@ function App() {
   }
 
   // Submit run to leaderboard on death or win (fallback path only)
-  // Poll for role changes while on the main menu (no WS connection there)
+  // Notification WebSocket — open on main menu to receive instant server pushes (e.g. roleChanged)
   useEffect(() => {
     if (inGame || !token) return
-    const poll = setInterval(fetchProfile, 20_000)
-    const onVisible = () => { if (!document.hidden) fetchProfile() }
-    document.addEventListener('visibilitychange', onVisible)
-    return () => { clearInterval(poll); document.removeEventListener('visibilitychange', onVisible) }
-  }, [inGame, token, fetchProfile])
+    const ws = new WebSocket(`${WS_BASE}?token=${token}`)
+    ws.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data as string)
+        if (msg.type === 'roleChanged') {
+          useAuthStore.getState().setRole(msg.role)
+          if (msg.role === 'admin' || msg.role === 'super_admin') {
+            useAuthStore.getState().showSystemToast('You have been granted admin access', '#88ff88')
+          } else {
+            useAuthStore.getState().showSystemToast('Your admin access has been revoked', '#ffaa44')
+          }
+        }
+      } catch {}
+    }
+    return () => ws.close()
+  }, [inGame, token])
 
   useEffect(() => {
     if (!inGame) return
