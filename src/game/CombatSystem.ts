@@ -949,8 +949,10 @@ export class CombatSystem {
     const MOVE_OFFSET = 20
     const spawnX = this.playerMoving ? px + this.facingVx * MOVE_OFFSET : px
     const spawnY = this.playerMoving ? py + this.facingVy * MOVE_OFFSET : py
-    const d = DUAL_GUN_SPEED * 0.707
-    for (const [vx, vy] of [[d, -d], [d, d], [-d, d], [-d, -d]] as [number, number][]) {
+    // Aim toward 16:9 screen corners: angle = arctan(9/16) ≈ 29.4° from horizontal
+    const cosA = DUAL_GUN_SPEED * (16 / Math.sqrt(16 * 16 + 9 * 9))
+    const sinA = DUAL_GUN_SPEED * (9  / Math.sqrt(16 * 16 + 9 * 9))
+    for (const [vx, vy] of [[cosA, -sinA], [cosA, sinA], [-cosA, sinA], [-cosA, -sinA]] as [number, number][]) {
       this.sunBeams.push(new SunBeam(this.scene, spawnX, spawnY, vx, vy, gold))
     }
   }
