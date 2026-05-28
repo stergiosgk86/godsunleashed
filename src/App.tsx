@@ -189,6 +189,7 @@ function App() {
         const snap = await loadRun()
         if (snap) {
           setPendingRunRestore(snap)
+          if (snap.stage) useStageStore.getState().setStage(snap.stage)
           await handlePlay(true)
         }
       }

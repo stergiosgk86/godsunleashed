@@ -628,6 +628,7 @@ export class MainScene extends Phaser.Scene {
         const s = useGameStore.getState()
         saveRun({
           character: this.charType,
+          stage: this.selectedStage as 1 | 2,
           elapsed: runData.elapsed,
           nextBossAt: 0,
           warningFired: false,
@@ -665,6 +666,7 @@ export class MainScene extends Phaser.Scene {
         const sp = this.spawner.getSnapshot()
         saveRun({
           character: this.charType,
+          stage: this.selectedStage as 1 | 2,
           elapsed: runData.elapsed,
           nextBossAt: sp.nextBossAt,
           warningFired: sp.warningFired,
