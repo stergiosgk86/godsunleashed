@@ -71,6 +71,7 @@ export class MainScene extends Phaser.Scene {
   corridorHalfY: number | null = null
   private wallTop: Phaser.GameObjects.TileSprite | null = null
   private wallBot: Phaser.GameObjects.TileSprite | null = null
+  private floorSprite: Phaser.GameObjects.TileSprite | null = null
 
   constructor() {
     super({ key: 'MainScene' })
@@ -177,8 +178,20 @@ export class MainScene extends Phaser.Scene {
       const CORRIDOR_HALF = 380  // world units from Y=0 to wall edge
       const WALL_H = 2000        // thick enough to fill any viewport
 
-      this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'floor_stage2')
-        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(-10)
+      // Same pre-scale fix as the wall: original tile 1254×0.1=125.4px (non-integer).
+      // 130 is the nearest multiple-of-10 → 130×1.4=182 and 130×0.7=91 (both integers).
+      const FLOOR_TILE_PX = 130
+      const floorSrc = this.textures.get('floor_stage2').source[0].image as HTMLImageElement
+      const floorCanvas = document.createElement('canvas')
+      floorCanvas.width = FLOOR_TILE_PX
+      floorCanvas.height = FLOOR_TILE_PX
+      const floorCtx = floorCanvas.getContext('2d')!
+      floorCtx.imageSmoothingEnabled = true
+      floorCtx.imageSmoothingQuality = 'high'
+      floorCtx.drawImage(floorSrc, 0, 0, FLOOR_TILE_PX, FLOOR_TILE_PX)
+      this.textures.addCanvas('floor_tile_scaled', floorCanvas)
+      this.floorSprite = this.add.tileSprite(0, 0, 4000, 2000, 'floor_tile_scaled')
+        .setOrigin(0.5, 0.5).setTileScale(1, 1).setDepth(-10)
 
       // Pre-scale the wall texture to exactly 380×380 px using the 2D canvas API.
       // At zoom 1.4: 380×1.4=532 screen px (integer). At zoom 0.7: 380×0.7=266 (integer).
@@ -667,8 +680,8 @@ export class MainScene extends Phaser.Scene {
   update(_time: number, delta: number) {
     if (useGameStore.getState().isPaused) return
 
-    // Re-centre screen-sized wall sprites on the camera each frame and scroll via
-    // tilePositionX. The tile is 380 world px wide (tileScale 1:1), so 1 texel = 1 world px.
+    // Re-centre screen-sized wall/floor sprites on the camera and scroll via tilePosition.
+    // Tiles are pre-scaled to integer world px widths so seams never fall on fractional pixels.
     if (this.wallTop && this.wallBot) {
       const camCX = this.cameras.main.worldView.centerX
       const texelX = Math.round(this.cameras.main.scrollX)
@@ -676,6 +689,13 @@ export class MainScene extends Phaser.Scene {
       this.wallBot.x = camCX
       this.wallTop.tilePositionX = texelX
       this.wallBot.tilePositionX = texelX
+    }
+    if (this.floorSprite) {
+      const cam = this.cameras.main
+      this.floorSprite.x = cam.worldView.centerX
+      this.floorSprite.y = cam.worldView.centerY
+      this.floorSprite.tilePositionX = Math.round(cam.scrollX)
+      this.floorSprite.tilePositionY = Math.round(cam.scrollY)
     }
 
     const spawnRequest = useGameStore.getState().adminSpawnRequest
