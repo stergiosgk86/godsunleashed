@@ -180,21 +180,33 @@ export class MainScene extends Phaser.Scene {
       this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'floor_stage2')
         .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(-10)
 
+      // Pre-scale the wall texture to exactly 380×380 px using the 2D canvas API.
+      // At zoom 1.4: 380×1.4=532 screen px (integer). At zoom 0.7: 380×0.7=266 (integer).
+      // Tiling a pre-scaled texture at tileScale 1.0 means no downsampling in the GPU
+      // shader — eliminating the column-edge aliasing that caused the flickering.
+      // The baked 2D canvas drawImage uses bilinear downscaling, so the result is
+      // already anti-aliased before it ever reaches the GPU tiler.
+      const WALL_TILE_PX = 380
+      const wallSrc = this.textures.get('wall_stage2').source[0].image as HTMLImageElement
+      const tileCanvas = document.createElement('canvas')
+      tileCanvas.width = WALL_TILE_PX
+      tileCanvas.height = WALL_TILE_PX
+      const tileCtx = tileCanvas.getContext('2d')!
+      tileCtx.imageSmoothingEnabled = true
+      tileCtx.imageSmoothingQuality = 'high'
+      tileCtx.drawImage(wallSrc, 0, 0, WALL_TILE_PX, WALL_TILE_PX)
+      this.textures.addCanvas('wall_tile_scaled', tileCanvas)
+      // tilePositionY: aligns decorated edge to the corridor boundary.
+      // Equivalent of original 857/1254 at new scale: 380 - (WALL_H % 380) = 380-100 = 280
+      const TILE_POS_Y = WALL_TILE_PX - (WALL_H % WALL_TILE_PX)  // 280
+      const WALL_W = 3000
       // Top wall: depth 3.5 — renders UNDER player (4) so the player sprite stays
-      // visible when walking toward the north wall (standard top-down: north wall behind player).
-      // tilePositionY=857: shifts texture so its decorated bottom aligns with the corridor edge.
-      // Derived from: round(1254 - (2000/0.3) % 1254) = 857
-      // Walls are screen-width (not world-width) TileSprites, re-centred on the camera
-      // every frame. Phaser docs warn against TileSprites larger than the canvas — using
-      // 1 000 000 px caused flickering because the tiling pipeline isn't designed for it.
-      // tilePositionX is updated each frame (integer texels) so columns scroll smoothly.
-      const WALL_W = 3000  // wide enough to fill any viewport at 0.7× zoom
-      this.wallTop = this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), WALL_W, WALL_H, 'wall_stage2')
-        .setOrigin(0.5, 0.5).setTileScale(0.3, 0.3).setDepth(3.5).setTilePosition(0, 857)
-      // Bottom wall: flipped Y so the decorated edge (torches/border) faces the corridor.
-      // depth 4.5 — renders OVER player (4) so it clips feet walking toward the south wall.
-      this.wallBot = this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), WALL_W, WALL_H, 'wall_stage2')
-        .setOrigin(0.5, 0.5).setTileScale(0.3, 0.3).setDepth(4.5).setFlipY(true).setTilePosition(0, 857)
+      // visible when walking toward the north wall.
+      this.wallTop = this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), WALL_W, WALL_H, 'wall_tile_scaled')
+        .setOrigin(0.5, 0.5).setTileScale(1, 1).setDepth(3.5).setTilePosition(0, TILE_POS_Y)
+      // Bottom wall: flipped Y so the decorated edge faces the corridor.
+      this.wallBot = this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), WALL_W, WALL_H, 'wall_tile_scaled')
+        .setOrigin(0.5, 0.5).setTileScale(1, 1).setDepth(4.5).setFlipY(true).setTilePosition(0, TILE_POS_Y)
 
       // Asymmetric Y bounds: top extended so feet (y+24) reach -CORRIDOR_HALF,
       // bottom lets feet reach +CORRIDOR_HALF for small sprites (wall covers larger ones).
@@ -655,11 +667,11 @@ export class MainScene extends Phaser.Scene {
   update(_time: number, delta: number) {
     if (useGameStore.getState().isPaused) return
 
-    // Keep screen-sized wall sprites centred on the camera and scroll via tilePositionX.
-    // Integer texel steps prevent the column-edge flickering that a 1 000 000 px TileSprite caused.
+    // Re-centre screen-sized wall sprites on the camera each frame and scroll via
+    // tilePositionX. The tile is 380 world px wide (tileScale 1:1), so 1 texel = 1 world px.
     if (this.wallTop && this.wallBot) {
       const camCX = this.cameras.main.worldView.centerX
-      const texelX = Math.round(this.cameras.main.scrollX / 0.3)
+      const texelX = Math.round(this.cameras.main.scrollX)
       this.wallTop.x = camCX
       this.wallBot.x = camCX
       this.wallTop.tilePositionX = texelX
