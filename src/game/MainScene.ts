@@ -9,6 +9,7 @@ import { RemoteProjectile } from './RemoteProjectile'
 import { generateAssets, generatePropTextures } from './AssetGenerator'
 import { useGameStore, UPGRADE_POOL, type Upgrade, type AdminSpawnEntity } from '../store/gameStore'
 import { useCharacterStore } from '../store/characterStore'
+import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { CHARACTER_DEFS } from './characters'
 import { minimapData } from './minimapData'
@@ -123,6 +124,11 @@ export class MainScene extends Phaser.Scene {
         hp: savedRun.hp,
         maxHp: savedRun.maxHp,
         might: savedRun.might,
+        mightPicks: savedRun.mightPicks ?? (() => {
+          const metaMight = useProfileStore.getState().upgrades.might ?? 0
+          const baseMight = (1.0 + metaMight * 0.05) * charDef.mightMult
+          return Math.min(5, Math.max(0, Math.round((savedRun.might - baseMight) / 0.1)))
+        })(),
         attackInterval: savedRun.attackInterval,
         moveSpeed: savedRun.moveSpeed,
         dashCooldown: savedRun.dashCooldown,
@@ -382,7 +388,7 @@ export class MainScene extends Phaser.Scene {
       kills: gs.kills, bossKills: gs.bossKills,
       xp: gs.xp, xpNeeded: gs.xpNeeded, level: gs.level,
       hp: gs.hp, maxHp: gs.maxHp,
-      might: gs.might, attackInterval: gs.attackInterval, moveSpeed: gs.moveSpeed,
+      might: gs.might, mightPicks: gs.mightPicks, attackInterval: gs.attackInterval, moveSpeed: gs.moveSpeed,
       dashCooldown: gs.dashCooldown, dashDistance: gs.dashDistance,
       multiShot: gs.multiShot, piercing: gs.piercing, aura: gs.aura, auraTick: gs.auraTick, auraRange: gs.auraRange,
       orbital: gs.orbital, wand: gs.wand, boomerang: gs.boomerang, flameTrail: gs.flameTrail,

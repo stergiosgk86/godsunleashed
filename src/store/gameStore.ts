@@ -72,7 +72,7 @@ function xpNeeded(level: number): number {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number; dashCooldown: number; dashDistance: number; ravens: boolean; ravensCD: number; ravensPower: number; ravensCount: number }
+type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; mightPicks: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number; dashCooldown: number; dashDistance: number; ravens: boolean; ravensCD: number; ravensPower: number; ravensCount: number }
 
 function upgradeWeight(id: UpgradeId, s: PickState): number {
   if ((id === 'multiShot' || id === 'piercing') && s.wand) return 10
@@ -125,7 +125,7 @@ function pickChoices(state: PickState): Upgrade[] {
     if (u.id === 'lightningTargets'  && state.lightningTargets >= 2)       return false
     if (u.id === 'lightningCooldown' && !state.lightning)                  return false
     if (u.id === 'lightningCooldown' && state.lightningCooldown >= 2)      return false
-    if (u.id === 'might'      && state.might >= 1.5)    return false
+    if (u.id === 'might'      && state.mightPicks >= 5)  return false
     if (u.id === 'axe'        && state.axe)             return false
     if (u.id === 'divineShield' && state.divineShield)  return false
     if (u.id === 'xpGain'     && state.xpGain >= 5)        return false
@@ -182,6 +182,7 @@ interface GameState {
   hp: number
   maxHp: number
   might: number
+  mightPicks: number
   attackInterval: number
   moveSpeed: number
   isLevelUpPending: boolean
@@ -288,6 +289,7 @@ export const useGameStore = create<GameState>()(
     hp: 100,
     maxHp: 100,
     might: 1.0,
+    mightPicks: 0,
     attackInterval: 1350,
     wandAttackInterval: 1200,
     equinox: false,
@@ -380,7 +382,11 @@ export const useGameStore = create<GameState>()(
         case 'lightning':          upgrade = { lightning: level >= 1 }; break
         case 'lightningTargets':   upgrade = { lightningTargets: level }; break
         case 'lightningCooldown':  upgrade = { lightningCooldown: level }; break
-        case 'might':              upgrade = { might: 1.0 + level * 0.1 }; break
+        case 'might': {
+          const safeLevel = Math.min(5, Math.max(0, level))
+          const baseMight = s.might - s.mightPicks * 0.1
+          upgrade = { might: baseMight + safeLevel * 0.1, mightPicks: safeLevel }; break
+        }
         case 'axe':                upgrade = { axe: level >= 1 }; break
         case 'divineShield':       upgrade = { divineShield: level >= 1 }; break
         case 'xpGain':             upgrade = { xpGain: level }; break
@@ -408,7 +414,7 @@ export const useGameStore = create<GameState>()(
       boomerang: false, flameTrail: false,
       bloodNova: false, bloodNovaCD: 0, vampiric: false,
       lightning: false, lightningTargets: 0, lightningCooldown: 0,
-      might: 1.0, axe: false, divineShield: false,
+      might: 1.0, mightPicks: 0, axe: false, divineShield: false,
       xpGain: 0, magnetRange: 0,
       equinox: false, solstice: false,
       dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 1400,
@@ -499,7 +505,7 @@ export const useGameStore = create<GameState>()(
       chosenUpgrade: null,
       xp: 0, xpNeeded: xpNeeded(1), level: 1,
       hp: 100, maxHp: 100,
-      might: 1.0, attackInterval: 1350, wandAttackInterval: 1200, moveSpeed: 160,
+      might: 1.0, mightPicks: 0, attackInterval: 1350, wandAttackInterval: 1200, moveSpeed: 160,
       isLevelUpPending: false, upgradeChoices: [],
       invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300, bossInvulnerable: false,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
@@ -540,7 +546,7 @@ export const useGameStore = create<GameState>()(
           case 'divineShield': upgrade = { divineShield: true }; break
           case 'xpGain':       upgrade = { xpGain: Math.min(5, s.xpGain + 1) }; break
           case 'magnetRange':  upgrade = { magnetRange: Math.min(3, s.magnetRange + 1) }; break
-          case 'might':        upgrade = { might: Math.min(1.5, s.might + 0.1) }; break
+          case 'might':        upgrade = { might: s.might + 0.1, mightPicks: Math.min(5, s.mightPicks + 1) }; break
           case 'equinox':      upgrade = { equinox: true }; break
           case 'solstice':     upgrade = { solstice: true }; break
           case 'dualGunDamage':upgrade = { dualGunDamage: Math.min(3, s.dualGunDamage + 1) }; break

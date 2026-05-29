@@ -27,6 +27,7 @@ export interface RunSnapshot {
   hp: number
   maxHp: number
   might: number
+  mightPicks?: number
   attackInterval: number
   moveSpeed: number
   dashCooldown: number

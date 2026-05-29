@@ -195,7 +195,7 @@ function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getSta
     case 'lightning':         return s.lightning ? 1 : 0
     case 'lightningTargets':  return s.lightningTargets
     case 'lightningCooldown': return s.lightningCooldown
-    case 'might':             return Math.round((s.might - 1.0) / 0.1)
+    case 'might':             return s.mightPicks
     case 'axe':               return s.axe ? 1 : 0
     case 'divineShield':      return s.divineShield ? 1 : 0
     case 'xpGain':            return s.xpGain
