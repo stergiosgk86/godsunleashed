@@ -684,18 +684,23 @@ export class MainScene extends Phaser.Scene {
     // Tiles are pre-scaled to integer world px widths so seams never fall on fractional pixels.
     if (this.wallTop && this.wallBot) {
       const camCX = Math.round(this.cameras.main.worldView.centerX)
-      const texelX = Math.round(this.cameras.main.scrollX)
       this.wallTop.x = camCX
       this.wallBot.x = camCX
-      this.wallTop.tilePositionX = texelX
-      this.wallBot.tilePositionX = texelX
+      // tilePositionX = sprite.left = camCX - W/2 — same derivation as floor
+      const wallTexelX = camCX - 1500   // W/2 = 3000/2
+      this.wallTop.tilePositionX = wallTexelX
+      this.wallBot.tilePositionX = wallTexelX
     }
     if (this.floorSprite) {
       const cam = this.cameras.main
-      this.floorSprite.x = Math.round(cam.worldView.centerX)
-      this.floorSprite.y = Math.round(cam.worldView.centerY)
-      this.floorSprite.tilePositionX = Math.round(cam.scrollX)
-      this.floorSprite.tilePositionY = Math.round(cam.scrollY)
+      const cx = Math.round(cam.worldView.centerX)
+      const cy = Math.round(cam.worldView.centerY)
+      this.floorSprite.x = cx
+      this.floorSprite.y = cy
+      // tilePositionX = sprite.left = cx - W/2 makes UV = wx/tileWidth (world-aligned).
+      // Both position and offset derive from cx, so they're always in sync — no slipping.
+      this.floorSprite.tilePositionX = cx - 4000   // W/2 = 8000/2
+      this.floorSprite.tilePositionY = cy - 2000   // H/2 = 4000/2
     }
 
     const spawnRequest = useGameStore.getState().adminSpawnRequest
