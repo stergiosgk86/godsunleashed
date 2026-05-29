@@ -20,6 +20,7 @@ export interface PlayerRunData {
   weaponCount: number
   multiplayer: boolean
   damageDealt: number
+  stage: number
 }
 
 // Validates, computes score and achievements, saves run + credits coins to profile.
@@ -108,11 +109,17 @@ export async function saveRunRecord(data: PlayerRunData): Promise<string[]> {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [data.userId, data.username, safeScore, safeKills, safeTime, safeCoins, safeWon, safeMulti],
     ),
-    db.query(
-      `UPDATE profiles SET coins = LEAST(coins + $1, 5000000), active_run_token = NULL, updated_at = NOW()
-       WHERE user_id = $2`,
-      [safeCoins, data.userId],
-    ),
+    data.stage === 1
+      ? db.query(
+          `UPDATE profiles SET coins = LEAST(coins + $1, 5000000), active_run_token = NULL,
+           max_stage1_level = GREATEST(max_stage1_level, $2), updated_at = NOW() WHERE user_id = $3`,
+          [safeCoins, safeLevel, data.userId],
+        )
+      : db.query(
+          `UPDATE profiles SET coins = LEAST(coins + $1, 5000000), active_run_token = NULL, updated_at = NOW()
+           WHERE user_id = $2`,
+          [safeCoins, data.userId],
+        ),
     Promise.all(achievementInserts),
   ])
 

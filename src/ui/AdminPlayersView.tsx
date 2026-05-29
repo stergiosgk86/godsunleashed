@@ -26,12 +26,12 @@ const tdStyle: React.CSSProperties = {
   padding: '5px 10px', textAlign: 'center', borderBottom: '1px solid #111133',
 }
 const backBtn: React.CSSProperties = {
-  width: '100%', padding: '12px 0',
-  fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
-  border: '2px solid #2a2a50', borderRadius: 8,
-  cursor: 'pointer', letterSpacing: 2,
-  color: '#aaaaff', background: 'transparent',
-  marginTop: 8,
+  display: 'block', margin: '8px auto 0',
+  padding: '9px 30px', fontSize: 13, fontFamily: 'monospace', fontWeight: 'normal',
+  border: '1px solid rgba(80,80,160,0.2)', borderRadius: 8,
+  cursor: 'pointer', letterSpacing: 1,
+  color: '#6666aa', background: 'rgba(20,20,60,0.25)',
+  transition: 'all 0.18s ease',
 }
 
 function formatLastActive(iso: string) {
@@ -860,8 +860,8 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
         type="button"
         onClick={onBack}
         style={backBtn}
-        onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,80,0.55)'; e.currentTarget.style.color = '#9999cc'; e.currentTarget.style.borderColor = 'rgba(100,100,200,0.4)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,60,0.25)'; e.currentTarget.style.color = '#6666aa'; e.currentTarget.style.borderColor = 'rgba(80,80,160,0.2)' }}
       >
         {'<-'} BACK
       </button>

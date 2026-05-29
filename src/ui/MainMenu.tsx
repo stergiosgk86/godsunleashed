@@ -494,13 +494,13 @@ function BackButton({ onBack }: { onBack: () => void }) {
   return (
     <button type="button" onClick={onBack}
       style={{
-        width: '100%', padding: '11px 0', fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
-        border: '1px solid rgba(80,80,160,0.3)', borderRadius: 10, cursor: 'pointer', letterSpacing: 2,
-        color: '#7777cc', background: 'rgba(20,20,60,0.4)', transition: 'all 0.18s ease',
+        display: 'block', margin: '0 auto', padding: '9px 30px', fontSize: 13, fontFamily: 'monospace', fontWeight: 'normal',
+        border: '1px solid rgba(80,80,160,0.2)', borderRadius: 8, cursor: 'pointer', letterSpacing: 1,
+        color: '#6666aa', background: 'rgba(20,20,60,0.25)', transition: 'all 0.18s ease',
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,80,0.7)'; e.currentTarget.style.color = '#aaaaff'; e.currentTarget.style.borderColor = 'rgba(100,100,200,0.5)' }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,60,0.4)'; e.currentTarget.style.color = '#7777cc'; e.currentTarget.style.borderColor = 'rgba(80,80,160,0.3)' }}>
-      ← BACK
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,80,0.55)'; e.currentTarget.style.color = '#9999cc'; e.currentTarget.style.borderColor = 'rgba(100,100,200,0.4)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,60,0.25)'; e.currentTarget.style.color = '#6666aa'; e.currentTarget.style.borderColor = 'rgba(80,80,160,0.2)' }}>
+      ← back
     </button>
   )
 }

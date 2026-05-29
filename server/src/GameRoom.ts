@@ -668,6 +668,7 @@ export class GameRoom {
         weaponCount,
         multiplayer: !this.isSolo,
         damageDealt: p.damageDealt,
+        stage: this.spawner.stage2Mode ? 2 : 1,
       }
     })
     this.onGameEnd(results)
