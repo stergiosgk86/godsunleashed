@@ -27,10 +27,13 @@ export class RemotePlayer {
   private nameLabel: Phaser.GameObjects.Text
   private auraGraphic: Phaser.GameObjects.Graphics
   private orbGraphic: Phaser.GameObjects.Graphics
+  private ravensGraphic: Phaser.GameObjects.Graphics
   private auraAngle = 0
   private orbAngle = 0
+  private ravensAngle = 0
   private _aura = 0
   private _orbital = 0
+  private _ravens = 0
 
   constructor(scene: Phaser.Scene, x: number, y: number, characterType: string, label: string) {
     this.x = x
@@ -38,6 +41,7 @@ export class RemotePlayer {
     this.spriteKey = CHAR_SPRITE[characterType] ?? 'player'
     this.auraGraphic = scene.add.graphics().setDepth(2)
     this.orbGraphic  = scene.add.graphics().setDepth(5)
+    this.ravensGraphic = scene.add.graphics().setDepth(4.5)
     this.sprite = scene.add.sprite(x, y, this.spriteKey)
       .setDepth(4)
       .setScale(CHAR_SCALE[characterType] ?? 1.5)
@@ -49,7 +53,7 @@ export class RemotePlayer {
     }).setOrigin(0.5).setDepth(5)
   }
 
-  update(x: number, y: number, aura = 0, orbital = 0) {
+  update(x: number, y: number, aura = 0, orbital = 0, ravens = 0) {
     const dx = x - this.x
     const dy = y - this.y
     const moving = Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5
@@ -57,6 +61,7 @@ export class RemotePlayer {
     this.y = y
     this._aura = aura
     this._orbital = orbital
+    this._ravens = ravens
     this.sprite.setPosition(x, y)
     this.nameLabel.setPosition(x, y - 28)
     if (moving) {
@@ -70,6 +75,7 @@ export class RemotePlayer {
   tick(delta: number) {
     this.auraGraphic.clear()
     this.orbGraphic.clear()
+    this.ravensGraphic.clear()
 
     if (this._aura > 0) {
       const radius = 60 + this._aura * 30
@@ -118,6 +124,19 @@ export class RemotePlayer {
         this.orbGraphic.fillCircle(ox - 3, oy - 3, 3)
       }
     }
+
+    if (this._ravens > 0) {
+      this.ravensAngle -= delta * 0.00028
+      const ZONE_R = 160
+      const VIS_R = 44
+      for (let i = 0; i < 2; i++) {
+        const a = this.ravensAngle + i * Math.PI
+        const zx = this.x + Math.cos(a) * ZONE_R
+        const zy = this.y + Math.sin(a) * ZONE_R
+        this.ravensGraphic.lineStyle(1.5, 0x003311, 0.24)
+        this.ravensGraphic.strokeCircle(zx, zy, VIS_R * 0.68)
+      }
+    }
   }
 
   destroy() {
@@ -125,5 +144,6 @@ export class RemotePlayer {
     this.nameLabel.destroy()
     this.auraGraphic.destroy()
     this.orbGraphic.destroy()
+    this.ravensGraphic.destroy()
   }
 }

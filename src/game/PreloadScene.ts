@@ -68,6 +68,7 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('coin', SPRITE_URLS.coinSprite)
     this.load.image('boomerang', SPRITE_URLS.boomerangSprite)
     this.load.image('axe', SPRITE_URLS.axeSprite)
+    this.load.spritesheet('odins-ravens', SPRITE_URLS.ravensSprite, { frameWidth: 600, frameHeight: 533 })
     this.load.image('ground_tiles', SPRITE_URLS.grassTileset)
     this.load.image('tree', SPRITE_URLS.treeSprite)
     this.load.spritesheet('rock', SPRITE_URLS.rockSprite, { frameWidth: 512, frameHeight: 512 })

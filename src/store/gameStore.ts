@@ -3,7 +3,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo' | 'ravens' | 'ravensCD' | 'ravensPower' | 'ravensCount'
 
 export type AdminSpawnEntity =
   | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
@@ -12,7 +12,7 @@ export type AdminSpawnEntity =
   | 'potion' | 'xporb' | 'coin'
   | 'weapon:wand' | 'weapon:boomerang' | 'weapon:flameTrail' | 'weapon:bloodNova'
   | 'weapon:lightning' | 'weapon:axe' | 'weapon:aura' | 'weapon:orbital'
-  | 'weapon:equinox' | 'weapon:solstice'
+  | 'weapon:equinox' | 'weapon:solstice' | 'weapon:ravens'
 
 export function weaponBaseDamage(level: number): number {
   return 8 + Math.floor(level * 0.7)
@@ -56,6 +56,10 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'dualGunSpeed', label: 'Solar Tempo',    description: 'Sunray guns fire 20% faster (stackable, up to 2×)' },
   { id: 'dualGunExtra', label: 'Solar Barrage',  description: 'Fires one extra staggered burst per gun per volley (stackable, up to 2×)' },
   { id: 'echo',         label: 'Echo',           description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, sunrays, and Thunder Strike all gain an extra strike (stackable, up to 2×)' },
+  { id: 'ravens',      label: "Odin's Ravens",  description: "A raven orbits you, bombing a rotating golden zone with dark feathers that pierce all enemies" },
+  { id: 'ravensCD',    label: "Raven's Fury",   description: 'Ravens bomb 500ms faster (stackable, up to 3×, down to 2s)' },
+  { id: 'ravensPower', label: "Raven's Curse",  description: 'Each feather deals 20% more damage (stackable, up to 3×)' },
+  { id: 'ravensCount', label: 'Murder of Crows', description: '+2 feathers per bomb set (stackable, up to 2×)' },
 ]
 
 // XP curve: L1=30, L2=55, L3=80 (+25/level), spikes at L20/L40
@@ -68,7 +72,7 @@ function xpNeeded(level: number): number {
 
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 
-type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number; dashCooldown: number; dashDistance: number }
+type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; axe: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number; dashCooldown: number; dashDistance: number; ravens: boolean; ravensCD: number; ravensPower: number; ravensCount: number }
 
 function upgradeWeight(id: UpgradeId, s: PickState): number {
   if ((id === 'multiShot' || id === 'piercing') && s.wand) return 10
@@ -77,6 +81,7 @@ function upgradeWeight(id: UpgradeId, s: PickState): number {
   if (id === 'bloodNovaCD' && s.bloodNova) return 10
   if ((id === 'dualGunDamage' || id === 'dualGunSpeed' || id === 'dualGunExtra') && (s.equinox || s.solstice)) return 10
   if (id === 'echo' && (s.wand || s.boomerang || s.axe || s.equinox || s.solstice)) return 10
+  if ((id === 'ravensCD' || id === 'ravensPower' || id === 'ravensCount') && s.ravens) return 10
   if (id === 'orbital' && s.orbital > 0) return 8
   if ((id === 'orbSpeed' || id === 'orbPower' || id === 'orbRange') && s.orbital > 0) return 10
   if (id === 'might' || id === 'dashCooldown' || id === 'dashDistance') return 4
@@ -139,6 +144,13 @@ function pickChoices(state: PickState): Upgrade[] {
     if (u.id === 'dualGunExtra'  && !state.equinox && !state.solstice)      return false
     if (u.id === 'dualGunExtra'  && state.dualGunExtra >= 2)                return false
     if (u.id === 'echo' && state.echo >= 2)                                 return false
+    if (u.id === 'ravens'      && state.ravens)             return false
+    if (u.id === 'ravensCD'    && !state.ravens)            return false
+    if (u.id === 'ravensCD'    && state.ravensCD >= 3)      return false
+    if (u.id === 'ravensPower' && !state.ravens)            return false
+    if (u.id === 'ravensPower' && state.ravensPower >= 3)   return false
+    if (u.id === 'ravensCount' && !state.ravens)            return false
+    if (u.id === 'ravensCount' && state.ravensCount >= 2)   return false
     return true
   })
 
@@ -202,6 +214,10 @@ interface GameState {
   dualGunExtra: number
   dualGunAttackInterval: number
   echo: number
+  ravens: boolean
+  ravensCD: number
+  ravensPower: number
+  ravensCount: number
   flameTrail: boolean
   bloodNova: boolean
   bloodNovaCD: number
@@ -281,6 +297,10 @@ export const useGameStore = create<GameState>()(
     dualGunExtra: 0,
     dualGunAttackInterval: 1400,
     echo: 0,
+    ravens: false,
+    ravensCD: 0,
+    ravensPower: 0,
+    ravensCount: 0,
     moveSpeed: 160,
     isLevelUpPending: false,
     upgradeChoices: [],
@@ -371,6 +391,10 @@ export const useGameStore = create<GameState>()(
         case 'dualGunSpeed':       upgrade = { dualGunSpeed: level, dualGunAttackInterval: Math.max(500, Math.floor(1400 * Math.pow(0.8, level))) }; break
         case 'dualGunExtra':       upgrade = { dualGunExtra: level }; break
         case 'echo':               upgrade = { echo: level }; break
+        case 'ravens':             upgrade = { ravens: level >= 1 }; break
+        case 'ravensCD':           upgrade = { ravensCD: Math.min(3, level) }; break
+        case 'ravensPower':        upgrade = { ravensPower: Math.min(3, level) }; break
+        case 'ravensCount':        upgrade = { ravensCount: Math.min(2, level) }; break
         case 'dashCooldown':       upgrade = { dashCooldown: Math.max(400, Math.floor(DASH_COOLDOWN_MS * Math.pow(0.75, level))) }; break
         case 'dashDistance':       upgrade = { dashDistance: 1 + level * 0.4 }; break
       }
@@ -389,6 +413,7 @@ export const useGameStore = create<GameState>()(
       equinox: false, solstice: false,
       dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 1400,
       echo: 0, dashCooldown: DASH_COOLDOWN_MS, dashDistance: 1,
+      ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
     }),
 
     setServerDrivenLeveling: (value) => set({ serverDrivenLeveling: value }),
@@ -480,7 +505,8 @@ export const useGameStore = create<GameState>()(
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, auraRange: 0, orbital: 0, orbSpeed: 0, orbPower: 0, orbRange: 0,
       wand: false, boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0, vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, axe: false, divineShield: false, divineShieldActive: false, xpGain: 0, magnetRange: 0, armor: 0,
-      equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 800, echo: 0,
+      equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 1400, echo: 0,
+      ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
     }),
@@ -521,6 +547,10 @@ export const useGameStore = create<GameState>()(
           case 'dualGunSpeed': upgrade = { dualGunSpeed: Math.min(2, s.dualGunSpeed + 1), dualGunAttackInterval: Math.max(500, Math.floor(s.dualGunAttackInterval * 0.8)) }; break
           case 'dualGunExtra': upgrade = { dualGunExtra: Math.min(2, s.dualGunExtra + 1) }; break
           case 'echo':         upgrade = { echo: Math.min(2, s.echo + 1) }; break
+          case 'ravens':       upgrade = { ravens: true }; break
+          case 'ravensCD':     upgrade = { ravensCD: Math.min(3, s.ravensCD + 1) }; break
+          case 'ravensPower':  upgrade = { ravensPower: Math.min(3, s.ravensPower + 1) }; break
+          case 'ravensCount':  upgrade = { ravensCount: Math.min(2, s.ravensCount + 1) }; break
           default:             upgrade = {}
         }
         return { ...upgrade, isLevelUpPending: false, chosenUpgrade: id }
@@ -556,5 +586,8 @@ export function getValidatedCombatState() {
     dualGunAttackInterval: Math.max(500, s.dualGunAttackInterval),
     dualGunExtra:          Math.min(2, Math.max(0, Math.floor(s.dualGunExtra))),
     echo:               Math.min(2, Math.max(0, Math.floor(s.echo))),
+    ravensCD:           Math.min(3, Math.max(0, Math.floor(s.ravensCD))),
+    ravensPower:        Math.min(3, Math.max(0, Math.floor(s.ravensPower))),
+    ravensCount:        Math.min(2, Math.max(0, Math.floor(s.ravensCount))),
   }
 }

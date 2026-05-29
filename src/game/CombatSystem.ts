@@ -43,6 +43,28 @@ const POTION_SPAWN_MAX = 320
 const DIVINE_ACTIVE_MS  = 3000
 const DIVINE_COOLDOWN_MS = 9000
 
+const RAVENS_ZONE_ORBIT_R = 160   // zone circle orbits player at this radius
+const RAVENS_ZONE_VIS_R = 44      // visual radius of the zone circle indicator
+const RAVENS_ROT_SPEED = 0.00028  // radians/ms counterclockwise
+const RAVENS_BASE_CD = 3500       // ms base cooldown between bursts
+const RAVENS_CD_STEP = 500        // ms reduction per ravensCD level
+const RAVENS_BURST_SETS = 4       // sets per burst
+const RAVENS_SET_DELAY = 220      // ms between each set in a burst
+const RAVENS_BOMB_SPEED = 390     // px/s — bird shoots toward zone
+const RAVENS_BOMB_MAX_AGE = 500   // ms  (zone is ~160px away, travels well past it)
+const RAVENS_BOMB_HIT_R = 14      // hit radius
+const RAVENS_BOMB_SPREAD = 0.26   // total fan spread in radians across a set
+
+interface RavenBomb {
+  x: number; y: number
+  vx: number; vy: number
+  angle: number
+  curveRate: number   // rad/ms — positive = CCW, negative = CW
+  age: number
+  maxAge: number
+  hitEnemies: Set<AnyEnemy>
+}
+
 interface FlamePool {
   x: number; y: number
   timer: number; tickTimer: number
@@ -106,6 +128,24 @@ export class CombatSystem {
   private divineInitialized = false
   private divineGraphic: Phaser.GameObjects.Graphics
   private divineAngle = 0
+  // Odin's Ravens
+  private ravensCenterX = 0
+  private ravensCenterY = 0
+  private ravensCenterInit = false
+  private ravensCenterBX = 0
+  private ravensCenterBY = 0
+  private ravensCenterBInit = false
+  private ravensZoneAngle = 0
+  private ravensCooldownTimer = 0
+  private ravensBurstActive = false
+  private ravensBurstAge = 0
+  private ravensBurstSetsLeft = 0
+  private ravensBurstSetTimer = 0
+  private ravensBombs: RavenBomb[] = []
+  private ravensWingPhase = 0
+  private ravensGraphic: Phaser.GameObjects.Graphics
+  private ravenSpriteA: Phaser.GameObjects.Image
+  private ravenSpriteB: Phaser.GameObjects.Image
 
   constructor(scene: Phaser.Scene, effects: EffectsSystem, frontArcOnly = false) {
     this.frontArcOnly = frontArcOnly
@@ -115,6 +155,9 @@ export class CombatSystem {
     this.auraGraphic = scene.add.graphics().setDepth(2)
     this.orbGraphic = scene.add.graphics().setDepth(5)
     this.divineGraphic = scene.add.graphics().setDepth(7)
+    this.ravensGraphic = scene.add.graphics().setDepth(4.5)
+    this.ravenSpriteA = scene.add.image(0, 0, 'odins-ravens', 0).setDepth(4.6).setScale(0.11).setVisible(false)
+    this.ravenSpriteB = scene.add.image(0, 0, 'odins-ravens', 1).setDepth(4.6).setScale(0.11).setVisible(false)
   }
 
   setFacing(vx: number, vy: number) {
@@ -284,7 +327,7 @@ export class CombatSystem {
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra, echo } = getValidatedCombatState()
+    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra, echo, ravens, ravensCD, ravensPower, ravensCount } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -815,6 +858,214 @@ export class CombatSystem {
           this.applyHit(t, boltDmg, coinDropChance, lifeDrain, vampiric)
         }
       }
+    }
+
+    // === Odin's Ravens ===
+    // The raven companion follows/trails the player. A zone circle orbits the player at
+    // RAVENS_ZONE_ORBIT_R. The raven fires bursts of projectiles FROM its position (near player)
+    // TOWARD the zone — exactly like VS Peachone/Ebony Wings.
+    this.ravensGraphic.clear()
+    if (ravens) {
+      const cooldown = Math.max(2000, RAVENS_BASE_CD - ravensCD * RAVENS_CD_STEP)
+      const BOMBS_PER_SET = 4 + ravensCount * 2
+      const BURST_TOTAL = RAVENS_BURST_SETS * RAVENS_SET_DELAY
+      const ravensDmg = Math.max(1, Math.floor(weaponBaseDamage(level) * might * 0.5 * (1 + ravensPower * 0.2)))
+
+      // Zone circles orbit directly around player at fixed radius (A and B at 180° apart)
+      this.ravensZoneAngle -= delta * RAVENS_ROT_SPEED
+
+      // Both ravens orbit at BIRD_R, 180° apart, with lag interpolation
+      const BIRD_R = 42
+      const bodyLag = 1 - Math.exp(-delta / 160)
+
+      const birdTargetX = playerX + Math.cos(this.ravensZoneAngle) * BIRD_R
+      const birdTargetY = playerY + Math.sin(this.ravensZoneAngle) * BIRD_R
+      if (!this.ravensCenterInit) {
+        this.ravensCenterX = birdTargetX; this.ravensCenterY = birdTargetY; this.ravensCenterInit = true
+      }
+      this.ravensCenterX += (birdTargetX - this.ravensCenterX) * bodyLag
+      this.ravensCenterY += (birdTargetY - this.ravensCenterY) * bodyLag
+      const bx = this.ravensCenterX, by = this.ravensCenterY
+
+      const birdTargetBX = playerX + Math.cos(this.ravensZoneAngle + Math.PI) * BIRD_R
+      const birdTargetBY = playerY + Math.sin(this.ravensZoneAngle + Math.PI) * BIRD_R
+      if (!this.ravensCenterBInit) {
+        this.ravensCenterBX = birdTargetBX; this.ravensCenterBY = birdTargetBY; this.ravensCenterBInit = true
+      }
+      this.ravensCenterBX += (birdTargetBX - this.ravensCenterBX) * bodyLag
+      this.ravensCenterBY += (birdTargetBY - this.ravensCenterBY) * bodyLag
+      const bx2 = this.ravensCenterBX, by2 = this.ravensCenterBY
+
+      const zx = playerX + Math.cos(this.ravensZoneAngle) * RAVENS_ZONE_ORBIT_R
+      const zy = playerY + Math.sin(this.ravensZoneAngle) * RAVENS_ZONE_ORBIT_R
+      const zx2 = playerX + Math.cos(this.ravensZoneAngle + Math.PI) * RAVENS_ZONE_ORBIT_R
+      const zy2 = playerY + Math.sin(this.ravensZoneAngle + Math.PI) * RAVENS_ZONE_ORBIT_R
+
+      // Burst timing
+      if (!this.ravensBurstActive) {
+        this.ravensCooldownTimer += delta
+        if (this.ravensCooldownTimer >= cooldown) {
+          this.ravensCooldownTimer = 0
+          this.ravensBurstActive = true
+          this.ravensBurstAge = 0
+          this.ravensBurstSetsLeft = RAVENS_BURST_SETS
+          this.ravensBurstSetTimer = 0
+        }
+      } else {
+        this.ravensBurstAge += delta
+        this.ravensBurstSetTimer -= delta
+        if (this.ravensBurstSetsLeft > 0 && this.ravensBurstSetTimer <= 0) {
+          this.ravensBurstSetTimer += RAVENS_SET_DELAY
+          this.ravensBurstSetsLeft--
+          if (this.ravensBurstSetsLeft === RAVENS_BURST_SETS - 1) soundSystem.shootBoomerang()
+          // Fire from both ravens simultaneously — A toward zone A, B toward zone B
+          const curveSign = this.ravensBurstSetsLeft % 2 === 0 ? 1 : -1
+          const baseAngleA = Math.atan2(zy - by, zx - bx)
+          const baseAngleB = Math.atan2(zy2 - by2, zx2 - bx2)
+          for (let bi = 0; bi < BOMBS_PER_SET; bi++) {
+            const t = BOMBS_PER_SET > 1 ? bi / (BOMBS_PER_SET - 1) : 0.5
+            const spreadOffset = (t - 0.5) * RAVENS_BOMB_SPREAD
+            const angleA = baseAngleA + spreadOffset
+            this.ravensBombs.push({
+              x: bx, y: by,
+              vx: Math.cos(angleA) * RAVENS_BOMB_SPEED,
+              vy: Math.sin(angleA) * RAVENS_BOMB_SPEED,
+              angle: angleA,
+              curveRate: curveSign * 0.0028,
+              age: 0, maxAge: RAVENS_BOMB_MAX_AGE,
+              hitEnemies: new Set(),
+            })
+            const angleB = baseAngleB + spreadOffset
+            this.ravensBombs.push({
+              x: bx2, y: by2,
+              vx: Math.cos(angleB) * RAVENS_BOMB_SPEED,
+              vy: Math.sin(angleB) * RAVENS_BOMB_SPEED,
+              angle: angleB,
+              curveRate: -curveSign * 0.0028,
+              age: 0, maxAge: RAVENS_BOMB_MAX_AGE,
+              hitEnemies: new Set(),
+            })
+          }
+        }
+        if (this.ravensBurstAge >= BURST_TOTAL + RAVENS_SET_DELAY) {
+          this.ravensBurstActive = false
+        }
+      }
+
+      // Move bombs + infinite-pierce collision
+      for (const b of this.ravensBombs) {
+        // Rotate velocity vector for curved Ebony Wings-style arc
+        const cr = b.curveRate * delta
+        const cosR = Math.cos(cr), sinR = Math.sin(cr)
+        const nvx = b.vx * cosR - b.vy * sinR
+        b.vy = b.vx * sinR + b.vy * cosR
+        b.vx = nvx
+        b.x += b.vx * (delta / 1000)
+        b.y += b.vy * (delta / 1000)
+        b.age += delta
+        for (const e of enemies) {
+          if (!e.active || b.hitEnemies.has(e)) continue
+          const bdx = b.x - e.x, bdy = b.y - e.y
+          if (bdx * bdx + bdy * bdy < RAVENS_BOMB_HIT_R * RAVENS_BOMB_HIT_R) {
+            b.hitEnemies.add(e)
+            this.applyHit(e, ravensDmg, coinDropChance, lifeDrain, vampiric)
+          }
+        }
+      }
+      this.ravensBombs = this.ravensBombs.filter(b => b.age < b.maxAge)
+
+      // --- Zone circle visual ---
+      const chargeFrac = !this.ravensBurstActive
+        ? Math.max(0, (this.ravensCooldownTimer - (cooldown - 600)) / 600)
+        : 0
+      const burstFade = this.ravensBurstActive
+        ? Math.max(0, 1 - this.ravensBurstAge / (BURST_TOTAL + RAVENS_SET_DELAY))
+        : 0
+
+      const drawZone = (cx: number, cy: number) => {
+        if (this.ravensBurstActive && burstFade > 0.05) {
+          const pulse = 0.72 + 0.28 * Math.sin(this.ravensBurstAge * 0.028)
+          this.ravensGraphic.fillStyle(0x00cc44, 0.13 * pulse * burstFade)
+          this.ravensGraphic.fillCircle(cx, cy, RAVENS_ZONE_VIS_R * 1.75)
+          this.ravensGraphic.fillStyle(0x33ff66, 0.23 * pulse * burstFade)
+          this.ravensGraphic.fillCircle(cx, cy, RAVENS_ZONE_VIS_R * 1.1)
+          this.ravensGraphic.fillStyle(0x88ffaa, 0.30 * pulse * burstFade)
+          this.ravensGraphic.fillCircle(cx, cy, RAVENS_ZONE_VIS_R)
+          this.ravensGraphic.lineStyle(3, 0x44ff88, 0.92 * burstFade)
+          this.ravensGraphic.strokeCircle(cx, cy, RAVENS_ZONE_VIS_R)
+          this.ravensGraphic.lineStyle(1.5, 0xffffff, 0.50 * burstFade)
+          this.ravensGraphic.strokeCircle(cx, cy, RAVENS_ZONE_VIS_R * 0.52)
+          for (let i = 0; i < 4; i++) {
+            const a = this.ravensZoneAngle * 2 + (i / 4) * Math.PI * 2
+            this.ravensGraphic.lineStyle(2, 0x44ff88, 0.78 * burstFade)
+            this.ravensGraphic.beginPath()
+            this.ravensGraphic.arc(cx, cy, RAVENS_ZONE_VIS_R * 0.78, a, a + 0.62, false)
+            this.ravensGraphic.strokePath()
+            const tipA = a + 0.62
+            this.ravensGraphic.fillStyle(0xffffff, 0.82 * burstFade)
+            this.ravensGraphic.fillCircle(cx + Math.cos(tipA) * RAVENS_ZONE_VIS_R * 0.78, cy + Math.sin(tipA) * RAVENS_ZONE_VIS_R * 0.78, 2)
+          }
+        } else if (chargeFrac > 0.05) {
+          this.ravensGraphic.fillStyle(0x007722, 0.09 * chargeFrac)
+          this.ravensGraphic.fillCircle(cx, cy, RAVENS_ZONE_VIS_R * 1.4)
+          this.ravensGraphic.lineStyle(2.5, 0x00aa44, 0.62 * chargeFrac)
+          this.ravensGraphic.strokeCircle(cx, cy, RAVENS_ZONE_VIS_R)
+          this.ravensGraphic.lineStyle(1, 0x44ff88, 0.28 * chargeFrac)
+          this.ravensGraphic.strokeCircle(cx, cy, RAVENS_ZONE_VIS_R * 0.52)
+        } else {
+          this.ravensGraphic.lineStyle(1.5, 0x003311, 0.24)
+          this.ravensGraphic.strokeCircle(cx, cy, RAVENS_ZONE_VIS_R * 0.68)
+        }
+      }
+      drawZone(zx, zy)
+      drawZone(zx2, zy2)
+
+      // --- Bomb projectiles: curved green feather orbs ---
+      for (const b of this.ravensBombs) {
+        const ageFrac = b.age / b.maxAge
+        const alpha = ageFrac < 0.12 ? ageFrac / 0.12 : 1 - (ageFrac - 0.12) / 0.88
+        this.ravensGraphic.fillStyle(0x00cc44, alpha * 0.22)
+        this.ravensGraphic.fillCircle(b.x, b.y, 12)
+        this.ravensGraphic.fillStyle(0x001408, alpha * 0.96)
+        this.ravensGraphic.fillCircle(b.x, b.y, 5.5)
+        this.ravensGraphic.lineStyle(1.5, 0x44ff88, alpha * 0.85)
+        this.ravensGraphic.strokeCircle(b.x, b.y, 5.5)
+        this.ravensGraphic.fillStyle(0xaaffd0, alpha * 0.55)
+        this.ravensGraphic.fillCircle(b.x - 1.8, b.y - 1.8, 1.8)
+      }
+
+      // --- Raven sprites (Huginn & Muninn) ---
+      this.ravensWingPhase += delta * 0.0045
+      const RAVEN_SCALE = 0.11
+      const scaleY = RAVEN_SCALE * (0.95 + 0.05 * Math.sin(this.ravensWingPhase))
+
+      // Attack glow under each sprite when burst is active
+      if (this.ravensBurstActive) {
+        const ag = 0.5 + 0.5 * Math.sin(this.ravensBurstAge * 0.02)
+        this.ravensGraphic.fillStyle(0x00cc44, 0.18 * ag)
+        this.ravensGraphic.fillCircle(bx, by, 30)
+        this.ravensGraphic.fillStyle(0x00cc44, 0.18 * ag)
+        this.ravensGraphic.fillCircle(bx2, by2, 30)
+      }
+
+      // Raven A (frame 0 = left-facing raven, natural angle = Math.PI)
+      const toZoneA = Math.atan2(zy - by, zx - bx)
+      this.ravenSpriteA
+        .setPosition(bx, by)
+        .setRotation(toZoneA - Math.PI)
+        .setScale(RAVEN_SCALE, scaleY)
+        .setVisible(true)
+
+      // Raven B (frame 1 = right-facing raven, natural angle = 0)
+      const toZoneB = Math.atan2(zy2 - by2, zx2 - bx2)
+      this.ravenSpriteB
+        .setPosition(bx2, by2)
+        .setRotation(toZoneB)
+        .setScale(RAVEN_SCALE, scaleY)
+        .setVisible(true)
+    } else {
+      this.ravenSpriteA.setVisible(false)
+      this.ravenSpriteB.setVisible(false)
     }
 
     // === Divine Shield (VS Laurel-style: timed i-frame window) ===

@@ -21,6 +21,7 @@ export interface PlayerSnapshot {
   characterType: string
   aura: number
   orbital: number
+  ravens: number
   username: string
 }
 

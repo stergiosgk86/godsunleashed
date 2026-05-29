@@ -37,6 +37,7 @@ import enemyKnight    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/En
 import enemyArchfiend from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 17-1.png'
 import boomerangSprite from '../assets/Sprites/Weapons/Boomerang.png'
 import axeSprite from '../assets/Sprites/Weapons/Axe.png'
+import ravensSprite from '../assets/Sprites/Weapons/Odins-ravens-Transparent.png'
 import grassTileset from '../assets/Sprites/Background/Grass1.png'
 import treeSprite from '../assets/Sprites/Background/Tree.png'
 import rockSprite from '../assets/Sprites/Background/Rocks.png'
@@ -71,6 +72,7 @@ export const SPRITE_URLS = {
   enemyArchfiend,
   boomerangSprite,
   axeSprite,
+  ravensSprite,
   grassTileset,
   treeSprite,
   rockSprite,

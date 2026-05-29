@@ -159,6 +159,10 @@ export class MainScene extends Phaser.Scene {
         dualGunExtra: savedRun.dualGunExtra ?? 0,
         dualGunAttackInterval: savedRun.dualGunAttackInterval ?? 1400,
         echo: savedRun.echo ?? 0,
+        ravens: savedRun.ravens ?? false,
+        ravensCD: savedRun.ravensCD ?? 0,
+        ravensPower: savedRun.ravensPower ?? 0,
+        ravensCount: savedRun.ravensCount ?? 0,
       })
     }
 
@@ -356,6 +360,7 @@ export class MainScene extends Phaser.Scene {
       equinox: gs.equinox, solstice: gs.solstice,
       dualGunDamage: gs.dualGunDamage, dualGunSpeed: gs.dualGunSpeed, dualGunExtra: gs.dualGunExtra,
       dualGunAttackInterval: gs.dualGunAttackInterval, echo: gs.echo,
+      ravens: gs.ravens, ravensCD: gs.ravensCD, ravensPower: gs.ravensPower, ravensCount: gs.ravensCount,
     }
     if (activeNetClient) {
       return { ...base, nextBossAt: 0, warningFired: false, finalBossWarningFired: false, bossAlive: false, finalBossAlive: false, enemies: [] }
@@ -630,7 +635,7 @@ export class MainScene extends Phaser.Scene {
       if (snap.id === myId) continue
       const existing = this.remotePlayers.get(snap.id)
       if (existing) {
-        existing.update(snap.x, snap.y, snap.aura, snap.orbital)
+        existing.update(snap.x, snap.y, snap.aura, snap.orbital, snap.ravens)
       } else {
         this.remotePlayers.set(snap.id, new RemotePlayer(this, snap.x, snap.y, snap.characterType, snap.username))
       }

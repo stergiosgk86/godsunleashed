@@ -116,6 +116,7 @@ const SPAWN_GROUPS: { label: string; color: string; items: { label: string; enti
       { label: 'War Axe',      entity: 'weapon:axe' },
       { label: 'Aura',         entity: 'weapon:aura' },
       { label: 'Spirit Orb',   entity: 'weapon:orbital' },
+      { label: "Odin's Ravens", entity: 'weapon:ravens' },
     ],
   },
 ]
@@ -137,6 +138,7 @@ const ADMIN_UPGRADE_GROUPS: { label: string; color: string; items: UpgradeDef[] 
       { id: 'equinox', label: 'Equinox', max: 1 },
       { id: 'solstice', label: 'Solstice', max: 1 },
       { id: 'divineShield', label: 'D.Shield', max: 1 },
+      { id: 'ravens', label: "Ravens", max: 1 },
     ],
   },
   {
@@ -156,6 +158,9 @@ const ADMIN_UPGRADE_GROUPS: { label: string; color: string; items: UpgradeDef[] 
       { id: 'dualGunSpeed', label: 'Solar Spd', max: 2 },
       { id: 'dualGunExtra', label: 'Solar Extra', max: 2 },
       { id: 'echo', label: 'Echo', max: 2 },
+      { id: 'ravensCD', label: 'Ravens CD', max: 3 },
+      { id: 'ravensPower', label: 'Ravens Pwr', max: 3 },
+      { id: 'ravensCount', label: 'Ravens Cnt', max: 2 },
     ],
   },
   {
@@ -201,6 +206,10 @@ function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getSta
     case 'dualGunSpeed':      return s.dualGunSpeed
     case 'dualGunExtra':      return s.dualGunExtra
     case 'echo':              return s.echo
+    case 'ravens':            return s.ravens ? 1 : 0
+    case 'ravensCD':          return s.ravensCD
+    case 'ravensPower':       return s.ravensPower
+    case 'ravensCount':       return s.ravensCount
     case 'dashCooldown':      return Math.round(Math.log(s.dashCooldown / DASH_COOLDOWN_MS) / Math.log(0.75))
     case 'dashDistance':      return Math.round((s.dashDistance - 1) / 0.4)
     default:                  return 0

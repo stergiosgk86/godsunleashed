@@ -41,6 +41,7 @@ Before finishing any task that touches game logic, verify these pairs are in syn
 6. `chooseUpgrade` (client) — apply the stat change
 7. `handleChooseUpgrade` (server) — apply the stat change
 8. `adminSetUpgrade` (server) — handle the level-based restore
+9. **`src/ui/PauseMenu.tsx` — add to admin panel** (weapon spawn list + WEAPONS/UPGRADES groups + `getCurrentLevel` switch)
 
 Missing any step means the upgrade silently breaks on refresh, in multiplayer, or after leveling past the cap.
 

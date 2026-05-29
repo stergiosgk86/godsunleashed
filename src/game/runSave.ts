@@ -64,6 +64,10 @@ export interface RunSnapshot {
   dualGunExtra?: number
   dualGunAttackInterval?: number
   echo?: number
+  ravens?: boolean
+  ravensCD?: number
+  ravensPower?: number
+  ravensCount?: number
 }
 
 function authHeader(): HeadersInit {

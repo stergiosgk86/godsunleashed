@@ -18,6 +18,7 @@ const ALL_UPGRADE_IDS = [
   'xpGain', 'magnetRange',
   'equinox', 'solstice', 'dualGunDamage', 'dualGunSpeed', 'dualGunExtra',
   'echo',
+  'ravens', 'ravensCD', 'ravensPower', 'ravensCount',
 ] as const
 type UpgradeId = typeof ALL_UPGRADE_IDS[number]
 const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
@@ -28,6 +29,7 @@ const WEAPON_FAMILIES: Record<string, readonly string[]> = {
   orbital:   ['orbSpeed', 'orbPower', 'orbRange'],
   lightning: ['lightningTargets', 'lightningCooldown'],
   bloodNova: ['bloodNovaCD'],
+  ravens:    ['ravensCD', 'ravensPower', 'ravensCount'],
   dash:      ['dashCooldown', 'dashDistance'],
   dualGun:   ['dualGunDamage', 'dualGunSpeed', 'dualGunExtra'],
 }
@@ -38,14 +40,14 @@ for (const [family, ids] of Object.entries(WEAPON_FAMILIES)) {
 
 const BASE_WEAPONS = new Set<string>([
   'wand', 'aura', 'orbital', 'boomerang', 'flameTrail',
-  'bloodNova', 'lightning', 'axe', 'equinox', 'solstice',
+  'bloodNova', 'lightning', 'axe', 'equinox', 'solstice', 'ravens',
 ])
 const WEAPON_CAP = 6
 
 function countOwnedWeapons(u: PlayerUpgrades): number {
   return [
     u.wand, u.aura, u.orbital > 0, u.boomerang, u.flameTrail,
-    u.bloodNova, u.lightning, u.axe, u.equinox, u.solstice,
+    u.bloodNova, u.lightning, u.axe, u.equinox, u.solstice, u.ravens,
   ].filter(Boolean).length
 }
 
@@ -89,6 +91,10 @@ interface PlayerUpgrades {
   dualGunSpeed: number   // 0–2
   dualGunExtra: number   // 0–2
   echo: number           // 0–2
+  ravens: boolean
+  ravensCD: number       // 0–3, each -500ms cooldown
+  ravensPower: number    // 0–3, each +20% damage
+  ravensCount: number    // 0–2, each +2 feathers per set
 }
 
 function emptyUpgrades(): PlayerUpgrades {
@@ -99,6 +105,7 @@ function emptyUpgrades(): PlayerUpgrades {
     axe: false, aura: false, auraTick: 0, auraRange: 0, divineShield: false, xpGain: 0, magnetRange: 0,
     dashCooldownPicks: 0, dashDistancePicks: 0,
     equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, echo: 0,
+    ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
   }
 }
 
@@ -166,6 +173,13 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'dualGunExtra'  && !u.equinox && !u.solstice)         return false
     if (id === 'dualGunExtra'  && u.dualGunExtra >= 2)               return false
     if (id === 'echo'          && u.echo >= 2)                        return false
+    if (id === 'ravens'       && u.ravens)              return false
+    if (id === 'ravensCD'     && !u.ravens)             return false
+    if (id === 'ravensCD'     && u.ravensCD >= 3)       return false
+    if (id === 'ravensPower'  && !u.ravens)             return false
+    if (id === 'ravensPower'  && u.ravensPower >= 3)    return false
+    if (id === 'ravensCount'  && !u.ravens)             return false
+    if (id === 'ravensCount'  && u.ravensCount >= 2)    return false
     return true
   })
 
@@ -390,10 +404,10 @@ export class GameRoom {
   }
 
   // Max legitimate per-hit damage based on server-tracked might upgrades.
-  // Blood Nova is the highest multiplier (5×); 1.5× safety buffer on top.
+  // Blood Nova is the highest multiplier (30×); cap uses approx level-60 base damage (50) + 1.5× safety buffer.
   private maxHitDamage(p: Player): number {
     const mightMult = 1.0 + p.upgrades.mightPicks * 0.1
-    return Math.ceil(15 * mightMult * 5 * 1.5)
+    return Math.ceil(50 * mightMult * 30 * 1.5)
   }
 
   handleChooseUpgrade(playerId: string, upgradeId: string) {
@@ -432,6 +446,10 @@ export class GameRoom {
       case 'dualGunExtra': u.dualGunExtra = Math.min(2, u.dualGunExtra + 1); break
       case 'echo':         u.echo = Math.min(2, u.echo + 1); break
       case 'divineShield':u.divineShield = true; break
+      case 'ravens':       u.ravens = true; break
+      case 'ravensCD':     u.ravensCD = Math.min(3, u.ravensCD + 1); break
+      case 'ravensPower':  u.ravensPower = Math.min(3, u.ravensPower + 1); break
+      case 'ravensCount':  u.ravensCount = Math.min(2, u.ravensCount + 1); break
       case 'xpGain':        u.xpGain = Math.min(5, u.xpGain + 1); break
       case 'magnetRange':   u.magnetRange = Math.min(3, u.magnetRange + 1); break
       case 'dashCooldown':  u.dashCooldownPicks = Math.min(4, u.dashCooldownPicks + 1); break
@@ -492,6 +510,7 @@ export class GameRoom {
         case 'orbital':     u.orbital = Math.min(5, u.orbital + 1); requester.orbital = u.orbital; break
         case 'equinox':     u.equinox = true; break
         case 'solstice':    u.solstice = true; break
+        case 'ravens':      u.ravens = true; break
       }
       this.send(requester.ws, { type: 'adminGrantUpgrade', upgradeId })
     } else {
@@ -544,6 +563,10 @@ export class GameRoom {
       case 'dualGunSpeed':       u.dualGunSpeed = Math.min(2, level); break
       case 'dualGunExtra':       u.dualGunExtra = Math.min(2, level); break
       case 'echo':               u.echo = Math.min(2, level); break
+      case 'ravens':             u.ravens = level >= 1; break
+      case 'ravensCD':           u.ravensCD = Math.min(3, level); break
+      case 'ravensPower':        u.ravensPower = Math.min(3, level); break
+      case 'ravensCount':        u.ravensCount = Math.min(2, level); break
     }
 
     this.send(requester.ws, { type: 'adminSetUpgrade', upgradeId, level })
@@ -632,6 +655,7 @@ export class GameRoom {
         + (u.axe ? 1 : 0)
         + (u.equinox ? 1 : 0)
         + (u.solstice ? 1 : 0)
+        + (u.ravens ? 1 : 0)
       return {
         userId: p.userId,
         username: p.username,
@@ -690,7 +714,7 @@ export class GameRoom {
   private playerSnapshots(): PlayerSnapshot[] {
     return this.players
       .filter(p => !p.dead)
-      .map(p => ({ id: p.id, x: p.x, y: p.y, characterType: p.characterType, username: p.username, aura: p.aura, orbital: p.orbital }))
+      .map(p => ({ id: p.id, x: p.x, y: p.y, characterType: p.characterType, username: p.username, aura: p.aura, orbital: p.orbital, ravens: p.upgrades.ravens ? 1 : 0 }))
   }
 
   private broadcast(msg: S2CMessage, skipPaused = false) {
