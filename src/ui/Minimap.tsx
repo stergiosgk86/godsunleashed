@@ -6,6 +6,7 @@ const RADAR_RANGE = 1400
 
 export function Minimap() {
   const isMobile = window.innerWidth <= 768
+  if (isMobile) return null
   const SIZE    = isMobile ? 80 : 180
   const PADDING = isMobile ? 6 : 12
   const topOffset = isMobile ? 128 : PADDING

@@ -152,6 +152,7 @@ function WeaponChip({ label, detail, color }: WeaponChipProps) {
 }
 
 function LeftPanel() {
+  if (window.innerWidth <= 768) return null
   const level       = useGameStore(s => s.level)
   const might       = useGameStore(s => s.might)
   const moveSpeed   = useGameStore(s => s.moveSpeed)
