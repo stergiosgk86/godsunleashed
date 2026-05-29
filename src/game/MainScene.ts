@@ -190,7 +190,7 @@ export class MainScene extends Phaser.Scene {
       floorCtx.imageSmoothingQuality = 'high'
       floorCtx.drawImage(floorSrc, 0, 0, FLOOR_TILE_PX, FLOOR_TILE_PX)
       this.textures.addCanvas('floor_tile_scaled', floorCanvas)
-      this.floorSprite = this.add.tileSprite(0, 0, 4000, 2000, 'floor_tile_scaled')
+      this.floorSprite = this.add.tileSprite(0, 0, 8000, 4000, 'floor_tile_scaled')
         .setOrigin(0.5, 0.5).setTileScale(1, 1).setDepth(-10)
 
       // Pre-scale the wall texture to exactly 380×380 px using the 2D canvas API.
@@ -683,7 +683,7 @@ export class MainScene extends Phaser.Scene {
     // Re-centre screen-sized wall/floor sprites on the camera and scroll via tilePosition.
     // Tiles are pre-scaled to integer world px widths so seams never fall on fractional pixels.
     if (this.wallTop && this.wallBot) {
-      const camCX = this.cameras.main.worldView.centerX
+      const camCX = Math.round(this.cameras.main.worldView.centerX)
       const texelX = Math.round(this.cameras.main.scrollX)
       this.wallTop.x = camCX
       this.wallBot.x = camCX
@@ -692,8 +692,8 @@ export class MainScene extends Phaser.Scene {
     }
     if (this.floorSprite) {
       const cam = this.cameras.main
-      this.floorSprite.x = cam.worldView.centerX
-      this.floorSprite.y = cam.worldView.centerY
+      this.floorSprite.x = Math.round(cam.worldView.centerX)
+      this.floorSprite.y = Math.round(cam.worldView.centerY)
       this.floorSprite.tilePositionX = Math.round(cam.scrollX)
       this.floorSprite.tilePositionY = Math.round(cam.scrollY)
     }
