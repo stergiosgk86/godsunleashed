@@ -69,6 +69,8 @@ export class MainScene extends Phaser.Scene {
   private chunkManager: ChunkManager | null = null
   private selectedStage = 1
   corridorHalfY: number | null = null
+  private wallTop: Phaser.GameObjects.TileSprite | null = null
+  private wallBot: Phaser.GameObjects.TileSprite | null = null
 
   constructor() {
     super({ key: 'MainScene' })
@@ -182,16 +184,16 @@ export class MainScene extends Phaser.Scene {
       // visible when walking toward the north wall (standard top-down: north wall behind player).
       // tilePositionY=857: shifts texture so its decorated bottom aligns with the corridor edge.
       // Derived from: round(1254 - (2000/0.3) % 1254) = 857
-      // NEAREST filtering on the wall texture prevents bilinear interpolation from
-      // blending texels at column edges as the camera scrolls — eliminates the flickering
-      // that occurs because 1254px × 0.3 scale = 376.2px non-integer tile pitch.
-      this.textures.get('wall_stage2').setFilter(Phaser.Textures.FilterMode.NEAREST)
-
-      this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
+      // Walls are screen-width (not world-width) TileSprites, re-centred on the camera
+      // every frame. Phaser docs warn against TileSprites larger than the canvas — using
+      // 1 000 000 px caused flickering because the tiling pipeline isn't designed for it.
+      // tilePositionX is updated each frame (integer texels) so columns scroll smoothly.
+      const WALL_W = 3000  // wide enough to fill any viewport at 0.7× zoom
+      this.wallTop = this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), WALL_W, WALL_H, 'wall_stage2')
         .setOrigin(0.5, 0.5).setTileScale(0.3, 0.3).setDepth(3.5).setTilePosition(0, 857)
       // Bottom wall: flipped Y so the decorated edge (torches/border) faces the corridor.
       // depth 4.5 — renders OVER player (4) so it clips feet walking toward the south wall.
-      this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
+      this.wallBot = this.add.tileSprite(0, (CORRIDOR_HALF + WALL_H / 2), WALL_W, WALL_H, 'wall_stage2')
         .setOrigin(0.5, 0.5).setTileScale(0.3, 0.3).setDepth(4.5).setFlipY(true).setTilePosition(0, 857)
 
       // Asymmetric Y bounds: top extended so feet (y+24) reach -CORRIDOR_HALF,
@@ -652,6 +654,17 @@ export class MainScene extends Phaser.Scene {
 
   update(_time: number, delta: number) {
     if (useGameStore.getState().isPaused) return
+
+    // Keep screen-sized wall sprites centred on the camera and scroll via tilePositionX.
+    // Integer texel steps prevent the column-edge flickering that a 1 000 000 px TileSprite caused.
+    if (this.wallTop && this.wallBot) {
+      const camCX = this.cameras.main.worldView.centerX
+      const texelX = Math.round(this.cameras.main.scrollX / 0.3)
+      this.wallTop.x = camCX
+      this.wallBot.x = camCX
+      this.wallTop.tilePositionX = texelX
+      this.wallBot.tilePositionX = texelX
+    }
 
     const spawnRequest = useGameStore.getState().adminSpawnRequest
     if (spawnRequest) {
