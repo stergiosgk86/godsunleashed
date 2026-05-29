@@ -202,6 +202,9 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
+    // Snap camera to whole pixels so tileSprite seams don't flicker as the lerp
+    // produces fractional positions (tile scale 0.3 × 1254px = 376.2px non-integer tiles).
+    this.cameras.main.setRoundPixels(true)
 
     // Position fpsText at screen pixel (8, 8) — scrollFactor(0) objects are still
     // transformed by the zoom matrix, so we must invert it to get screen coords.
