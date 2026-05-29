@@ -182,6 +182,11 @@ export class MainScene extends Phaser.Scene {
       // visible when walking toward the north wall (standard top-down: north wall behind player).
       // tilePositionY=857: shifts texture so its decorated bottom aligns with the corridor edge.
       // Derived from: round(1254 - (2000/0.3) % 1254) = 857
+      // NEAREST filtering on the wall texture prevents bilinear interpolation from
+      // blending texels at column edges as the camera scrolls — eliminates the flickering
+      // that occurs because 1254px × 0.3 scale = 376.2px non-integer tile pitch.
+      this.textures.get('wall_stage2').setFilter(Phaser.Textures.FilterMode.NEAREST)
+
       this.add.tileSprite(0, -(CORRIDOR_HALF + WALL_H / 2), 1_000_000, WALL_H, 'wall_stage2')
         .setOrigin(0.5, 0.5).setTileScale(0.3, 0.3).setDepth(3.5).setTilePosition(0, 857)
       // Bottom wall: flipped Y so the decorated edge (torches/border) faces the corridor.
