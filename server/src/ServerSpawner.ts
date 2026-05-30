@@ -5,10 +5,11 @@ const RUN_DURATION     = 30 * 60 * 1000
 const LANE_MARGIN      = 20    // px beyond screen edge for regular lane spawns (matches frontend)
 const SPAWN_MARGIN     = 250   // px beyond screen edge for boss/surge spawns (matches frontend)
 const RECYCLE_EXTRA    = 300   // additional px past spawn edge before enemy is recycled (matches frontend)
-const INITIAL_FILL_COUNT = 2      // basics spawned from ONE random edge at run start
 const DEFAULT_VIEW_W   = 1280  // fallback if client didn't report viewport
 const DEFAULT_VIEW_H   = 720
 const MAX_ENEMIES      = 600
+const SPAWN_SCALE_DURATION = 10 * 60_000  // spawn rate peaks at 10 min, stays maxed after
+const FILL_INTERVAL_MS = 80               // ms per fill-spawn when alive < wave minimum
 const BOSS_FIRST_SPAWN = 300_000
 const BOSS_REPEAT      = 240_000
 const BOSS_WARNING     = 5_000
@@ -35,6 +36,27 @@ function computeStage2HpScale(elapsed: number): number {
   const t = Math.min(elapsed / RUN_DURATION, 1)  // 0→1 over 30 min
   return 1 + t * 5                                // 1× at start, 6× at 30 min
 }
+
+// ── VS-style wave minimums — alive enemy floor per elapsed minute ─────────────
+// Fill-timer spawns extras whenever alive count drops below the current entry.
+const WAVE_MINIMUMS: readonly { minute: number; minimum: number }[] = [
+  { minute:  0, minimum:  20 },
+  { minute:  1, minimum:  35 },
+  { minute:  2, minimum:  50 },
+  { minute:  3, minimum:  65 },
+  { minute:  4, minimum:  80 },
+  { minute:  5, minimum: 100 },
+  { minute:  6, minimum: 120 },
+  { minute:  7, minimum: 140 },
+  { minute:  8, minimum: 158 },
+  { minute:  9, minimum: 175 },
+  { minute: 10, minimum: 190 },
+  { minute: 12, minimum: 210 },
+  { minute: 15, minimum: 230 },
+  { minute: 18, minimum: 250 },
+  { minute: 20, minimum: 265 },
+  { minute: 25, minimum: 280 },
+]
 
 // ── Lane definitions (mirrors EnemySpawner.ts LANE_DEFS) ─────────────────────
 type SpawnKind = 'basic' | 'speeder' | 'tank' | 'exploder' | 'ghost' | 'ranged' | 'charger' | 'necromancer'
@@ -136,12 +158,13 @@ export class ServerSpawner {
   private laneTimers: number[] = LANE_DEFS.map(l => l.intervalStart)
   private nextBossAt        = BOSS_FIRST_SPAWN
   private bossAlive         = false
+  private firstBossSpawned  = false
   private warningFired      = false
   private finalBossAlive    = false
   private finalWarningFired = false
   private surgesFired       = new Set<number>()
   private surgeQueue: ActiveSurge[] = []
-  private initialFillDone   = false
+  private fillTimer         = 0
   // Stage 2 state
   private stage2LaneTimers: number[] = STAGE2_LANE_DEFS.map(l => l.intervalStart)
   private stage2SurgesFired = new Set<number>()
@@ -166,7 +189,6 @@ export class ServerSpawner {
   // Called when a solo player reconnects after a page refresh.
   resumeFrom(ms: number) {
     this.elapsed = ms
-    this.initialFillDone = true
     this.stage2InitialFillDone = true
     for (const surge of SURGE_EVENTS) {
       if (surge.triggerTime <= ms) this.surgesFired.add(surge.triggerTime)
@@ -177,6 +199,7 @@ export class ServerSpawner {
     // Advance nextBossAt past all boss cycles that would have completed
     while (this.nextBossAt <= ms) {
       this.nextBossAt += BOSS_REPEAT
+      this.firstBossSpawned = true
     }
     // Mark warnings as already fired so they don't re-trigger on the first tick
     if (ms >= this.nextBossAt - BOSS_REPEAT - BOSS_WARNING) this.warningFired = true
@@ -195,14 +218,24 @@ export class ServerSpawner {
     const playerScale = Math.sqrt(Math.max(1, players.length))
     const enemyCap    = Math.round(MAX_ENEMIES * playerScale)
 
-    // ── Initial fill — a small cluster from ONE random edge (no rectangle) ──────
-    if (!this.initialFillDone && players.length > 0) {
-      this.initialFillDone = true
-      const edge   = Math.floor(Math.random() * 4)
-      const center = (Math.random() * 2 - 1) * 0.5
-      for (let i = 0; i < INITIAL_FILL_COUNT; i++) {
-        const pos = this.laneEdgePoint(players, edge, center)
-        this.enemies.push(new ServerEnemy('basic', pos.x, pos.y, hpMult))
+    // ── VS-style minimum count fill ───────────────────────────────────────────
+    // If alive enemies drop below the current wave minimum, fill rapidly (80 ms/enemy).
+    // This guarantees the screen is never sparse regardless of how fast the player kills.
+    if (!inFinal && players.length > 0) {
+      const elapsedMin = Math.floor(this.elapsed / 60_000)
+      let waveMin = 0
+      for (const w of WAVE_MINIMUMS) {
+        if (w.minute <= elapsedMin) waveMin = w.minimum
+      }
+      const scaledMin = Math.round(waveMin * playerScale)
+      if (this.enemies.length < scaledMin && this.enemies.length < enemyCap) {
+        this.fillTimer -= delta
+        if (this.fillTimer <= 0) {
+          this.fillTimer += FILL_INTERVAL_MS
+          const edge = Math.floor(Math.random() * 4)
+          const pos  = this.laneEdgePoint(players, edge)
+          this.spawnEnemy('basic', pos.x, pos.y, hpMult, players)
+        }
       }
     }
 
@@ -301,7 +334,7 @@ export class ServerSpawner {
         if (!e.active || e.isBoss || e.kind === 'ghost') continue
         let minDist2 = Infinity
         for (const p of players) {
-          const zoom = p.viewW <= 768 ? 0.7 : 1.4
+          const zoom = p.viewW <= 768 ? 0.7 : 1.2
           const rHalfW = (p.viewW / 2) / zoom + SPAWN_MARGIN + RECYCLE_EXTRA
           const rHalfH = (p.viewH / 2) / zoom + SPAWN_MARGIN + RECYCLE_EXTRA
           const dx = Math.abs(e.x - p.x), dy = Math.abs(e.y - p.y)
@@ -347,13 +380,13 @@ export class ServerSpawner {
 
   private laneInterval(lane: LaneDef): number {
     if (this.elapsed <= lane.startTime) return lane.intervalStart
-    const t = Math.min((this.elapsed - lane.startTime) / (RUN_DURATION - lane.startTime), 1)
+    const t = Math.min((this.elapsed - lane.startTime) / SPAWN_SCALE_DURATION, 1)
     return lane.intervalStart + (lane.intervalEnd - lane.intervalStart) * t
   }
 
   private laneBurst(lane: LaneDef): number {
     if (this.elapsed <= lane.startTime) return lane.burstStart
-    const t = Math.min((this.elapsed - lane.startTime) / (RUN_DURATION - lane.startTime), 1)
+    const t = Math.min((this.elapsed - lane.startTime) / SPAWN_SCALE_DURATION, 1)
     return Math.round(lane.burstStart + (lane.burstEnd - lane.burstStart) * t)
   }
 
@@ -373,8 +406,8 @@ export class ServerSpawner {
   private spawnBoss(players: SpawnerPlayer[], hpMult: number) {
     this.bossAlive = true
     const pos = this.edgePoint(players)
-    if (this.elapsed < 5 * 60_000) {
-      // Early-game: Summoner boss that periodically calls in minions
+    if (!this.firstBossSpawned) {
+      this.firstBossSpawned = true
       const summoner = new ServerEnemy('summoner', pos.x, pos.y, hpMult)
       summoner.onSummon = (sx, sy, count, phase2) => {
         for (let i = 0; i < count; i++) {
@@ -413,7 +446,7 @@ export class ServerSpawner {
   // each enemy varies ±35% around it so the burst arrives as a visible group.
   private laneEdgePoint(players: SpawnerPlayer[], fixedEdge?: number, clusterCenter?: number): { x: number; y: number } {
     const p    = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H }
-    const zoom = p.viewW <= 768 ? 0.7 : 1.4
+    const zoom = p.viewW <= 768 ? 0.7 : 1.2
     const halfW = (p.viewW / 2) / zoom + LANE_MARGIN
     const halfH = (p.viewH / 2) / zoom + LANE_MARGIN
     const edge  = fixedEdge ?? Math.floor(Math.random() * 4)
@@ -430,7 +463,7 @@ export class ServerSpawner {
   // Spawn just off a random screen edge using SPAWN_MARGIN — for boss/final boss.
   private edgePoint(players: SpawnerPlayer[]): { x: number; y: number } {
     const p    = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H }
-    const zoom = p.viewW <= 768 ? 0.7 : 1.4
+    const zoom = p.viewW <= 768 ? 0.7 : 1.2
     const halfW = (p.viewW / 2) / zoom + SPAWN_MARGIN
     const halfH = (p.viewH / 2) / zoom + SPAWN_MARGIN
     const edge  = Math.floor(Math.random() * 4)
@@ -445,7 +478,7 @@ export class ServerSpawner {
   // Surge: all enemies from the edge corresponding to the fixed angle — matches frontend surgeEdgePoint.
   private surgeEdgePoint(players: SpawnerPlayer[], angle: number): { x: number; y: number } {
     const p    = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H }
-    const zoom = p.viewW <= 768 ? 0.7 : 1.4
+    const zoom = p.viewW <= 768 ? 0.7 : 1.2
     const halfW = (p.viewW / 2) / zoom + SPAWN_MARGIN
     const halfH = (p.viewH / 2) / zoom + SPAWN_MARGIN
     const along = (Math.random() * 2 - 1)
@@ -534,7 +567,7 @@ export class ServerSpawner {
         if (!e.active) continue
         let minDist2 = Infinity
         for (const p of players) {
-          const zoom   = p.viewW <= 768 ? 0.7 : 1.4
+          const zoom   = p.viewW <= 768 ? 0.7 : 1.2
           const rHalfW = (p.viewW / 2) / zoom + SPAWN_MARGIN + RECYCLE_EXTRA
           const rHalfH = (p.viewH / 2) / zoom + SPAWN_MARGIN + RECYCLE_EXTRA
           const dx = Math.abs(e.x - p.x), dy = Math.abs(e.y - p.y)
@@ -572,13 +605,13 @@ export class ServerSpawner {
 
   private stage2LaneInterval(lane: Stage2LaneDef): number {
     if (this.elapsed <= lane.startTime) return lane.intervalStart
-    const t = Math.min((this.elapsed - lane.startTime) / (RUN_DURATION - lane.startTime), 1)
+    const t = Math.min((this.elapsed - lane.startTime) / SPAWN_SCALE_DURATION, 1)
     return lane.intervalStart + (lane.intervalEnd - lane.intervalStart) * t
   }
 
   private stage2LaneBurst(lane: Stage2LaneDef): number {
     if (this.elapsed <= lane.startTime) return lane.burstStart
-    const t = Math.min((this.elapsed - lane.startTime) / (RUN_DURATION - lane.startTime), 1)
+    const t = Math.min((this.elapsed - lane.startTime) / SPAWN_SCALE_DURATION, 1)
     return Math.round(lane.burstStart + (lane.burstEnd - lane.burstStart) * t)
   }
 
@@ -589,7 +622,7 @@ export class ServerSpawner {
     const p = players.length > 0
       ? players[Math.floor(Math.random() * players.length)]
       : { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H, aura: 0, auraRange: 0, level: 1 }
-    const zoom      = p.viewW <= 768 ? 0.7 : 1.4
+    const zoom      = p.viewW <= 768 ? 0.7 : 1.2
     const halfW     = (p.viewW / 2) / zoom + LANE_MARGIN
     const corridorY = this.corridorHalfY ?? 380
     const halfCY    = corridorY * 0.85
