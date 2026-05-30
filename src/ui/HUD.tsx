@@ -136,6 +136,86 @@ function StatRow({ label, value, color = '#7777aa' }: { label: string; value: st
   )
 }
 
+const WEAPON_SLOT_DEFS = [
+  { id: 'wand',       label: 'WND', color: '#88aaff' },
+  { id: 'lightning',  label: 'ZAP', color: '#ddee44' },
+  { id: 'axe',        label: 'AXE', color: '#ffaa44' },
+  { id: 'aura',       label: 'AUR', color: '#aa55ff' },
+  { id: 'orbital',    label: 'ORB', color: '#cc88ff' },
+  { id: 'boomerang',  label: 'BMR', color: '#ffcc44' },
+  { id: 'flameTrail', label: 'FLM', color: '#ff6633' },
+  { id: 'bloodNova',  label: 'NOV', color: '#ff3333' },
+  { id: 'equinox',    label: 'EQN', color: '#44aaff' },
+  { id: 'solstice',   label: 'SOL', color: '#ffbb22' },
+  { id: 'ravens',     label: 'RVN', color: '#bb77ff' },
+] as const
+
+function WeaponSlots() {
+  const wand       = useGameStore(s => s.wand)
+  const lightning  = useGameStore(s => s.lightning)
+  const axe        = useGameStore(s => s.axe)
+  const aura       = useGameStore(s => s.aura)
+  const orbital    = useGameStore(s => s.orbital)
+  const boomerang  = useGameStore(s => s.boomerang)
+  const flameTrail = useGameStore(s => s.flameTrail)
+  const bloodNova  = useGameStore(s => s.bloodNova)
+  const equinox    = useGameStore(s => s.equinox)
+  const solstice   = useGameStore(s => s.solstice)
+  const ravens     = useGameStore(s => s.ravens)
+
+  const ownedMap: Record<string, boolean> = {
+    wand: !!wand, lightning: !!lightning, axe: !!axe,
+    aura: aura > 0, orbital: orbital > 0, boomerang: !!boomerang,
+    flameTrail: !!flameTrail, bloodNova: !!bloodNova,
+    equinox: !!equinox, solstice: !!solstice, ravens: !!ravens,
+  }
+
+  const owned = WEAPON_SLOT_DEFS.filter(w => ownedMap[w.id])
+  const count  = owned.length
+  const atMax  = count >= 6
+
+  const slots = [...owned, ...Array(Math.max(0, 6 - count)).fill(null)].slice(0, 6) as
+    (typeof WEAPON_SLOT_DEFS[number] | null)[]
+
+  return (
+    <>
+      <Divider />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#7777aa', letterSpacing: 1 }}>WEAPONS</span>
+        <span style={{
+          fontFamily: 'monospace', fontSize: 9, fontWeight: 'bold',
+          color: atMax ? '#ffcc44' : '#556688',
+          textShadow: atMax ? '0 0 6px #ffaa00' : 'none',
+        }}>
+          {count}/6{atMax ? ' ★' : ''}
+        </span>
+      </div>
+      <div style={{ display: 'flex', gap: 3 }}>
+        {slots.map((w, i) => (
+          <div key={i} style={{
+            width: 22, height: 22,
+            borderRadius: 4,
+            border: `1px solid ${w ? (atMax ? '#ffcc44bb' : w.color + '88') : '#1a1a33'}`,
+            background: w ? w.color + '22' : '#05050f',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: atMax && w ? `0 0 5px ${w.color}55` : 'none',
+          }}>
+            {w && (
+              <span style={{
+                fontFamily: 'monospace', fontSize: 7, fontWeight: 'bold',
+                color: atMax ? '#ffdd88' : w.color,
+                letterSpacing: 0,
+              }}>
+                {w.label}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  )
+}
+
 interface WeaponChipProps { label: string; detail?: string; color: string }
 function WeaponChip({ label, detail, color }: WeaponChipProps) {
   return (
@@ -159,6 +239,7 @@ function LeftPanel() {
   const attackInterval = useGameStore(s => s.attackInterval)
   const hpRegen     = useGameStore(s => s.hpRegen)
   const sessionCoins = useGameStore(s => s.sessionCoins)
+  const wand        = useGameStore(s => s.wand)
   const multiShot   = useGameStore(s => s.multiShot)
   const piercing    = useGameStore(s => s.piercing)
   const aura        = useGameStore(s => s.aura)
@@ -166,11 +247,16 @@ function LeftPanel() {
   const boomerang   = useGameStore(s => s.boomerang)
   const flameTrail  = useGameStore(s => s.flameTrail)
   const bloodNova   = useGameStore(s => s.bloodNova)
+  const lightning   = useGameStore(s => s.lightning)
+  const axe         = useGameStore(s => s.axe)
+  const equinox     = useGameStore(s => s.equinox)
+  const solstice    = useGameStore(s => s.solstice)
+  const ravens      = useGameStore(s => s.ravens)
 
   const dmg = Math.floor(weaponBaseDamage(level) * might)
   const aps = (1000 / attackInterval).toFixed(2)
 
-  const hasWeapons = multiShot > 0 || piercing || aura > 0 || orbital > 0 || boomerang || flameTrail || bloodNova
+  const hasWeapons = wand || multiShot > 0 || piercing || aura > 0 || orbital > 0 || boomerang || flameTrail || bloodNova || lightning || axe || equinox || solstice || ravens
 
   return (
     <div style={{
@@ -179,7 +265,7 @@ function LeftPanel() {
       border: '1px solid #1a1a33',
       borderRadius: 6, padding: '7px 10px',
       display: 'flex', flexDirection: 'column', gap: 4,
-      minWidth: 140,
+      minWidth: 168,
       pointerEvents: 'none',
     }}>
       {/* Level + coins */}
@@ -212,15 +298,22 @@ function LeftPanel() {
       {hasWeapons && (
         <>
           <Divider />
-          {multiShot > 0  && <WeaponChip label="MULTI SHOT"  detail={`×${multiShot + 1}`}          color="#88aaff" />}
-          {piercing        && <WeaponChip label="PIERCING"                                           color="#44ccff" />}
-          {aura > 0        && <WeaponChip label="AURA"        detail={`${'●'.repeat(Math.min(aura, 5))}${aura > 5 ? `+${aura - 5}` : ''}`} color="#aa55ff" />}
-          {orbital > 0     && <WeaponChip label="SPIRIT ORB"  detail={`×${orbital}`}                color="#cc88ff" />}
-          {boomerang        && <WeaponChip label="BOOMERANG"                                         color="#ffcc44" />}
-          {flameTrail       && <WeaponChip label="FLAME TRAIL"                                       color="#ff6633" />}
-          {bloodNova        && <WeaponChip label="BLOOD NOVA"                                        color="#ff3333" />}
+          {wand             && <WeaponChip label="ARCANE WAND"                                        color="#88aaff" />}
+          {multiShot > 0   && <WeaponChip label="MULTI SHOT"  detail={`×${multiShot + 1}`}          color="#88aaff" />}
+          {piercing         && <WeaponChip label="PIERCING"                                          color="#44ccff" />}
+          {lightning        && <WeaponChip label="THUNDER STRIKE"                                    color="#ddee44" />}
+          {axe              && <WeaponChip label="WAR AXE"                                           color="#ffaa44" />}
+          {aura > 0         && <WeaponChip label="AURA"        detail={`${'●'.repeat(Math.min(aura, 5))}${aura > 5 ? `+${aura - 5}` : ''}`} color="#aa55ff" />}
+          {orbital > 0      && <WeaponChip label="SPIRIT ORB"  detail={`×${orbital}`}               color="#cc88ff" />}
+          {boomerang         && <WeaponChip label="BOOMERANG"                                        color="#ffcc44" />}
+          {flameTrail        && <WeaponChip label="FLAME TRAIL"                                      color="#ff6633" />}
+          {bloodNova         && <WeaponChip label="BLOOD NOVA"                                       color="#ff3333" />}
+          {equinox           && <WeaponChip label="EQUINOX"                                          color="#44aaff" />}
+          {solstice          && <WeaponChip label="SOLSTICE"                                         color="#ffbb22" />}
+          {ravens            && <WeaponChip label="ODIN'S RAVENS"                                    color="#bb77ff" />}
         </>
       )}
+      <WeaponSlots />
     </div>
   )
 }
