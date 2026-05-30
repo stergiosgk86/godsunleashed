@@ -7,8 +7,7 @@ import { LevelUpScreen } from './ui/LevelUpScreen'
 import { BossHPBar } from './ui/BossHPBar'
 import { Minimap } from './ui/Minimap'
 import { PauseMenu } from './ui/PauseMenu'
-import { DeathScreen } from './ui/DeathScreen'
-import { WinScreen } from './ui/WinScreen'
+import { ResultsScreen } from './ui/ResultsScreen'
 import { MainMenu } from './ui/MainMenu'
 import { MultiplayerLobby } from './ui/MultiplayerLobby'
 import { AuthScreen } from './ui/AuthScreen'
@@ -44,11 +43,20 @@ function parseJwt(token: string): { userId: number; username: string } {
 
 function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [quitPending, setQuitPending] = useState(false)
+  const quitPendingRef = useRef(false)
+
+  function handleQuitRequest() {
+    useGameStore.getState().setTimeSurvived(runData.elapsed)
+    quitPendingRef.current = true
+    setQuitPending(true)
+  }
 
   // ESC handler lives here so it's active immediately on mount, before Phaser finishes loading.
   useEffect(() => {
     const onEsc = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      if (quitPendingRef.current) return
       const gs = useGameStore.getState()
       if (!gs.isDead && !gs.isWon && !gs.isLevelUpPending) gs.togglePause()
     }
@@ -97,9 +105,8 @@ function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: ()
       <BossHPBar />
       <Minimap />
       <LevelUpScreen />
-      <PauseMenu onQuit={onQuit} />
-      <DeathScreen onPlayAgain={onPlayAgain} onMainMenu={onQuit} />
-      <WinScreen onPlayAgain={onPlayAgain} onMainMenu={onQuit} />
+      <PauseMenu onQuit={handleQuitRequest} hidden={quitPending} />
+      <ResultsScreen onPlayAgain={onPlayAgain} onMainMenu={onQuit} quitMode={quitPending} />
       <AchievementToast />
       <SystemToast />
     </div>
@@ -234,6 +241,7 @@ function App() {
   // The server writes the run to DB and sends back the result.
   function registerRunSavedHandler(net: NetClient) {
     net.on('runSaved', (msg) => {
+      useGameStore.getState().setTimeSurvived(msg.timeSurvived)
       if (msg.newAchievements.length) {
         for (const id of msg.newAchievements) {
           const a = ACHIEVEMENT_MAP[id]
@@ -316,7 +324,12 @@ function App() {
     runSubmittedRef.current = false
     const unsub = useGameStore.subscribe(
       s => s.isDead || s.isWon,
-      (ended) => { if (ended) submitRun() },
+      (ended) => {
+        if (ended) {
+          useGameStore.getState().setTimeSurvived(runData.elapsed)
+          submitRun()
+        }
+      },
     )
     return unsub
   }, [inGame])

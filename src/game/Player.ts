@@ -40,6 +40,7 @@ export class Player {
   private dashVx = 0
   private dashVy = 0
   private trailTimer = 0
+  private moveTrailTimer = 0
 
   private bounds: Phaser.Geom.Rectangle
   private spriteKey: string
@@ -144,6 +145,15 @@ export class Player {
       this.y += this.dashVy * DASH_SPEED * dashDistance * dt
       if (this.dashTimeLeft <= 0) this.isDashing = false
     } else {
+      if (moving) {
+        this.moveTrailTimer -= delta
+        if (this.moveTrailTimer <= 0) {
+          effects.showMoveGhost(this.x, this.y, this.spriteKey, this.graphic.scaleX, this.graphic.frame.name)
+          this.moveTrailTimer = 70
+        }
+      } else {
+        this.moveTrailTimer = 0
+      }
       this.x += vx * moveSpeed * dt
       this.y += vy * moveSpeed * dt
     }

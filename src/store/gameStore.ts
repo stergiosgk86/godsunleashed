@@ -242,6 +242,7 @@ interface GameState {
   bossKills: number
   tookDamageThisRun: boolean
   recentAchievement: { id: string; name: string } | null
+  timeSurvived: number
   adminInvincible: boolean
   adminSpawnRequest: AdminSpawnEntity | null
   requestAdminSpawn: (entity: AdminSpawnEntity) => void
@@ -275,6 +276,7 @@ interface GameState {
   addKill: () => void
   addDamage: (amount: number) => void
   addBossKill: () => void
+  setTimeSurvived: (ms: number) => void
   clearRecentAchievement: () => void
   resetRun: () => void
 }
@@ -349,6 +351,7 @@ export const useGameStore = create<GameState>()(
     bossKills: 0,
     tookDamageThisRun: false,
     recentAchievement: null,
+    timeSurvived: 0,
     adminInvincible: false,
     adminSpawnRequest: null,
     requestAdminSpawn: (entity) => set({ adminSpawnRequest: entity }),
@@ -494,6 +497,7 @@ export const useGameStore = create<GameState>()(
     addKill: () => set(s => ({ kills: s.kills + 1 })),
     addDamage: (amount) => set(s => ({ damageDealt: s.damageDealt + amount })),
     addBossKill: () => set(s => ({ bossKills: s.bossKills + 1 })),
+    setTimeSurvived: (ms) => set({ timeSurvived: ms }),
     clearRecentAchievement: () => set({ recentAchievement: null }),
 
     resetRun: () => set({
@@ -509,7 +513,7 @@ export const useGameStore = create<GameState>()(
       equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 1400, echo: 0,
       ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
-      kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null,
+      kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null, timeSurvived: 0,
     }),
 
     chooseUpgrade: (id) => {

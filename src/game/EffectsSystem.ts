@@ -77,22 +77,48 @@ class Particle {
 class DashGhost {
   graphic: Phaser.GameObjects.Sprite
   active = true
-  private life = 200
-  private maxLife = 200
+  private life = 280
+  private maxLife = 280
 
   constructor(scene: Phaser.Scene, x: number, y: number, frame: string | number) {
     this.graphic = scene.add
       .sprite(x, y, 'player', frame)
-      .setDepth(3)
+      .setDepth(3.9)
       .setScale(1.5)
-      .setAlpha(0.5)
-      .setTint(0x4488ff)
+      .setAlpha(0.85)
+      .setTint(0x88ccff)
   }
 
   update(delta: number) {
     this.life -= delta
     if (this.life <= 0) { this.destroy(); return }
-    this.graphic.setAlpha((this.life / this.maxLife) * 0.45)
+    this.graphic.setAlpha((this.life / this.maxLife) * 0.85)
+  }
+
+  destroy() {
+    this.graphic.destroy()
+    this.active = false
+  }
+}
+
+class MoveGhost {
+  graphic: Phaser.GameObjects.Sprite
+  active = true
+  private life = 250
+  private maxLife = 250
+
+  constructor(scene: Phaser.Scene, x: number, y: number, spriteKey: string, frame: string | number, scale: number) {
+    this.graphic = scene.add
+      .sprite(x, y, spriteKey, frame)
+      .setDepth(3.9)
+      .setScale(scale)
+      .setAlpha(0.7)
+  }
+
+  update(delta: number) {
+    this.life -= delta
+    if (this.life <= 0) { this.destroy(); return }
+    this.graphic.setAlpha((this.life / this.maxLife) * 0.7)
   }
 
   destroy() {
@@ -139,6 +165,7 @@ export class EffectsSystem {
   private numbers: DamageNumber[] = []
   private particles: Particle[] = []
   private ghosts: DashGhost[] = []
+  private moveGhosts: MoveGhost[] = []
   private labels: FloatLabel[] = []
 
   constructor(scene: Phaser.Scene) {
@@ -166,6 +193,10 @@ export class EffectsSystem {
     this.ghosts.push(new DashGhost(this.scene, x, y, frame))
   }
 
+  showMoveGhost(x: number, y: number, spriteKey: string, scale: number, frame: string | number) {
+    this.moveGhosts.push(new MoveGhost(this.scene, x, y, spriteKey, frame, scale))
+  }
+
   showItemCollect(x: number, y: number, label: string, color: number, fontSize = 14) {
     const hex = `#${color.toString(16).padStart(6, '0')}`
     this.labels.push(new FloatLabel(this.scene, x, y, label, hex, fontSize))
@@ -182,10 +213,12 @@ export class EffectsSystem {
     for (const n of this.numbers) n.update(delta)
     for (const p of this.particles) p.update(delta)
     for (const g of this.ghosts) g.update(delta)
+    for (const m of this.moveGhosts) m.update(delta)
     for (const l of this.labels) l.update(delta)
     this.numbers = this.numbers.filter(n => n.active)
     this.particles = this.particles.filter(p => p.active)
     this.ghosts = this.ghosts.filter(g => g.active)
+    this.moveGhosts = this.moveGhosts.filter(m => m.active)
     this.labels = this.labels.filter(l => l.active)
   }
 }

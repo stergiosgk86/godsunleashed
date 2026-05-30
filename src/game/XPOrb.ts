@@ -22,13 +22,13 @@ const TIER_GLOW_KEY: Record<OrbTier, string> = {
 }
 const TIER_BASE_SCALE: Record<OrbTier, number> = {
   green: 1.0,
-  blue:  1.15,
-  gold:  1.3,
+  blue:  1.0,
+  gold:  1.0,
 }
 const TIER_GLOW_BASE: Record<OrbTier, number> = {
   green: 1.0,
-  blue:  1.1,
-  gold:  1.25,
+  blue:  1.0,
+  gold:  1.0,
 }
 const TIER_COLLECT_COLOR: Record<OrbTier, number> = {
   green: 0x00ff88,

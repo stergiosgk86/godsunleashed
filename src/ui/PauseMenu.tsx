@@ -11,7 +11,6 @@ function useIsMobile() {
 }
 import { useGameStore, weaponBaseDamage, DASH_COOLDOWN_MS, type AdminSpawnEntity, type UpgradeId } from '../store/gameStore'
 import { activeNetClient } from '../net/netState'
-import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { AdminPlayersView } from './AdminPlayersView'
 import { ControlsView } from './ControlsView'
@@ -473,28 +472,24 @@ function AdminPanel({ onBack }: { onBack: () => void }) {
   )
 }
 
-export function PauseMenu({ onQuit }: { onQuit: () => void }) {
+export function PauseMenu({ onQuit, hidden = false }: { onQuit: () => void; hidden?: boolean }) {
   const isPaused = useGameStore(s => s.isPaused)
   const isLevelUpPending = useGameStore(s => s.isLevelUpPending)
   const isDead = useGameStore(s => s.isDead)
   const isWon = useGameStore(s => s.isWon)
   const togglePause = useGameStore(s => s.togglePause)
-  const depositCoins = useProfileStore(s => s.depositCoins)
   const role = useAuthStore(s => s.role)
   const isAdmin = role === 'super_admin' || role === 'admin'
   const [view, setView] = useState<'main' | 'settings' | 'controls' | 'stats' | 'sounds' | 'admin'>('main')
   function handleQuit() {
-    const { sessionCoins, resetRun } = useGameStore.getState()
-    depositCoins(sessionCoins)
-    onQuit()   // submitRun must read sessionCoins before resetRun clears it
-    resetRun()
+    onQuit()
   }
 
   const mob = useIsMobile()
   useEffect(() => { if (!isPaused) setView('main') }, [isPaused])
 
 
-  if (!isPaused || isLevelUpPending || isDead || isWon) return null
+  if (hidden || !isPaused || isLevelUpPending || isDead || isWon) return null
 
   const panel = (
     <div style={{
