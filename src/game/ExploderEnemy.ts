@@ -21,6 +21,7 @@ export class ExploderEnemy implements AnyEnemy {
   active = true
   contactDamage = 0
   xpValue = XP_VALUE
+  hitRadius = 17.6  // 32px frame × scale 1.1 × 0.5
   private state: 'chase' | 'countdown' = 'chase'
   private countdownTimer = 0
   private hitFlashTimer = 0

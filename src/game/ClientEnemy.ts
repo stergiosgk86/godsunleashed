@@ -79,6 +79,17 @@ const KIND_SCALE: Record<EnemyKind, number> = {
   cultist: 1.2, golem: 1.65, knight: 1.5, archfiend: 1.4,
 }
 
+const KIND_FRAME_HALF: Record<EnemyKind, number> = {
+  // 96px frame bosses
+  summoner: 48, boss: 48, finalBoss: 48,
+  // 32px frame everyone else
+  basic: 16, speeder: 16, tank: 16, ranged: 16, exploder: 16, ghost: 16,
+  charger: 16, necromancer: 16, veteran: 16, brute: 16, revenant: 16,
+  warlord: 16, titan: 16,
+  drifter: 16, scurrier: 16, lurker: 16, mummy: 16, jackal: 16,
+  cultist: 16, golem: 16, knight: 16, archfiend: 16,
+}
+
 const KIND_CONTACT_DAMAGE: Record<EnemyKind, number> = {
   basic: 10, speeder: 8, tank: 20, ranged: 10,
   exploder: 0, ghost: 12, charger: 12, necromancer: 10,
@@ -109,6 +120,7 @@ export class ClientEnemy implements AnyEnemy {
   contactDamage: number
   xpValue: number
   isBoss: boolean
+  hitRadius: number
 
   private sprite: Phaser.GameObjects.Sprite
   private spriteKey: string
@@ -134,6 +146,7 @@ export class ClientEnemy implements AnyEnemy {
 
     this.spriteKey = KIND_TO_SPRITE[snap.kind]
     const scale = KIND_SCALE[snap.kind]
+    this.hitRadius = KIND_FRAME_HALF[snap.kind] * scale
     this.sprite = scene.add.sprite(snap.x, snap.y, this.spriteKey)
       .setDepth(this.isBoss ? 3 : 2)
       .setScale(scale)

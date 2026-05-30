@@ -19,6 +19,7 @@ export interface AnyEnemy {
   contactDamage: number
   xpValue: number
   isBoss?: boolean
+  hitRadius: number
   takeDamage(amount: number): void
   destroy(): void
   update(tx: number, ty: number, delta: number): void
@@ -57,6 +58,7 @@ export class Enemy implements AnyEnemy {
   active = true
   contactDamage: number
   xpValue: number
+  hitRadius: number
   private speed: number
   speedMultiplier = 1.0
   private baseScale: number
@@ -76,6 +78,7 @@ export class Enemy implements AnyEnemy {
     this.speed = cfg.speed
     this.contactDamage = Math.round(cfg.contactDamage * difficultyScale.damage)
     this.xpValue = cfg.xpValue
+    this.hitRadius = 16 * cfg.scale  // half of 32px frame, scaled
     this.textureKey = cfg.textureKey
     this.baseScale = cfg.scale
     this.baseTint  = cfg.tint

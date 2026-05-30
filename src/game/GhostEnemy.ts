@@ -18,6 +18,7 @@ export class GhostEnemy implements AnyEnemy {
   active = true
   contactDamage: number
   xpValue = XP_VALUE
+  hitRadius = 14.4  // 32px frame × scale 0.9 × 0.5
   private vx: number
   private vy: number
   private lastDir: Direction = 'down'

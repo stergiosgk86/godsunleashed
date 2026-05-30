@@ -60,6 +60,7 @@ export class NecromancerEnemy implements AnyEnemy {
   active = true
   contactDamage: number
   xpValue = XP_VALUE
+  hitRadius = 17.6  // 32px frame × scale 1.1 × 0.5
   private projectiles: NecroProjectile[] = []
   private fireTimer = 1200  // first burst comes quickly
   private hitFlashTimer = 0

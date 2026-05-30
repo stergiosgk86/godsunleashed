@@ -26,6 +26,7 @@ export class SummonerBoss implements AnyEnemy {
   contactDamage = 30
   xpValue = 150
   isBoss = true
+  hitRadius = 76.8  // 96px frame × scale 1.6 × 0.5
 
   private invulnCountdown = INVULN_INTERVAL
   private invulnRemaining = 0

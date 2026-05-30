@@ -39,6 +39,7 @@ export type C2SMessage =
   | { type: 'adminSpawn'; entity: string }
   | { type: 'adminGiveUpgrade'; upgradeId: string; targetLevel: number }
   | { type: 'adminClearUpgrades' }
+  | { type: 'collectXP'; amount: number }
 
 export type S2CMessage =
   | { type: 'waiting'; playerCount: number; isHost: boolean }
@@ -53,6 +54,7 @@ export type S2CMessage =
   | { type: 'projectile'; playerId: string; x: number; y: number; vx: number; vy: number }
   | { type: 'bossProjectile'; enemyId: number; x: number; y: number; vx: number; vy: number }
   | { type: 'levelUp'; level: number; xp: number; xpToNext: number; choices: string[] }
+  | { type: 'xpGrant'; xp: number; xpToNext: number }
   | { type: 'runSaved'; kills: number; timeSurvived: number; coins: number; won: boolean; newAchievements: string[] }
   | { type: 'surge'; enemyType: string }
   | { type: 'bossInvuln'; bossId: number; invulnerable: boolean }

@@ -426,11 +426,6 @@ export const useGameStore = create<GameState>()(
 
     addXP: (amount) => {
       set(s => {
-        if (s.serverDrivenLeveling) {
-          // Server drives level-ups; freeze bar while upgrade screen is open (server skips XP grants then)
-          if (s.isLevelUpPending) return {}
-          return { xp: Math.min(s.xp + amount, s.xpNeeded) }
-        }
         let { xp, xpNeeded: needed, level, isLevelUpPending } = s
         xp += amount
         if (xp >= needed && !isLevelUpPending) {

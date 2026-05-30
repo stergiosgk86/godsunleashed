@@ -52,6 +52,7 @@ export class FinalBossEnemy implements AnyEnemy {
   contactDamage = 30
   xpValue = 500
   isBoss = true
+  hitRadius = 96  // 96px frame × scale 2.0 × 0.5
   private projectiles: FinalProjectile[] = []
   private shootTimer = 2000
   private ringTimer = RING_INTERVAL * 0.6

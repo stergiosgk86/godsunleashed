@@ -24,6 +24,7 @@ export class ChargerEnemy implements AnyEnemy {
   active = true
   contactDamage: number
   xpValue = XP_VALUE
+  hitRadius = 20.8  // 32px frame × scale 1.3 × 0.5
   private state: ChargerState = 'walk'
   private stateTimer = 0
   private chargeVx = 0

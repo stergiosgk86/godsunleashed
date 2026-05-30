@@ -5,7 +5,7 @@ import { Projectile } from './Projectile'
 import { SunBeam } from './SunBeam'
 import { Boomerang } from './Boomerang'
 import { Axe } from './Axe'
-import { XPOrb } from './XPOrb'
+import { XPOrb, orbTierForValue } from './XPOrb'
 import { CoinOrb } from './CoinOrb'
 import { HealthPotion } from './HealthPotion'
 import { EffectsSystem } from './EffectsSystem'
@@ -15,6 +15,8 @@ import { soundSystem } from './SoundSystem'
 import { difficultyScale } from './difficultyScale'
 import { activeNetClient } from '../net/netState'
 import { minimapData } from './minimapData'
+
+const MAX_ORBS = 300
 
 const CONTACT_RADIUS = 28
 const CONTACT_ENEMY_COOLDOWN = 240   // ms — matches VS post-hit immunity window
@@ -78,6 +80,7 @@ export class CombatSystem {
   private effects: EffectsSystem
   private projectiles: Projectile[] = []
   private orbs: XPOrb[] = []
+  private accumulatorOrb: XPOrb | null = null
   private coins: CoinOrb[] = []
   private potions: HealthPotion[] = []
   private potionKillCounter = 0
@@ -416,7 +419,8 @@ export class CombatSystem {
         if (!e.active || b.hitTargets.has(e)) continue
         const dx = b.x - e.x
         const dy = b.y - e.y
-        if (dx * dx + dy * dy < b.hitRadius * b.hitRadius) {
+        const hitDist = b.hitRadius + e.hitRadius
+        if (dx * dx + dy * dy < hitDist * hitDist) {
           this.applyHit(e, gunDmgActive, coinDropChance, lifeDrain, vampiric)
           b.hitTargets.add(e)  // pierce: beam keeps going
         }
@@ -448,7 +452,8 @@ export class CombatSystem {
         if (!e.active || p.hitTargets.has(e)) continue
         const dx = p.x - e.x
         const dy = p.y - e.y
-        if (dx * dx + dy * dy < p.hitRadius * p.hitRadius) {
+        const hitDist = p.hitRadius + e.hitRadius
+        if (dx * dx + dy * dy < hitDist * hitDist) {
           this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
           if (p.piercing) {
             p.hitTargets.add(e)
@@ -471,7 +476,28 @@ export class CombatSystem {
         xpGained += collected
       }
     }
-    if (xpGained > 0) addXP(Math.round(xpGained * (1 + growthRank * 0.03) * difficultyScale.xp))
+    // Accumulator orb (gold heap that fills when cap is reached)
+    if (this.accumulatorOrb) {
+      if (this.accumulatorOrb.active) {
+        const collected = this.accumulatorOrb.update(playerX, playerY, delta, magnetRange)
+        if (collected > 0) {
+          this.effects.showXPCollect(this.accumulatorOrb.x, this.accumulatorOrb.y)
+          soundSystem.xpCollect()
+          xpGained += collected
+          this.accumulatorOrb = null
+        }
+      } else {
+        this.accumulatorOrb = null
+      }
+    }
+    if (xpGained > 0) {
+      const net = activeNetClient
+      if (net) {
+        net.send({ type: 'collectXP', amount: xpGained })
+      } else {
+        addXP(Math.round(xpGained * (1 + growthRank * 0.03) * difficultyScale.xp))
+      }
+    }
 
     // Collect coins
     let coinsGained = 0
@@ -755,7 +781,7 @@ export class CombatSystem {
           if (!e.active || hitTargets.has(e)) continue
           const dx = b.x - e.x
           const dy = b.y - e.y
-          if (dx * dx + dy * dy < BOOMERANG_HIT_R * BOOMERANG_HIT_R) {
+          if (dx * dx + dy * dy < (BOOMERANG_HIT_R + e.hitRadius) * (BOOMERANG_HIT_R + e.hitRadius)) {
             hitTargets.add(e)
             this.applyHit(e, Math.floor(damage * 1.5), coinDropChance, lifeDrain, vampiric)
           }
@@ -784,7 +810,7 @@ export class CombatSystem {
             if (!e.active || !this.isOnScreen(e.x, e.y)) continue
             const dx = e.x - f.x
             const dy = e.y - f.y
-            if (dx * dx + dy * dy < FLAME_RADIUS * FLAME_RADIUS) {
+            if (dx * dx + dy * dy < (FLAME_RADIUS + e.hitRadius) * (FLAME_RADIUS + e.hitRadius)) {
               this.applyHit(e, flameDmg, coinDropChance, lifeDrain, vampiric)
             }
           }
@@ -828,7 +854,7 @@ export class CombatSystem {
           if (!e.active || a.currentHitTargets.has(e)) continue
           const dx = a.x - e.x
           const dy = a.y - e.y
-          if (dx * dx + dy * dy < AXE_HIT_R * AXE_HIT_R) {
+          if (dx * dx + dy * dy < (AXE_HIT_R + e.hitRadius) * (AXE_HIT_R + e.hitRadius)) {
             a.currentHitTargets.add(e)
             this.applyHit(e, axeDamage, coinDropChance, lifeDrain, vampiric)
           }
@@ -966,7 +992,7 @@ export class CombatSystem {
         for (const e of enemies) {
           if (!e.active || b.hitEnemies.has(e)) continue
           const bdx = b.x - e.x, bdy = b.y - e.y
-          if (bdx * bdx + bdy * bdy < RAVENS_BOMB_HIT_R * RAVENS_BOMB_HIT_R) {
+          if (bdx * bdx + bdy * bdy < (RAVENS_BOMB_HIT_R + e.hitRadius) * (RAVENS_BOMB_HIT_R + e.hitRadius)) {
             b.hitEnemies.add(e)
             this.applyHit(e, ravensDmg, coinDropChance, lifeDrain, vampiric)
           }
@@ -1400,7 +1426,16 @@ export class CombatSystem {
     const sa = Math.random() * Math.PI * 2
     const sr = Math.random() * 20
     if (isBoss || Math.random() < xpDropChance) {
-      this.orbs.push(new XPOrb(this.scene, x + Math.cos(sa) * sr, y + Math.sin(sa) * sr, xpValue))
+      const ox = x + Math.cos(sa) * sr
+      const oy = y + Math.sin(sa) * sr
+      if (this.orbs.length < MAX_ORBS) {
+        this.orbs.push(new XPOrb(this.scene, ox, oy, xpValue, orbTierForValue(xpValue)))
+      } else if (!this.accumulatorOrb || !this.accumulatorOrb.active) {
+        this.accumulatorOrb = new XPOrb(this.scene, ox, oy, xpValue, 'gold')
+        this.accumulatorOrb.makeAccumulator()
+      } else {
+        this.accumulatorOrb.addValue(xpValue)
+      }
     }
     if (isBoss) {
       const count = 4 + Math.floor(Math.random() * 5)

@@ -24,6 +24,7 @@ export class WarlordEnemy implements AnyEnemy {
   contactDamage: number
   xpValue = XP_VALUE
   isBoss = false
+  hitRadius = 24  // 32px frame × scale 1.5 × 0.5
   private state: ChargerState = 'walk'
   private stateTimer = 0
   private chargeVx = 0

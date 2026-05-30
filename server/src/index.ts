@@ -222,6 +222,8 @@ wss.on('connection', (ws) => {
           })
           .catch(() => {})
       }
+    } else if (msg.type === 'collectXP') {
+      if (room) room.handleCollectXP(playerId, msg.amount)
     } else if (msg.type === 'adminClearUpgrades') {
       const r = room
       if (r) {

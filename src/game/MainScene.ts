@@ -175,7 +175,7 @@ export class MainScene extends Phaser.Scene {
       })
     }
 
-    const camZoom = window.innerWidth <= 768 ? 0.7 : 1.4
+    const camZoom = window.innerWidth <= 768 ? 0.7 : 1.2
     this.cameras.main.setZoom(camZoom)
 
     if (this.selectedStage === 2) {
@@ -525,14 +525,22 @@ export class MainScene extends Phaser.Scene {
       const choices = msg.choices
         .map(id => UPGRADE_POOL.find(u => u.id === id))
         .filter((u): u is Upgrade => u !== undefined)
-      useGameStore.setState({
-        level: msg.level,
-        xp: msg.xp,
-        xpNeeded: msg.xpToNext,
-        isLevelUpPending: true,
-        upgradeChoices: choices,
-        chosenUpgrade: null,
+      // Fill bar to 100% first so the player sees it complete before the upgrade screen appears
+      useGameStore.setState({ xp: useGameStore.getState().xpNeeded })
+      this.time.delayedCall(350, () => {
+        useGameStore.setState({
+          level: msg.level,
+          xp: msg.xp,
+          xpNeeded: msg.xpToNext,
+          isLevelUpPending: true,
+          upgradeChoices: choices,
+          chosenUpgrade: null,
+        })
       })
+    })
+
+    net.on('xpGrant', (msg) => {
+      useGameStore.setState({ xp: msg.xp, xpNeeded: msg.xpToNext })
     })
 
     net.on('tick', (msg) => this.applyTick(msg.enemies, msg.players, msg.elapsed))

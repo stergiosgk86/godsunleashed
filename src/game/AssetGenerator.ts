@@ -179,6 +179,56 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('xp_orb_glow', 36, 36)
   g.clear()
 
+  // XP orb blue gem (10x10) — diamond facets
+  g.fillStyle(0x001a66)
+  g.fillTriangle(5, 0, 10, 5, 0, 5)
+  g.fillTriangle(0, 5, 10, 5, 5, 10)
+  g.fillStyle(0x2255cc)
+  g.fillTriangle(5, 0, 9, 5, 1, 5)
+  g.fillStyle(0x1133aa)
+  g.fillTriangle(1, 5, 9, 5, 5, 10)
+  g.fillStyle(0x5588ee)
+  g.fillTriangle(5, 1, 8, 5, 2, 5)
+  g.fillStyle(0xaaccff, 0.9)
+  g.fillCircle(3.5, 2.5, 1.2)
+  g.generateTexture('xp_orb_blue', 10, 10)
+  g.clear()
+
+  // XP orb blue glow (36x36)
+  g.fillStyle(0x4488ff, 0.05)
+  g.fillCircle(18, 18, 17)
+  g.fillStyle(0x4488ff, 0.1)
+  g.fillCircle(18, 18, 13)
+  g.fillStyle(0x88aaff, 0.22)
+  g.fillCircle(18, 18, 9)
+  g.generateTexture('xp_orb_blue_glow', 36, 36)
+  g.clear()
+
+  // XP orb gold gem (12x12) — larger diamond, boss-tier
+  g.fillStyle(0x664400)
+  g.fillTriangle(6, 0, 12, 6, 0, 6)
+  g.fillTriangle(0, 6, 12, 6, 6, 12)
+  g.fillStyle(0xcc8800)
+  g.fillTriangle(6, 0, 11, 6, 1, 6)
+  g.fillStyle(0xaa6600)
+  g.fillTriangle(1, 6, 11, 6, 6, 12)
+  g.fillStyle(0xffcc00)
+  g.fillTriangle(6, 1, 10, 6, 2, 6)
+  g.fillStyle(0xffeebb, 0.9)
+  g.fillCircle(4, 3, 1.5)
+  g.generateTexture('xp_orb_gold', 12, 12)
+  g.clear()
+
+  // XP orb gold glow (44x44) — wider halo to signal importance
+  g.fillStyle(0xffcc00, 0.05)
+  g.fillCircle(22, 22, 21)
+  g.fillStyle(0xffcc00, 0.11)
+  g.fillCircle(22, 22, 16)
+  g.fillStyle(0xffdd44, 0.25)
+  g.fillCircle(22, 22, 10)
+  g.generateTexture('xp_orb_gold_glow', 44, 44)
+  g.clear()
+
   // Coin (12x12) — gold circle with shine
   // Coin glow halo (32x32) — additive-blend soft gold circles
   g.fillStyle(0xffcc00, 0.05)

@@ -62,6 +62,7 @@ export class BossEnemy implements AnyEnemy {
   contactDamage = 30
   xpValue = 80
   isBoss = true
+  hitRadius = 72  // 96px frame × scale 1.5 × 0.5
   private projectiles: BossProjectile[] = []
   private shootTimer = 1500
   private chargeTimer = CHARGE_INTERVAL

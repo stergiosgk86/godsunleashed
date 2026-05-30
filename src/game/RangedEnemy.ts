@@ -55,6 +55,7 @@ export class RangedEnemy implements AnyEnemy {
   active = true
   contactDamage: number
   xpValue = 4
+  hitRadius = 19.2  // 32px frame × scale 1.2 × 0.5
   private scene: Phaser.Scene
   private projectiles: EnemyProjectile[] = []
   private fireTimer = 800

@@ -360,7 +360,6 @@ export class GameRoom {
           player.coins++
         }
       }
-      this.grantXP(enemy.xpValue)
     } else if (enemy.isBoss) {
       this.broadcast({ type: 'bossHp', bossId: enemyId, hp: enemy.hp })
     }
@@ -389,7 +388,6 @@ export class GameRoom {
           player.coins++
         }
       }
-      this.grantXP(enemy.xpValue)
     } else {
       // Enemy survived: one-time knockback using server-stored player position
       if (player) {
@@ -458,29 +456,41 @@ export class GameRoom {
     }
   }
 
-  private grantXP(xpValue: number) {
-    // Scale XP by the same curve used on the frontend (1× at t=0, 2× at t=1)
+  handleCollectXP(playerId: string, amount: number) {
+    if (!this.started || this.finished || amount <= 0) return
+    const player = this.players.find(p => p.id === playerId)
+    if (!player || player.dead || player.pendingChoices !== null) return
+    const safeAmount = Math.min(Math.floor(amount), 50_000)
+    this.grantXPToPlayer(player, safeAmount)
+  }
+
+  private grantXPToPlayer(p: Player, rawAmount: number) {
     const RUN_DURATION = 30 * 60 * 1000
     const xpScale = 1 + Math.min(this.spawner.runElapsed / RUN_DURATION, 1)
-    const scaled = Math.round(xpValue * xpScale)
+    const gained = Math.round(rawAmount * xpScale * (1 + p.upgrades.xpGain * 0.08))
+    p.xp += gained
+    const needed = xpNeeded(p.level)
+    if (p.xp >= needed) {
+      p.xp -= needed
+      p.level++
+      const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares')
+      p.pendingChoices = choices
+      this.send(p.ws, {
+        type: 'levelUp',
+        level: p.level,
+        xp: p.xp,
+        xpToNext: xpNeeded(p.level),
+        choices,
+      })
+    } else {
+      this.send(p.ws, { type: 'xpGrant', xp: p.xp, xpToNext: needed })
+    }
+  }
+
+  private grantXP(xpValue: number) {
     for (const p of this.players) {
       if (p.dead || p.pendingChoices !== null) continue
-      const gained = Math.round(scaled * (1 + p.upgrades.xpGain * 0.08))
-      p.xp += gained
-      const needed = xpNeeded(p.level)
-      if (p.xp >= needed) {
-        p.xp -= needed
-        p.level++
-        const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares')
-        p.pendingChoices = choices
-        this.send(p.ws, {
-          type: 'levelUp',
-          level: p.level,
-          xp: p.xp,
-          xpToNext: xpNeeded(p.level),
-          choices,
-        })
-      }
+      this.grantXPToPlayer(p, xpValue)
     }
   }
 

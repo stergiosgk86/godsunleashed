@@ -1,20 +1,6 @@
 import Phaser from 'phaser'
 import { type Direction, getDirection, playDir } from './spriteUtils'
-
-const CHAR_SPRITE: Record<string, string> = {
-  rogue:   'char_rogue',
-  witch:   'char_witch',
-  shade:   'char_shade',
-  zeus:    'char_zeus',
-  apollo:  'char_apollo',
-  hades:   'char_hades',
-}
-
-const CHAR_SCALE: Record<string, number> = {
-  zeus:   1.0,
-  apollo: 0.065,
-  hades:  0.9,
-}
+import { CHARACTER_DEFS } from './characters'
 
 const STATIC_SPRITES = new Set<string>()
 
@@ -38,13 +24,14 @@ export class RemotePlayer {
   constructor(scene: Phaser.Scene, x: number, y: number, characterType: string, label: string) {
     this.x = x
     this.y = y
-    this.spriteKey = CHAR_SPRITE[characterType] ?? 'player'
+    const charDef  = CHARACTER_DEFS[characterType as keyof typeof CHARACTER_DEFS]
+    this.spriteKey = charDef?.spriteKey ?? 'player'
     this.auraGraphic = scene.add.graphics().setDepth(2)
     this.orbGraphic  = scene.add.graphics().setDepth(5)
     this.ravensGraphic = scene.add.graphics().setDepth(4.5)
     this.sprite = scene.add.sprite(x, y, this.spriteKey)
       .setDepth(4)
-      .setScale(CHAR_SCALE[characterType] ?? 1.5)
+      .setScale(charDef?.scale ?? 1.5)
       .setAlpha(0.85)
     if (!STATIC_SPRITES.has(this.spriteKey)) this.sprite.play(`${this.spriteKey}_down`)
     this.nameLabel = scene.add.text(x, y - 28, label, {
