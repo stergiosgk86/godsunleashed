@@ -1350,7 +1350,7 @@ export class CombatSystem {
       if (this.vampiricPool >= 1) {
         const heal = Math.floor(this.vampiricPool)
         this.vampiricPool -= heal
-        useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + heal) }))
+        useGameStore.setState(s => s.isDead ? {} : { hp: Math.min(s.maxHp, s.hp + heal) })
       }
     }
     if (net && 'serverId' in e) {
@@ -1381,7 +1381,7 @@ export class CombatSystem {
       if (this.vampiricPool >= 1) {
         const heal = Math.floor(this.vampiricPool)
         this.vampiricPool -= heal
-        useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + heal) }))
+        useGameStore.setState(s => s.isDead ? {} : { hp: Math.min(s.maxHp, s.hp + heal) })
       }
     }
     if (net && 'serverId' in e) {
@@ -1396,7 +1396,7 @@ export class CombatSystem {
 
   private killEnemy(e: AnyEnemy, coinDropChance: number, lifeDrain: number) {
     if (lifeDrain > 0) {
-      useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + lifeDrain) }))
+      useGameStore.setState(s => s.isDead ? {} : { hp: Math.min(s.maxHp, s.hp + lifeDrain) })
     }
     this.effects.showDeathBurst(e.x, e.y)
     const { addKill, addBossKill } = useGameStore.getState()

@@ -492,7 +492,7 @@ export const useGameStore = create<GameState>()(
       return true
     },
 
-    healPlayer: (amount) => set(s => ({ hp: Math.min(s.maxHp, s.hp + amount) })),
+    healPlayer: (amount) => set(s => s.isDead ? {} : { hp: Math.min(s.maxHp, s.hp + amount) }),
     addSessionCoins: (amount) => set(s => ({ sessionCoins: s.sessionCoins + amount })),
     addKill: () => set(s => ({ kills: s.kills + 1 })),
     addDamage: (amount) => set(s => ({ damageDealt: s.damageDealt + amount })),

@@ -225,6 +225,7 @@ interface Player {
   xp: number
   level: number
   pendingChoices: string[] | null  // non-null while waiting for chooseUpgrade
+  pendingRawXP: number             // XP collected while upgrade screen is open; applied on chooseUpgrade
   upgrades: PlayerUpgrades
   // Server-tracked run stats
   kills: number
@@ -254,7 +255,7 @@ export class GameRoom {
     const isHost = this.players.length === 0
     this.players.push({
       id, userId, ws, x, y, viewW, viewH, characterType, username, dead: false, paused: false, isHost, aura: 0, orbital: 0,
-      xp: resumeXp, level: resumeLevel, pendingChoices: null, upgrades: { ...emptyUpgrades(), ...startingUpgrades(characterType) },
+      xp: resumeXp, level: resumeLevel, pendingChoices: null, pendingRawXP: 0, upgrades: { ...emptyUpgrades(), ...startingUpgrades(characterType) },
       kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
     if (this.isSolo && resumeElapsed > 0) this.resumeElapsed = resumeElapsed
@@ -414,6 +415,8 @@ export class GameRoom {
     if (!p || !p.pendingChoices || !p.pendingChoices.includes(upgradeId)) return
 
     p.pendingChoices = null
+    const queuedXP = p.pendingRawXP
+    p.pendingRawXP = 0
 
     const u = p.upgrades
     switch (upgradeId as UpgradeId) {
@@ -454,13 +457,22 @@ export class GameRoom {
       case 'dashDistance':  u.dashDistancePicks = Math.min(3, u.dashDistancePicks + 1); break
 
     }
+
+    // Apply XP that arrived while the upgrade screen was open, and re-check for overflow
+    if (queuedXP > 0 || p.xp >= xpNeeded(p.level)) {
+      this.grantXPToPlayer(p, queuedXP)
+    }
   }
 
   handleCollectXP(playerId: string, amount: number) {
     if (!this.started || this.finished || amount <= 0) return
     const player = this.players.find(p => p.id === playerId)
-    if (!player || player.dead || player.pendingChoices !== null) return
+    if (!player || player.dead) return
     const safeAmount = Math.min(Math.floor(amount), 50_000)
+    if (player.pendingChoices !== null) {
+      player.pendingRawXP += safeAmount
+      return
+    }
     this.grantXPToPlayer(player, safeAmount)
   }
 
@@ -474,7 +486,8 @@ export class GameRoom {
       p.xp -= needed
       p.level++
       const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares')
-      p.pendingChoices = choices
+      // If no upgrades are eligible (all maxed), level up silently — don't block XP with pendingChoices
+      p.pendingChoices = choices.length > 0 ? choices : null
       this.send(p.ws, {
         type: 'levelUp',
         level: p.level,

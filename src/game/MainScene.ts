@@ -515,19 +515,41 @@ export class MainScene extends Phaser.Scene {
         if (chosenId !== null) net.send({ type: 'chooseUpgrade', upgradeId: chosenId })
       },
     )
+    let shutdownStarted = false
     this.events.once('shutdown', () => {
+      shutdownStarted = true
       unsubChosen()
       useGameStore.getState().setServerDrivenLeveling(false)
       net.close()
+    })
+
+    // Surface unexpected disconnects so the game doesn't silently freeze
+    net.onClose(() => {
+      if (shutdownStarted) return
+      if (!this.sys.displayList) return
+      const gs = useGameStore.getState()
+      if (!gs.isDead && !gs.isWon) {
+        useAuthStore.getState().showSystemToast('Connection lost', '#ff6644')
+        useGameStore.getState().die()
+      }
     })
 
     net.on('levelUp', (msg) => {
       const choices = msg.choices
         .map(id => UPGRADE_POOL.find(u => u.id === id))
         .filter((u): u is Upgrade => u !== undefined)
-      // Fill bar to 100% first so the player sees it complete before the upgrade screen appears
+      // Fill bar to 100% first so the player sees it complete before the upgrade screen appears.
+      // Use setTimeout (not this.time.delayedCall) so the timer runs even when the scene is paused —
+      // Phaser's scene clock stops on pause, which would deadlock the upgrade screen from ever appearing.
       useGameStore.setState({ xp: useGameStore.getState().xpNeeded })
-      this.time.delayedCall(350, () => {
+      setTimeout(() => {
+        const gs = useGameStore.getState()
+        if (gs.isDead || gs.isWon) return
+        if (choices.length === 0) {
+          // All upgrades maxed — update level silently without freezing the screen
+          useGameStore.setState({ level: msg.level, xp: msg.xp, xpNeeded: msg.xpToNext })
+          return
+        }
         useGameStore.setState({
           level: msg.level,
           xp: msg.xp,
@@ -536,7 +558,7 @@ export class MainScene extends Phaser.Scene {
           upgradeChoices: choices,
           chosenUpgrade: null,
         })
-      })
+      }, 350)
     })
 
     net.on('xpGrant', (msg) => {
