@@ -130,7 +130,7 @@ function App() {
 
   function startRun() {
     const rawUpgrades = useProfileStore.getState().upgrades
-    const char = CHARACTER_DEFS[useCharacterStore.getState().selectedCharacter]
+    const char = CHARACTER_DEFS[useCharacterStore.getState().selectedCharacter] ?? CHARACTER_DEFS['ares']
     // Clamp every rank to [0, 5] — defence-in-depth against corrupted profile data
     const clampRank = (n: number) => Math.max(0, Math.min(5, Math.floor(isFinite(n) ? n : 0)))
     const upgrades = {
@@ -167,6 +167,8 @@ function App() {
       wand:           char.startWand,
       equinox:        char.startEquinox,
       solstice:       char.startSolstice,
+      ravens:         char.startRavens,
+      spear:          char.startSpear,
       dualGunAttackInterval: Math.max(500, Math.floor(1400 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
       lifeDrain:      char.lifeDrain,
       armor:          char.baseArmor + (upgrades.armor ?? 0),

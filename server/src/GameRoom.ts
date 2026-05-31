@@ -3,6 +3,13 @@ import { ServerSpawner } from './ServerSpawner.js'
 import type { S2CMessage, PlayerSnapshot } from './protocol.js'
 import type { PlayerRunData } from './runSaver.js'
 
+// ─── RUN OBSERVER (temporary, remove after analysis) ────────────────────────
+function obs(tag: string, msg: string) {
+  const t = new Date().toISOString().slice(11, 19)
+  console.log(`[OBS ${t}] [${tag}] ${msg}`)
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const TICK_MS = 50
 const MAX_PLAYERS = 4
 const MAX_DAMAGE_FALLBACK = 200  // used before player upgrades are known
@@ -19,6 +26,7 @@ const ALL_UPGRADE_IDS = [
   'equinox', 'solstice', 'dualGunDamage', 'dualGunSpeed', 'dualGunExtra',
   'echo',
   'ravens', 'ravensCD', 'ravensPower', 'ravensCount',
+  'spear', 'spearCount', 'spearInterval', 'spearPierce', 'spearSpeed', 'spearStorm',
 ] as const
 type UpgradeId = typeof ALL_UPGRADE_IDS[number]
 const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
@@ -30,6 +38,7 @@ const WEAPON_FAMILIES: Record<string, readonly string[]> = {
   lightning: ['lightningTargets', 'lightningCooldown'],
   bloodNova: ['bloodNovaCD'],
   ravens:    ['ravensCD', 'ravensPower', 'ravensCount'],
+  spear:     ['spearCount', 'spearInterval', 'spearPierce'],
   dash:      ['dashCooldown', 'dashDistance'],
   dualGun:   ['dualGunDamage', 'dualGunSpeed', 'dualGunExtra'],
 }
@@ -40,14 +49,14 @@ for (const [family, ids] of Object.entries(WEAPON_FAMILIES)) {
 
 const BASE_WEAPONS = new Set<string>([
   'wand', 'aura', 'orbital', 'boomerang', 'flameTrail',
-  'bloodNova', 'lightning', 'axe', 'equinox', 'solstice', 'ravens',
+  'bloodNova', 'lightning', 'axe', 'equinox', 'solstice', 'ravens', 'spear',
 ])
 const WEAPON_CAP = 6
 
 function countOwnedWeapons(u: PlayerUpgrades): number {
   return [
     u.wand, u.aura, u.orbital > 0, u.boomerang, u.flameTrail,
-    u.bloodNova, u.lightning, u.axe, u.equinox, u.solstice, u.ravens,
+    u.bloodNova, u.lightning, u.axe, u.equinox, u.solstice, u.ravens, u.spear,
   ].filter(Boolean).length
 }
 
@@ -95,6 +104,12 @@ interface PlayerUpgrades {
   ravensCD: number       // 0–3, each -500ms cooldown
   ravensPower: number    // 0–3, each +20% damage
   ravensCount: number    // 0–2, each +2 feathers per set
+  spear: boolean
+  spearCount: number     // 0–5, each +1 spear per burst
+  spearInterval: number  // 0–3, each tighter burst + shorter cooldown
+  spearPierce: number    // 0–2, base 3 pierce + 1 per level
+  spearSpeed: number     // 0–5, each +10% projectile speed (Bracer)
+  spearStorm: boolean    // Thousand Spears evolution
 }
 
 function emptyUpgrades(): PlayerUpgrades {
@@ -106,6 +121,7 @@ function emptyUpgrades(): PlayerUpgrades {
     dashCooldownPicks: 0, dashDistancePicks: 0,
     equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, echo: 0,
     ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
+    spear: false, spearCount: 0, spearInterval: 0, spearPierce: 0, spearSpeed: 0, spearStorm: false,
   }
 }
 
@@ -114,11 +130,13 @@ function emptyUpgrades(): PlayerUpgrades {
 function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
   if (characterType === 'witch')    return { aura: true }
   if (characterType === 'zeus')     return { lightning: true }
-  if (characterType === 'rogue')    return { boomerang: true }
+  if (characterType === 'freyja')   return { boomerang: true }
   if (characterType === 'shade')    return { flameTrail: true }
   if (characterType === 'apollo')   return { wand: true }
   if (characterType === 'hades')    return { aura: true }
   if (characterType === 'chronos')  return { equinox: true, solstice: true }
+  if (characterType === 'odin')     return { ravens: true }
+  if (characterType === 'heimdall') return { spear: true }
   return {}
 }
 
@@ -180,6 +198,19 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'ravensPower'  && u.ravensPower >= 3)    return false
     if (id === 'ravensCount'  && !u.ravens)             return false
     if (id === 'ravensCount'  && u.ravensCount >= 2)    return false
+    if (id === 'spear'          && u.spear)                    return false
+    if (id === 'spearCount'     && !u.spear)                   return false
+    if (id === 'spearCount'     && u.spearCount >= 5)          return false
+    if (id === 'spearInterval'  && !u.spear)                   return false
+    if (id === 'spearInterval'  && u.spearInterval >= 3)       return false
+    if (id === 'spearPierce'    && !u.spear)                   return false
+    if (id === 'spearPierce'    && u.spearPierce >= 2)         return false
+    if (id === 'spearSpeed'     && !u.spear)                   return false
+    if (id === 'spearSpeed'     && u.spearSpeed >= 5)          return false
+    if (id === 'spearStorm'     && !u.spear)                   return false
+    if (id === 'spearStorm'     && u.spearCount < 5)           return false
+    if (id === 'spearStorm'     && u.spearSpeed < 3)           return false
+    if (id === 'spearStorm'     && u.spearStorm)               return false
     return true
   })
 
@@ -288,6 +319,7 @@ export class GameRoom {
     const snaps = this.playerSnapshots()
     for (const p of this.players) {
       this.send(p.ws, { type: 'start', yourId: p.id, players: snaps })
+      obs('START', `${p.username} as ${p.characterType} | Lv${p.level} ${p.xp}xp | ${this.isSolo ? 'solo' : 'multi'}`)
     }
     this.startLoop()
   }
@@ -350,6 +382,7 @@ export class GameRoom {
 
     const died = enemy.takeDamage(safeDamage)
     if (died) {
+      obs('KILL', `${enemy.kind} maxHp=${enemy.maxHp} | xp=${enemy.xpValue} | killer Lv${player?.level ?? '?'} kills=${player?.kills ?? '?'} | elapsed=${Math.round((this.spawner.runElapsed||0)/1000)}s`)
       this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue })
       if (enemy.isBoss) this.broadcast({ type: 'bossHp', bossId: enemyId, hp: 0 })
       if (player) {
@@ -451,12 +484,20 @@ export class GameRoom {
       case 'ravensCD':     u.ravensCD = Math.min(3, u.ravensCD + 1); break
       case 'ravensPower':  u.ravensPower = Math.min(3, u.ravensPower + 1); break
       case 'ravensCount':  u.ravensCount = Math.min(2, u.ravensCount + 1); break
+      case 'spear':         u.spear = true; break
+      case 'spearCount':    u.spearCount = Math.min(5, u.spearCount + 1); break
+      case 'spearInterval': u.spearInterval = Math.min(3, u.spearInterval + 1); break
+      case 'spearPierce':   u.spearPierce = Math.min(2, u.spearPierce + 1); break
+      case 'spearSpeed':    u.spearSpeed = Math.min(5, u.spearSpeed + 1); break
+      case 'spearStorm':    u.spearStorm = true; break
       case 'xpGain':        u.xpGain = Math.min(5, u.xpGain + 1); break
       case 'magnetRange':   u.magnetRange = Math.min(3, u.magnetRange + 1); break
       case 'dashCooldown':  u.dashCooldownPicks = Math.min(4, u.dashCooldownPicks + 1); break
       case 'dashDistance':  u.dashDistancePicks = Math.min(3, u.dashDistancePicks + 1); break
 
     }
+
+    obs('UPGRADE', `Lv${p.level} picked ${upgradeId} | queuedXP=${queuedXP}`)
 
     // Apply XP that arrived while the upgrade screen was open, and re-check for overflow
     if (queuedXP > 0 || p.xp >= xpNeeded(p.level)) {
@@ -488,6 +529,7 @@ export class GameRoom {
       const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares')
       // If no upgrades are eligible (all maxed), level up silently — don't block XP with pendingChoices
       p.pendingChoices = choices.length > 0 ? choices : null
+      obs('LEVEL', `→ Lv${p.level} | gained=${gained} needed=${needed} overflow=${p.xp} nextNeed=${xpNeeded(p.level)} | scale=${xpScale.toFixed(2)} xpGain=${p.upgrades.xpGain}`)
       this.send(p.ws, {
         type: 'levelUp',
         level: p.level,
@@ -496,6 +538,7 @@ export class GameRoom {
         choices,
       })
     } else {
+      obs('XP', `+${gained} (raw=${rawAmount}) → ${p.xp}/${needed} | Lv${p.level} | scale=${xpScale.toFixed(2)} xpGain=${p.upgrades.xpGain}`)
       this.send(p.ws, { type: 'xpGrant', xp: p.xp, xpToNext: needed })
     }
   }
@@ -534,6 +577,7 @@ export class GameRoom {
         case 'equinox':     u.equinox = true; break
         case 'solstice':    u.solstice = true; break
         case 'ravens':      u.ravens = true; break
+        case 'spear':       u.spear = true; break
       }
       this.send(requester.ws, { type: 'adminGrantUpgrade', upgradeId })
     } else {
@@ -590,6 +634,12 @@ export class GameRoom {
       case 'ravensCD':           u.ravensCD = Math.min(3, level); break
       case 'ravensPower':        u.ravensPower = Math.min(3, level); break
       case 'ravensCount':        u.ravensCount = Math.min(2, level); break
+      case 'spear':              u.spear = level >= 1; break
+      case 'spearCount':         u.spearCount = Math.min(5, level); break
+      case 'spearInterval':      u.spearInterval = Math.min(3, level); break
+      case 'spearPierce':        u.spearPierce = Math.min(2, level); break
+      case 'spearSpeed':         u.spearSpeed = Math.min(5, level); break
+      case 'spearStorm':         u.spearStorm = level >= 1; break
     }
 
     this.send(requester.ws, { type: 'adminSetUpgrade', upgradeId, level })
@@ -679,6 +729,7 @@ export class GameRoom {
         + (u.equinox ? 1 : 0)
         + (u.solstice ? 1 : 0)
         + (u.ravens ? 1 : 0)
+        + (u.spear ? 1 : 0)
       return {
         userId: p.userId,
         username: p.username,
@@ -694,6 +745,26 @@ export class GameRoom {
         stage: this.spawner.stage2Mode ? 2 : 1,
       }
     })
+    for (const p of this.players) {
+      const u = p.upgrades
+      const mins = Math.floor(timeSurvived / 60000)
+      const secs = Math.floor((timeSurvived % 60000) / 1000)
+      const upgList = [
+        u.wand&&'wand', u.piercing&&'piercing', u.multiShot>0&&`multiShot${u.multiShot}`,
+        u.orbital>0&&`orbital${u.orbital}`, u.orbSpeed>0&&`orbSpd${u.orbSpeed}`, u.orbPower>0&&`orbPow${u.orbPower}`, u.orbRange>0&&`orbRng${u.orbRange}`,
+        u.boomerang&&'boomerang', u.flameTrail&&'flame', u.bloodNova&&'bloodNova', u.bloodNovaCD>0&&`novaCD${u.bloodNovaCD}`,
+        u.vampiric&&'vampiric', u.lightning&&'lightning', u.lightningTargets>0&&`ltTgt${u.lightningTargets}`, u.lightningCooldown>0&&`ltCD${u.lightningCooldown}`,
+        u.mightPicks>0&&`might${u.mightPicks}`, u.axe&&'axe', u.aura&&'aura', u.auraTick>0&&`auraTick${u.auraTick}`, u.auraRange>0&&`auraRng${u.auraRange}`,
+        u.divineShield&&'shield', u.xpGain>0&&`xpGain${u.xpGain}`, u.magnetRange>0&&`magnet${u.magnetRange}`,
+        u.equinox&&'equinox', u.solstice&&'solstice',
+        u.dualGunDamage>0&&`dualDmg${u.dualGunDamage}`, u.dualGunSpeed>0&&`dualSpd${u.dualGunSpeed}`, u.dualGunExtra>0&&`dualX${u.dualGunExtra}`,
+        u.echo>0&&`echo${u.echo}`, u.ravens&&'ravens', u.ravensCD>0&&`ravenCD${u.ravensCD}`, u.ravensPower>0&&`ravenPow${u.ravensPower}`, u.ravensCount>0&&`ravenCnt${u.ravensCount}`,
+        u.spear&&'spear',
+        u.dashCooldownPicks>0&&`dashCD${u.dashCooldownPicks}`, u.dashDistancePicks>0&&`dashDist${u.dashDistancePicks}`,
+      ].filter(Boolean).join(' ')
+      obs('END', `${won?'WON':'DIED'} | ${p.username} Lv${p.level} ${p.xp}xp | kills=${p.kills} bossKills=${p.bossKills} dmg=${p.damageDealt} | time=${mins}m${secs}s`)
+      obs('END', `upgrades: ${upgList || 'none'}`)
+    }
     this.onGameEnd(results)
   }
 

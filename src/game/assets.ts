@@ -1,5 +1,5 @@
 import player      from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 01-1.png'
-import charRogue   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 05-1.png'
+import charFreyja  from '../assets/Sprites/Characters/freyja_sheet.png'
 import charWitch   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Female/Female 03-1.png'
 import charShade from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 08-1.png'
 import charAres     from '../assets/Sprites/Characters/ares_sheet.png'
@@ -8,6 +8,8 @@ import charPoseidon from '../assets/Sprites/Characters/poseidon_sheet.png'
 import charApollo   from '../assets/Sprites/Characters/apollo_sheet.png'
 import charHades    from '../assets/Sprites/Characters/hades_sheet.png'
 import charChronos  from '../assets/Sprites/Characters/chronos_sheet.png'
+import charOdin     from '../assets/Sprites/Characters/Odin_transparent_clean.png'
+import charHeimdall from '../assets/Sprites/Characters/heimdall_sheet.png'
 import xpOrbSprite from '../assets/Sprites/Items/xp_orb_sprite.png'
 import healthPotionSprite from '../assets/Sprites/Items/health_potion_sprite.png'
 import coinSprite from '../assets/Sprites/Items/coin_sprite.png'
@@ -37,7 +39,8 @@ import enemyKnight    from '../assets/PIPOYA FREE RPG Character Sprites 32x32/En
 import enemyArchfiend from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Enemy/Enemy 17-1.png'
 import boomerangSprite from '../assets/Sprites/Weapons/Boomerang.png'
 import axeSprite from '../assets/Sprites/Weapons/Axe.png'
-import ravensSprite from '../assets/Sprites/Weapons/Odins-ravens-Transparent.png'
+import ravenSprite2 from '../assets/Sprites/Weapons/Raven_transparent2.png'
+import bifrostSpear from '../assets/Sprites/Weapons/Bifrost Spear.png'
 import grassTileset from '../assets/Sprites/Background/Grass1.png'
 import treeSprite from '../assets/Sprites/Background/Tree.png'
 import rockSprite from '../assets/Sprites/Background/Rocks.png'
@@ -45,7 +48,7 @@ import floorStage2 from '../assets/Sprites/Background/Floor_new stage 2.png'
 import wallStage2 from '../assets/Sprites/Background/Wall_new_stage 2.png'
 
 export const SPRITE_URLS = {
-  player, charRogue, charWitch, charShade, charZeus, charAres, charPoseidon, charApollo, charHades, charChronos,
+  player, charFreyja, charWitch, charShade, charZeus, charAres, charPoseidon, charApollo, charHades, charChronos, charOdin, charHeimdall,
   xpOrbSprite, healthPotionSprite, coinSprite,
   enemyBasic,
   enemySpeeder,
@@ -72,7 +75,8 @@ export const SPRITE_URLS = {
   enemyArchfiend,
   boomerangSprite,
   axeSprite,
-  ravensSprite,
+  ravenSprite2,
+  bifrostSpear,
   grassTileset,
   treeSprite,
   rockSprite,

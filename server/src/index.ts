@@ -14,7 +14,7 @@ import { db } from './db.js'
 import { userSockets } from './userSockets.js'
 import type { C2SMessage } from './protocol.js'
 
-const VALID_CHARACTER_TYPES = new Set(['ares', 'rogue', 'witch', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos'])
+const VALID_CHARACTER_TYPES = new Set(['ares', 'freyja', 'witch', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin', 'heimdall'])
 
 const SECRET = process.env.JWT_SECRET!
 

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { CharacterType } from '../game/characters'
+import { CHARACTER_DEFS, type CharacterType } from '../game/characters'
 
 interface CharacterState {
   selectedCharacter: CharacterType
@@ -13,6 +13,14 @@ export const useCharacterStore = create<CharacterState>()(
       selectedCharacter: 'ares',
       setCharacter: (type) => set({ selectedCharacter: type }),
     }),
-    { name: 'gods-character' }
+    {
+      name: 'gods-character',
+      version: 1,
+      migrate: (stored: unknown) => {
+        const s = stored as CharacterState
+        const valid = s?.selectedCharacter && CHARACTER_DEFS[s.selectedCharacter]
+        return { ...s, selectedCharacter: valid ? s.selectedCharacter : 'ares' }
+      },
+    }
   )
 )

@@ -1,10 +1,10 @@
 import Phaser from 'phaser'
 import { SPRITE_URLS } from './assets'
-import { createWalkAnims, createZeusAnims, createApolloAnims, createHadesAnims, createChronosAnims } from './spriteUtils'
+import { createWalkAnims, createZeusAnims, createApolloAnims, createHadesAnims, createChronosAnims, createOdinAnims } from './spriteUtils'
 
 const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight: number; frameRate?: number }> = [
   { key: 'player',         url: SPRITE_URLS.player,       frameWidth: 32, frameHeight: 32 },
-  { key: 'char_rogue',    url: SPRITE_URLS.charRogue,    frameWidth: 32, frameHeight: 32 },
+  { key: 'char_freyja',   url: SPRITE_URLS.charFreyja,   frameWidth: 96, frameHeight: 96 },
   { key: 'char_witch',    url: SPRITE_URLS.charWitch,    frameWidth: 32, frameHeight: 32 },
   { key: 'char_shade',   url: SPRITE_URLS.charShade,   frameWidth: 32, frameHeight: 32 },
   { key: 'char_zeus',    url: SPRITE_URLS.charZeus,    frameWidth: 96, frameHeight: 96 },
@@ -63,12 +63,15 @@ export class PreloadScene extends Phaser.Scene {
     for (const { key, url, frameWidth, frameHeight } of SHEETS) {
       this.load.spritesheet(key, url, { frameWidth, frameHeight })
     }
+    this.load.spritesheet('char_odin', SPRITE_URLS.charOdin, { frameWidth: 300, frameHeight: 384, spacing: 0 })
+    this.load.spritesheet('char_heimdall', SPRITE_URLS.charHeimdall, { frameWidth: 96, frameHeight: 96 })
     this.load.image('xp_orb', SPRITE_URLS.xpOrbSprite)
     this.load.image('health_potion', SPRITE_URLS.healthPotionSprite)
     this.load.image('coin', SPRITE_URLS.coinSprite)
     this.load.image('boomerang', SPRITE_URLS.boomerangSprite)
     this.load.image('axe', SPRITE_URLS.axeSprite)
-    this.load.spritesheet('odins-ravens', SPRITE_URLS.ravensSprite, { frameWidth: 600, frameHeight: 533 })
+    this.load.image('raven', SPRITE_URLS.ravenSprite2)
+    this.load.image('spear_sprite', SPRITE_URLS.bifrostSpear)
     this.load.image('ground_tiles', SPRITE_URLS.grassTileset)
     this.load.image('tree', SPRITE_URLS.treeSprite)
     this.load.spritesheet('rock', SPRITE_URLS.rockSprite, { frameWidth: 512, frameHeight: 512 })
@@ -78,12 +81,14 @@ export class PreloadScene extends Phaser.Scene {
 
   create() {
     for (const { key, frameRate } of SHEETS) {
-      if (key !== 'char_zeus' && key !== 'char_apollo' && key !== 'char_hades' && key !== 'char_chronos') createWalkAnims(this.anims, key, frameRate)
+      if (key !== 'char_zeus' && key !== 'char_apollo' && key !== 'char_hades' && key !== 'char_chronos' && key !== 'char_odin' && key !== 'char_heimdall') createWalkAnims(this.anims, key, frameRate)
     }
     createZeusAnims(this.anims)
     createApolloAnims(this.anims)
     createHadesAnims(this.anims)
     createChronosAnims(this.anims)
+    createOdinAnims(this.anims)
+    createWalkAnims(this.anims, 'char_heimdall')
     this.scene.start('MainScene')
   }
 }

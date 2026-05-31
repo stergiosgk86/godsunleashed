@@ -22,7 +22,7 @@ import { useStageStore } from '../store/stageStore'
 
 const CHAR_SPRITE_URL: Record<string, string> = {
   player:          SPRITE_URLS.player,
-  char_rogue:      SPRITE_URLS.charRogue,
+  char_freyja:     SPRITE_URLS.charFreyja,
   char_witch:      SPRITE_URLS.charWitch,
   char_shade:      SPRITE_URLS.charShade,
   char_zeus:       SPRITE_URLS.charZeus,
@@ -31,6 +31,8 @@ const CHAR_SPRITE_URL: Record<string, string> = {
   char_apollo:     SPRITE_URLS.charApollo,
   char_hades:      SPRITE_URLS.charHades,
   char_chronos:    SPRITE_URLS.charChronos,
+  char_odin:       SPRITE_URLS.charOdin,
+  char_heimdall:   SPRITE_URLS.charHeimdall,
 }
 
 const SCALE = 2
@@ -365,12 +367,32 @@ const COLLECTION_WEAPONS = [
       { id: 'dualGunExtra',  label: 'Solar Barrage',   description: 'Fires one extra staggered burst per gun per volley (stackable, up to 2×)' },
     ],
   },
+  {
+    id: 'ravens', label: "Odin's Ravens", color: '#bb77ff', icon: '🪶',
+    description: 'Two ravens orbit you, unleashing bomb barrages toward a rotating zone circle — feathers pierce all enemies',
+    upgrades: [
+      { id: 'ravensCD',    label: "Raven's Fury",   description: 'Ravens bomb 500ms faster (stackable, up to 3×, down to 2s)' },
+      { id: 'ravensPower', label: "Raven's Curse",  description: 'Each feather deals 20% more damage (stackable, up to 3×)' },
+      { id: 'ravensCount', label: 'Murder of Crows', description: '+2 feathers per bomb set (stackable, up to 2×)' },
+    ],
+  },
+  {
+    id: 'spear', label: 'Bifrost Spear', color: '#00ddff', icon: '◆',
+    description: 'Hurls a glowing lance in the direction you move, piercing up to 3 enemies per throw',
+    upgrades: [
+      { id: 'spearCount',    label: 'Spear Barrage',  description: '+1 spear per burst — all fire in rapid succession (up to 6 total, stackable ×5)' },
+      { id: 'spearInterval', label: 'Spear Tempo',    description: 'Throws erupt faster and burst tighter (stackable ×3)' },
+      { id: 'spearPierce',   label: 'Spear Pierce',   description: '+1 enemy pierced per spear — from 3 up to 5 (stackable ×2)' },
+      { id: 'spearSpeed',    label: 'Bracer',          description: '+10% spear velocity (stackable ×5, required for Thousand Spears)' },
+      { id: 'spearStorm',    label: 'Thousand Spears', description: 'Evolution — transforms the burst into a never-ending torrent of lances. Requires max Barrage + Bracer ×3.' },
+    ],
+  },
 ] as const
 
 const COLLECTION_PASSIVES = [
   { id: 'might',       label: 'Power',        color: '#ff6644', icon: '▲', description: '+10% weapon damage (stackable)' },
   { id: 'vampiric',    label: 'Soul Drain',   color: '#cc3355', icon: '♥', description: 'Each hit restores 0.25% of damage dealt as HP (scales well with fast weapons)' },
-  { id: 'echo',        label: 'Echo',         color: '#aaddff', icon: '≋', description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, sunrays, and Thunder Strike all gain an extra strike (stackable, up to 2×)' },
+  { id: 'echo',        label: 'Echo',         color: '#aaddff', icon: '≋', description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, sunrays, spear, and Thunder Strike all gain an extra strike (stackable, up to 2×)' },
   { id: 'xpGain',      label: 'Gilded Soul',  color: '#ffcc33', icon: '★', description: '+8% XP gained from all sources (stackable, up to 5×)' },
   { id: 'magnetRange', label: 'Astral Pull',  color: '#66ccff', icon: '◎', description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },
   { id: 'dashCooldown',label: 'Swift Dash',   color: '#88aaff', icon: '→', description: '25% shorter dash cooldown' },
@@ -1264,6 +1286,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                     borderColor: 'rgba(100,80,220,0.5)',
                     boxShadow: '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
                     flexShrink: 0,
+                    position: 'sticky', bottom: 0,
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(30,30,160,0.95) 0%, rgba(70,30,140,0.95) 100%)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(70,40,200,0.55), inset 0 1px 0 rgba(255,255,255,0.1)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)' }}
@@ -1403,6 +1426,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                           type="button"
                           onClick={() => setViewRaw('stageSelect')}
                           style={{
+                            marginTop: 'auto',
                             width: '100%', padding: '13px 0', fontSize: 15,
                             fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 2,
                             border: '1px solid rgba(100,80,220,0.5)', borderRadius: 10, cursor: 'pointer',
