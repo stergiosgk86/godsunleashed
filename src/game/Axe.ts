@@ -1,8 +1,6 @@
 import Phaser from 'phaser'
 
 const GRAVITY    = 780  // px/s²
-const LAUNCH_VY  = -580 // upward
-const SPEED_X    = 240  // horizontal — fast enough to visibly arc across the screen
 const LAND_BELOW = 400  // px below launch before destroying
 const BASE_HIT_R = 20
 
@@ -27,12 +25,12 @@ export class Axe {
     return this.peaked ? this.hitTargetsDown : this.hitTargetsUp
   }
 
-  constructor(scene: Phaser.Scene, x: number, y: number, dirX: number, pierceLevel = 0) {
+  constructor(scene: Phaser.Scene, x: number, y: number, launchVx: number, launchVy: number, pierceLevel = 0) {
     this.x = x
     this.y = y
     this.startY = y
-    this.vx = dirX * SPEED_X
-    this.vy = LAUNCH_VY
+    this.vx = launchVx
+    this.vy = launchVy
     this._hitRadius = BASE_HIT_R + pierceLevel * 10
     this.image = scene.add.image(x, y, 'axe').setDepth(4).setScale(0.0625 + pierceLevel * 0.03125)
   }

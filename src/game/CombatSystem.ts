@@ -25,7 +25,11 @@ const BOOMERANG_INTERVAL = 3000
 const SPEAR_BASE_CD = 700         // ms base cooldown between volleys
 const SPEAR_STORM_INTERVAL = 60   // ms per spear in Thousand Spears mode
 const WEAPON_STAGGER = 65         // ms between adjacent projectiles in a staggered volley
-const AXE_STAGGER   = 200        // ms between axes in a throw — matches VS (0.2s interval)
+const AXE_STAGGER      = 200           // ms between axes in a throw — matches VS (0.2s interval)
+const AXE_SPEED_MAG    = 628           // px/s launch speed (≈ sqrt(240²+580²), same total energy)
+const AXE_BASE_ANGLE   = 10 * Math.PI / 180  // first axe: 10° from straight up
+const AXE_ANGLE_STEP   = 20 * Math.PI / 180  // each extra axe fans 20° further toward facing
+const AXE_ANGLE_MAX    = 75 * Math.PI / 180  // cap so even the widest axe still arcs upward
 const SPEAR_PERP_GAP = 15         // px perpendicular spacing between spears
 const SPEAR_SPEED = 680
 const SPEAR_HIT_R = 12
@@ -122,7 +126,7 @@ export class CombatSystem {
   private axes: Axe[] = []
   private axeTimer = 0
   private axeDir = 1
-  private axeQueue: Array<{ delay: number; yOff: number; dirX: number }> = []
+  private axeQueue: Array<{ delay: number; vx: number; vy: number }> = []
   private berserkerRing: BerserkerRing | null = null
   // Flame Trail
   private flamePools: FlamePool[] = []
@@ -983,25 +987,22 @@ export class CombatSystem {
       this.axeTimer += delta
       if (this.axeTimer >= AXE_INTERVAL) {
         this.axeTimer = 0
-        const target = this.findNearest(playerX, playerY, enemies)
-        const dirX = target ? Math.sign(target.x - playerX) || this.axeDir : this.axeDir
-        this.axeDir = -dirX
+        // Use player facing direction — update stored dir only when there is horizontal movement
+        if (this.facingVx !== 0) this.axeDir = this.facingVx > 0 ? 1 : -1
+        const dirX = this.axeDir
         const axeCount = 1 + axeAmount + echo
-        const yOffs: number[] = []
-        for (let ei = 0; ei < axeCount; ei++) yOffs.push((ei - (axeCount - 1) / 2) * 24)
-        for (let i = yOffs.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1))
-          ;[yOffs[i], yOffs[j]] = [yOffs[j], yOffs[i]]
+        for (let i = 0; i < axeCount; i++) {
+          const angle = Math.min(AXE_BASE_ANGLE + i * AXE_ANGLE_STEP, AXE_ANGLE_MAX)
+          const vx = Math.sin(angle) * dirX * AXE_SPEED_MAG
+          const vy = -Math.cos(angle) * AXE_SPEED_MAG
+          this.axeQueue.push({ delay: i * AXE_STAGGER, vx, vy })
         }
-        yOffs.forEach((yOff, s) =>
-          this.axeQueue.push({ delay: s * AXE_STAGGER, yOff, dirX })
-        )
       }
       for (let q = this.axeQueue.length - 1; q >= 0; q--) {
         this.axeQueue[q].delay -= delta
         if (this.axeQueue[q].delay <= 0) {
-          const { yOff, dirX } = this.axeQueue[q]
-          this.axes.push(new Axe(this.scene, playerX, playerY + yOff, dirX, axePierce))
+          const { vx, vy } = this.axeQueue[q]
+          this.axes.push(new Axe(this.scene, playerX, playerY, vx, vy, axePierce))
           soundSystem.shootAxe()
           this.axeQueue.splice(q, 1)
         }
