@@ -269,7 +269,7 @@ function UpgradeCard({ label, description, mobile, current, max, onClick }: {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, marginTop: 4 }}>
           {max > 1 && (
             <span style={{ fontSize: 10, color: '#ffdd44', letterSpacing: 2, fontFamily: 'monospace' }}>
-              LV. {current + 1} / {max}
+              LV. {Math.min(current + 1, max)} / {max}
             </span>
           )}
           <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
