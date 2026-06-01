@@ -247,7 +247,6 @@ const WEAPON_UPGRADE_GROUPS: WeaponGroup[] = [
     items: [
       { id: 'meleeDamage', label: 'Blade Mastery', max: 4 },
       { id: 'meleeRange',  label: 'Iron Reach',    max: 4 },
-      { id: 'meleeArc',    label: 'Rear Strike',   max: 1 },
       { id: 'meleeSpeed',  label: 'Battle Fury',   max: 4 },
     ],
   },
@@ -301,7 +300,6 @@ function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getSta
     case 'dashCooldown':      return Math.round(Math.log(s.dashCooldown / DASH_COOLDOWN_MS) / Math.log(0.75))
     case 'dashDistance':      return Math.round((s.dashDistance - 1) / 0.4)
     case 'meleeRange':        return s.meleeRange ?? 0
-    case 'meleeArc':          return s.meleeArc ?? 0
     case 'meleeSpeed':        return s.meleeSpeed ?? 0
     case 'meleeDamage':       return s.meleeDamage ?? 0
     default:                  return 0

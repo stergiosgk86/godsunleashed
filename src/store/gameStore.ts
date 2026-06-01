@@ -4,7 +4,7 @@ import { useProfileStore } from './profileStore'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'axeAmount' | 'axeDamage' | 'axePierce' | 'axeEvolution' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo' | 'ravens' | 'ravensCD' | 'ravensPower' | 'ravensCount' | 'spear' | 'spearCount' | 'spearInterval' | 'spearPierce' | 'spearSpeed' | 'spearStorm' | 'meleeRange' | 'meleeArc' | 'meleeSpeed' | 'meleeDamage'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'axeAmount' | 'axeDamage' | 'axePierce' | 'axeEvolution' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo' | 'ravens' | 'ravensCD' | 'ravensPower' | 'ravensCount' | 'spear' | 'spearCount' | 'spearInterval' | 'spearPierce' | 'spearSpeed' | 'spearStorm' | 'meleeRange' | 'meleeSpeed' | 'meleeDamage'
 
 export type AdminSpawnEntity =
   | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'

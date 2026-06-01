@@ -3,6 +3,7 @@ import Phaser from 'phaser'
 export type OrbTier = 'green' | 'blue' | 'gold'
 
 const BASE_ATTRACT_RADIUS = 100
+const MAGNET_RADII = [100, 150, 225, 650]
 const ATTRACT_SPEED = 320
 const COLLECT_RADIUS = 52
 const UNCOLLECTABLE_MS = 350
@@ -92,7 +93,7 @@ export class XPOrb {
     const dx = playerX - this.x
     const dy = playerY - this.y
     const dist = Math.sqrt(dx * dx + dy * dy)
-    const attractRadius = BASE_ATTRACT_RADIUS * Math.pow(1.5, magnetRange)
+    const attractRadius = MAGNET_RADII[magnetRange] ?? BASE_ATTRACT_RADIUS
 
     const canCollect = this.time >= UNCOLLECTABLE_MS
 

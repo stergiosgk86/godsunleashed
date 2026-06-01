@@ -309,7 +309,6 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
     unlockKey: null, unlockHint: null,
     upgrades: [
       { id: 'meleeRange',  label: 'Iron Reach',   description: 'Melee arc extends 25% further (stackable, up to ×4)' },
-      { id: 'meleeArc',    label: 'Rear Strike',  description: 'Strikes behind you 100ms after the front arc' },
       { id: 'meleeSpeed',  label: 'Battle Fury',  description: 'Melee strikes 15% faster (stackable, up to ×4)' },
       { id: 'meleeDamage', label: 'Blade Mastery', description: '+20% melee arc damage (stackable, up to ×4)' },
     ],
