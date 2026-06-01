@@ -312,7 +312,7 @@ function LeftPanel() {
           {multiShot > 0   && <WeaponChip label="MULTI SHOT"  detail={`×${multiShot + 1}`}          color="#88aaff" />}
           {piercing         && <WeaponChip label="PIERCING"                                          color="#44ccff" />}
           {lightning        && <WeaponChip label="THUNDER STRIKE"                                    color="#ddee44" />}
-          {axe              && <WeaponChip label={axeEvolutionHud ? "BERSERKER'S RING" : "WAR AXE"} detail={!axeEvolutionHud && axeAmountHud > 0 ? '×2' : undefined} color="#ffaa44" />}
+          {axe              && <WeaponChip label={axeEvolutionHud ? "BERSERKER'S RING" : "MJÖLNIR"} detail={!axeEvolutionHud && axeAmountHud > 0 ? '×2' : undefined} color="#ffaa44" />}
           {aura > 0         && <WeaponChip label="AURA"        detail={`${'●'.repeat(Math.min(aura, 5))}${aura > 5 ? `+${aura - 5}` : ''}`} color="#aa55ff" />}
           {orbital > 0      && <WeaponChip label="SPIRIT ORB"  detail={`×${orbital}`}               color="#cc88ff" />}
           {boomerang         && <WeaponChip label="BOOMERANG"                                        color="#ffcc44" />}

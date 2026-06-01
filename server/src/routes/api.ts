@@ -55,7 +55,7 @@ const MAX_UPGRADE_RANK = 5
 const VALID_UPGRADE_KEYS = new Set(['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed', 'armor', 'attackSpeed'])
 
 // Characters that require coins to unlock (others are free)
-const CHARACTER_UNLOCK_COSTS: Record<string, number> = { freyja: 100, heimdall: 150, shade: 300, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500, odin: 2000 }
+const CHARACTER_UNLOCK_COSTS: Record<string, number> = { freyja: 100, heimdall: 150, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500, odin: 2000, thor: 2500 }
 // Characters unlocked automatically when a specific achievement is earned
 const ACHIEVEMENT_CHARACTER_UNLOCKS: Record<string, string> = { transcendent: 'hades' }
 const LOCKABLE_CHARACTERS = new Set([...Object.keys(CHARACTER_UNLOCK_COSTS), ...Object.values(ACHIEVEMENT_CHARACTER_UNLOCKS)])

@@ -1,4 +1,4 @@
-export type CharacterType = 'ares' | 'freyja' | 'shade' | 'zeus' | 'poseidon' | 'apollo' | 'hades' | 'chronos' | 'odin' | 'heimdall'
+export type CharacterType = 'ares' | 'freyja' | 'zeus' | 'poseidon' | 'apollo' | 'hades' | 'chronos' | 'odin' | 'heimdall' | 'thor'
 
 export interface CharacterDef {
   id: CharacterType
@@ -28,6 +28,7 @@ export interface CharacterDef {
   startSolstice: boolean
   startRavens: boolean
   startSpear: boolean
+  startAxe: boolean
   // Only fires at enemies within a ~140° arc in the facing direction
   frontArcOnly: boolean
   // In-game sprite scale (default 1.5 for 32×32 sprites)
@@ -56,7 +57,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 50, baseArmor: 1, mightMult: 1.5, bonusMoveSpeed: 30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: true,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, startAxe: false, frontArcOnly: true,
     scale: 1.0,
   },
   freyja: {
@@ -72,26 +73,9 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 0, baseArmor: 0, mightMult: 1.2, bonusMoveSpeed: 10,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.2, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: true,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, startAxe: false, frontArcOnly: false,
     scale: 0.75,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
-  },
-  shade: {
-    id: 'shade', name: 'Shade', trait: 'Cursed Ground',
-    description: 'Leaves a burning trail as they move. Heals on kills. Durable but less damage.',
-    spriteKey: 'char_shade', color: '#ff7722',
-    statLines: [
-      { label: 'Weapon: Flame Trail',  positive: true  },
-      { label: '+60 Max HP',           positive: true  },
-      { label: '2 Armor',              positive: true  },
-      { label: '+2 HP per kill',       positive: true  },
-      { label: '-15% Might',           positive: false },
-    ],
-    bonusMaxHp: 60, baseArmor: 2, mightMult: 0.85, bonusMoveSpeed: 0,
-    attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
-    bonusHpRegen: 0, startAura: 0, lifeDrain: 2, startLightning: false, startBoomerang: false,
-    startFlameTrail: true, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: false,
-    scale: 1.5,
   },
   zeus: {
     id: 'zeus', name: 'Zeus', trait: 'Storm Lord',
@@ -107,7 +91,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 10, baseArmor: 0, mightMult: 1.4, bonusMoveSpeed: -40,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.3, startAura: 0, lifeDrain: 0, startLightning: true, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, startAxe: false, frontArcOnly: false,
     scale: 0.8,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 768 },
   },
@@ -125,7 +109,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 25, baseArmor: 1, mightMult: 1.15, bonusMoveSpeed: -30,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 1, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 1, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, startAxe: false, frontArcOnly: false,
     scale: 0.9,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
   },
@@ -144,7 +128,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 10, baseArmor: 0, mightMult: 1.2, bonusMoveSpeed: -10,
     attackIntervalMult: 0.8, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.15, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: true, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: true, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, startAxe: false, frontArcOnly: false,
     scale: 0.75,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
     menuRow: 1,
@@ -164,7 +148,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 80, baseArmor: 3, mightMult: 1.3, bonusMoveSpeed: -50,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 1, lifeDrain: 4, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, startAxe: false, frontArcOnly: false,
     scale: 0.75,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
     menuRow: 1,
@@ -183,7 +167,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 0, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: 15,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.2, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: true, startSolstice: true, startRavens: false, startSpear: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: true, startSolstice: true, startRavens: false, startSpear: false, startAxe: false, frontArcOnly: false,
     scale: 0.65,
     menuFrame: { fw: 80, fh: 80, sw: 240, sh: 320 },
     menuRow: 1,
@@ -203,7 +187,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 20, baseArmor: 1, mightMult: 1.25, bonusMoveSpeed: -20,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0.2, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: true, startSpear: false, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: true, startSpear: false, startAxe: false, frontArcOnly: false,
     scale: 0.19,
     menuFrame: { fw: 60, fh: 80, sw: 180, sh: 320 },
     menuRow: 1,
@@ -221,10 +205,27 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     bonusMaxHp: 0, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: 15,
     attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
     bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: true, frontArcOnly: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: true, startAxe: false, frontArcOnly: false,
     scale: 0.75,
+    menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
+  },
+  thor: {
+    id: 'thor', name: 'Thor', trait: 'God of Thunder',
+    description: 'Son of Odin. Hurls the legendary Mjölnir in a thunderous arc — strikes enemies both on ascent and return. Formidable strength and resilience.',
+    spriteKey: 'char_thor', color: '#5599ff',
+    statLines: [
+      { label: 'Weapon: Mjölnir',   positive: true  },
+      { label: '+35% Might',        positive: true  },
+      { label: '+30 Max HP',        positive: true  },
+      { label: '1 Armor',           positive: true  },
+    ],
+    bonusMaxHp: 30, baseArmor: 1, mightMult: 1.35, bonusMoveSpeed: 0,
+    attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
+    bonusHpRegen: 0, startAura: 0, lifeDrain: 0, startLightning: false, startBoomerang: false,
+    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, startAxe: true, frontArcOnly: false,
+    scale: 0.2,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
   },
 }
 
-export const ALL_CHARACTERS: CharacterType[] = ['ares', 'freyja', 'heimdall', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin']
+export const ALL_CHARACTERS: CharacterType[] = ['ares', 'freyja', 'heimdall', 'thor', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin']

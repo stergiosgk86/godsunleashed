@@ -64,7 +64,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'char_ares_5',      name: "War's Trial",         description: 'Survive 5 minutes as Ares',      icon: '◇' },
   { id: 'char_freyja_5',    name: "Seiðr's Trial",       description: 'Survive 5 minutes as Freyja',    icon: '◇' },
   { id: 'char_heimdall_5',  name: "Warden's Trial",      description: 'Survive 5 minutes as Heimdall',  icon: '◇' },
-  { id: 'char_shade_5',     name: "Shadow's Trial",      description: 'Survive 5 minutes as Shade',     icon: '◇' },
+  { id: 'char_thor_5',      name: "Thunder's Trial",     description: 'Survive 5 minutes as Thor',      icon: '◇' },
   { id: 'char_poseidon_5',  name: "Trident's Trial",     description: 'Survive 5 minutes as Poseidon',  icon: '◇' },
   { id: 'char_apollo_5',    name: 'Solar Trial',         description: 'Survive 5 minutes as Apollo',    icon: '◇' },
   { id: 'char_zeus_5',      name: "Storm's Trial",       description: 'Survive 5 minutes as Zeus',      icon: '◇' },
@@ -75,7 +75,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'char_ares_15',     name: "War's Fury",          description: 'Survive 15 minutes as Ares',     icon: '◆' },
   { id: 'char_freyja_15',   name: "Seiðr's Power",       description: 'Survive 15 minutes as Freyja',   icon: '◆' },
   { id: 'char_heimdall_15', name: "Warden's Watch",      description: 'Survive 15 minutes as Heimdall', icon: '◆' },
-  { id: 'char_shade_15',    name: "Shadow's Curse",      description: 'Survive 15 minutes as Shade',    icon: '◆' },
+  { id: 'char_thor_15',     name: "Thunder's Fury",      description: 'Survive 15 minutes as Thor',     icon: '◆' },
   { id: 'char_poseidon_15', name: "Trident's Fury",      description: 'Survive 15 minutes as Poseidon', icon: '◆' },
   { id: 'char_apollo_15',   name: 'Solar Path',          description: 'Survive 15 minutes as Apollo',   icon: '◆' },
   { id: 'char_zeus_15',     name: "Storm Lord's Path",   description: 'Survive 15 minutes as Zeus',     icon: '◆' },
@@ -89,6 +89,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'char_chronos_30',  name: 'Master of Time',      description: 'Survive 30 minutes as Chronos',  icon: '✦' },
   { id: 'char_odin_30',     name: "Allfather's Wisdom",  description: 'Survive 30 minutes as Odin',     icon: '✦' },
   { id: 'char_hades_30',    name: 'Lord of the Dead',    description: 'Survive 30 minutes as Hades',    icon: '✦' },
+  { id: 'char_thor_30',    name: "Mjölnir's Reign",     description: 'Survive 30 minutes as Thor',     icon: '✦' },
 ]
 
 export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = [
@@ -107,7 +108,7 @@ export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = [
       'char_ares_5',     'char_ares_15',
       'char_freyja_5',   'char_freyja_15',
       'char_heimdall_5', 'char_heimdall_15',
-      'char_shade_5',    'char_shade_15',
+      'char_thor_5',     'char_thor_15',     'char_thor_30',
       'char_poseidon_5', 'char_poseidon_15', 'char_poseidon_30',
       'char_apollo_5',   'char_apollo_15',   'char_apollo_30',
       'char_zeus_5',     'char_zeus_15',     'char_zeus_30',

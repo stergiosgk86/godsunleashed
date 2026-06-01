@@ -59,7 +59,7 @@ function computeNewWeaponUnlocks(data: PlayerRunData, already: Set<string>): str
   return earned
 }
 
-const CHAR_30_MIN_SET = new Set(['poseidon', 'apollo', 'zeus', 'chronos', 'odin', 'hades'])
+const CHAR_30_MIN_SET = new Set(['poseidon', 'apollo', 'zeus', 'chronos', 'odin', 'hades', 'thor'])
 
 // Validates, computes score and achievements, saves run + credits coins to profile.
 // Returns newly unlocked achievement IDs and weapon group keys.

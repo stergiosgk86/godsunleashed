@@ -181,13 +181,13 @@ function emptyUpgrades(): PlayerUpgrades {
 function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
   if (characterType === 'zeus')     return { lightning: true }
   if (characterType === 'freyja')   return { boomerang: true }
-  if (characterType === 'shade')    return { flameTrail: true }
-  if (characterType === 'apollo')   return { wand: true }
+if (characterType === 'apollo')   return { wand: true }
   if (characterType === 'hades')    return { aura: true }
   if (characterType === 'chronos')  return { equinox: true, solstice: true }
   if (characterType === 'odin')     return { ravens: true }
   if (characterType === 'heimdall') return { spear: true }
   if (characterType === 'ares')    return { meleeArc: 1 }
+  if (characterType === 'thor')    return { axe: true }
   return {}
 }
 

@@ -23,7 +23,6 @@ import { useStageStore } from '../store/stageStore'
 const CHAR_SPRITE_URL: Record<string, string> = {
   player:          SPRITE_URLS.player,
   char_freyja:     SPRITE_URLS.charFreyja,
-  char_shade:      SPRITE_URLS.charShade,
   char_zeus:       SPRITE_URLS.charZeus,
   char_ares:       SPRITE_URLS.charAres,
   char_poseidon:   SPRITE_URLS.charPoseidon,
@@ -32,6 +31,7 @@ const CHAR_SPRITE_URL: Record<string, string> = {
   char_chronos:    SPRITE_URLS.charChronos,
   char_odin:       SPRITE_URLS.charOdin,
   char_heimdall:   SPRITE_URLS.charHeimdall,
+  char_thor:       SPRITE_URLS.charThor,
 }
 
 const SCALE = 2
@@ -372,13 +372,13 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
     ],
   },
   {
-    id: 'axe', label: 'War Axe', color: '#dd8844', icon: '🪓',
-    description: 'Hurls a spinning axe in an arc — hits on the way up and again on the way down',
+    id: 'axe', label: 'Mjölnir', color: '#dd8844', icon: '🪓',
+    description: 'Hurls the legendary Mjölnir in an arc — strikes enemies on the way up and again on the return',
     unlockKey: 'axe', unlockHint: 'Reach Level 20 in any run',
     upgrades: [
-      { id: 'axeAmount',    label: 'Double Axe',  description: '+1 axe per volley — two axes arc simultaneously through enemy formations' },
-      { id: 'axeDamage',    label: 'Axe Mastery', description: '+50% axe damage — each throw cleaves harder through armored foes' },
-      { id: 'axePierce',    label: 'Broad Edge',  description: 'Axes grow larger (+50% hit radius), cleaving through wider enemy formations' },
+      { id: 'axeAmount',    label: 'Double Throw',    description: '+1 Mjölnir per volley — two hammers arc simultaneously through enemy formations' },
+      { id: 'axeDamage',    label: 'Mjölnir Mastery', description: '+50% Mjölnir damage — each throw strikes harder through armored foes' },
+      { id: 'axePierce',    label: 'Broad Impact',    description: 'Mjölnir grows larger (+50% hit radius), cleaving through wider enemy formations' },
       { id: 'axeEvolution', label: "Berserker's Ring", description: "Evolution — a ring of 6 orbiting axes shreds every enemy in their path. Requires all 3 axe upgrades." },
     ],
   },

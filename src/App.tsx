@@ -170,6 +170,7 @@ function App() {
       solstice:       char.startSolstice,
       ravens:         char.startRavens,
       spear:          char.startSpear,
+      axe:            char.startAxe,
       dualGunAttackInterval: Math.max(500, Math.floor(1400 * char.attackIntervalMult * Math.pow(0.95, upgrades.attackSpeed))),
       lifeDrain:      char.lifeDrain,
       armor:          char.baseArmor + (upgrades.armor ?? 0),

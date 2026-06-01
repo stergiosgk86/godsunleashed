@@ -34,7 +34,7 @@ export class Axe {
     this.vx = dirX * SPEED_X
     this.vy = LAUNCH_VY
     this._hitRadius = BASE_HIT_R + pierceLevel * 10
-    this.image = scene.add.image(x, y, 'axe').setDepth(4).setScale(0.5 + pierceLevel * 0.25)
+    this.image = scene.add.image(x, y, 'axe').setDepth(4).setScale(0.0625 + pierceLevel * 0.03125)
   }
 
   update(delta: number) {
@@ -62,11 +62,11 @@ const DS_SPEED_PX        = 88            // px/s — slow travel so axes linger 
 const DS_HIT_R           = 30            // base collision radius per axe (large)
 const DS_PIERCE_BONUS    = 8             // extra hitRadius per pierce upgrade level
 const DS_LIFETIME        = 5000          // ms before axe despawns (~440 px at full speed)
-const DS_AXES_PER_CIRCLE = 8             // axes per burst (one full 360° sweep)
-const DS_FIRE_MS         = 150           // ms between axes within a burst
-const DS_COOLDOWN_MS     = 1400          // ms pause after completing one circle
+const DS_AXES_PER_CIRCLE = 9             // axes per burst — matches VS Death Spiral base count
+const DS_FIRE_MS         = 50            // ms between axes within a burst (VS uses 0.05s)
+const DS_COOLDOWN_MS     = 3500          // ms pause after completing one circle (VS uses 4.0s)
 const DS_SELF_SPIN       = 7.0           // rad/s spin on own axis
-const DS_ANGLE_STEP      = Math.PI / 4   // 45° per shot → 8 shots = full circle
+const DS_ANGLE_STEP      = Math.PI * 2 / 9  // 40° per shot → 9 shots = full circle
 
 class DeathSpiralAxe {
   x: number
@@ -86,7 +86,7 @@ class DeathSpiralAxe {
     this.vy = Math.sin(angle) * DS_SPEED_PX
     this.image = scene.add.image(x, y, 'axe')
       .setDepth(4)
-      .setScale(0.45 + pierceLevel * 0.10)
+      .setScale(0.05625 + pierceLevel * 0.0125)
       .setAlpha(0.92)
   }
 

@@ -22,7 +22,7 @@ function emptyUpgrades(): MetaUpgrades {
 }
 
 // Characters that cost coins — must match server CHARACTER_UNLOCK_COSTS
-export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { freyja: 100, heimdall: 150, shade: 300, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500, odin: 2000 }
+export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { freyja: 100, heimdall: 150, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500, odin: 2000, thor: 2500 }
 // Characters unlocked by earning a specific achievement — must match server ACHIEVEMENT_CHARACTER_UNLOCKS
 export const CHARACTER_ACHIEVEMENT_REQUIRED: Partial<Record<string, string>> = { hades: 'transcendent' }
 

@@ -14,7 +14,7 @@ import { db } from './db.js'
 import { userSockets, superAdminUserIds, notifySuperAdmins } from './userSockets.js'
 import type { C2SMessage } from './protocol.js'
 
-const VALID_CHARACTER_TYPES = new Set(['ares', 'freyja', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin', 'heimdall'])
+const VALID_CHARACTER_TYPES = new Set(['ares', 'freyja', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin', 'heimdall', 'thor'])
 
 const SECRET = process.env.JWT_SECRET!
 
