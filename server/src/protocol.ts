@@ -64,4 +64,6 @@ export type S2CMessage =
   | { type: 'adminSetUpgrade'; upgradeId: string; level: number }
   | { type: 'adminClearUpgrades' }
   | { type: 'roleChanged'; role: string }
-  | { type: 'playerOnline'; username: string }
+  | { type: 'playerOnline'; username: string; userId: number }
+  | { type: 'playerOffline'; userId: number }
+  | { type: 'playerProfileUpdate'; userId: number; coins: number; upgrades: Record<string, number> | null; last_active: string | null; unlocked_stages: number[] | null; role: string | null }

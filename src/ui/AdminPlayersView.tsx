@@ -11,6 +11,7 @@ export interface PlayerRow {
   upgrades: Record<string, number> | null
   last_active: string | null
   unlocked_stages: number[] | null
+  online?: boolean
 }
 
 const UPGRADE_KEYS = ['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed'] as const
@@ -531,7 +532,6 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const myId = useAuthStore(s => s.userId)
   const myRole = useAuthStore(s => s.role)
   const fetchProfile = useProfileStore(s => s.fetchProfile)
-  const [players, setPlayers] = useState<PlayerRow[]>([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [hoveredRow, setHoveredRow] = useState<number | null>(null)
@@ -556,10 +556,18 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
     toastTimer.current = setTimeout(() => setToast(null), 2500)
   }
 
+  const onlineUserIds = useAuthStore(s => s.onlineUserIds)
+  const playerOnlineAt = useAuthStore(s => s.playerOnlineAt)
+  const players = useAuthStore(s => s.adminPlayerRows)
+
   useEffect(() => {
     fetch('/api/admin/players', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
-      .then((d: { players: PlayerRow[] }) => { setPlayers(d.players); setLoading(false) })
+      .then((d: { players: PlayerRow[] }) => {
+        useAuthStore.getState().setAdminPlayerRows(d.players)
+        setLoading(false)
+        useAuthStore.getState().seedOnlineUsers(d.players.filter(p => p.online).map(p => p.id))
+      })
       .catch(() => { setFetchError('Failed to load'); setLoading(false) })
   }, [token])
 
@@ -574,9 +582,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setPlayers(prev => prev.map(row =>
-        row.id === p.id ? { ...row, coins: data.coins } : row
-      ))
+      useAuthStore.getState().patchAdminPlayerRow(p.id, { coins: data.coins })
       if (p.id === myId) void fetchProfile()
       showToast(`+${amount} coins granted to ${p.username ?? `#${p.id}`}`, '#ffcc44')
     } catch {
@@ -613,9 +619,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       })
       if (!res.ok) throw new Error()
       const emptyUpgrades = Object.fromEntries(UPGRADE_KEYS.map(k => [k, 0]))
-      setPlayers(prev => prev.map(row =>
-        row.id === p.id ? { ...row, coins: 0, upgrades: emptyUpgrades } : row
-      ))
+      useAuthStore.getState().patchAdminPlayerRow(p.id, { coins: 0, upgrades: emptyUpgrades })
       if (p.id === myId) void fetchProfile()
       showToast(`${p.username ?? `#${p.id}`} has been reset`, '#ffcc44')
     } catch {
@@ -635,11 +639,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       })
       if (!res.ok) throw new Error()
       const emptyUpgrades = Object.fromEntries(UPGRADE_KEYS.map(k => [k, 0]))
-      setPlayers(prev => prev.map(row =>
-        row.id === p.id
-          ? { ...row, coins: 0, upgrades: emptyUpgrades, unlocked_stages: [] }
-          : row
-      ))
+      useAuthStore.getState().patchAdminPlayerRow(p.id, { coins: 0, upgrades: emptyUpgrades, unlocked_stages: [] })
       if (p.id === myId) void fetchProfile()
       showToast(`Full reset done for ${p.username ?? `#${p.id}`}`, '#ff8866')
     } catch {
@@ -661,9 +661,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setPlayers(prev => prev.map(row =>
-        row.id === p.id ? { ...row, role: data.role } : row
-      ))
+      useAuthStore.getState().patchAdminPlayerRow(p.id, { role: data.role })
       showToast(
         grant ? `${p.username ?? `#${p.id}`} is now an admin` : `Admin revoked from ${p.username ?? `#${p.id}`}`,
         grant ? '#88ff88' : '#ffaa44',
@@ -686,9 +684,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
       const updatedStages: number[] = data.unlocked_stages ?? []
-      setPlayers(prev => prev.map(row =>
-        row.id === p.id ? { ...row, unlocked_stages: updatedStages } : row
-      ))
+      useAuthStore.getState().patchAdminPlayerRow(p.id, { unlocked_stages: updatedStages })
       setStageTarget(prev => prev?.id === p.id ? { ...prev, unlocked_stages: updatedStages } : prev)
       showToast(
         unlock
@@ -705,6 +701,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
 
   return (
     <div style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0, overflowY: 'auto' }}>
+      <style>{`@keyframes online-pulse { 0%,100%{opacity:1;box-shadow:0 0 6px #44ff88} 50%{opacity:.4;box-shadow:0 0 2px #44ff88} }`}</style>
       {toast && (
         <div style={{
           position: 'absolute', top: -8, left: '50%', transform: 'translateX(-50%)',
@@ -809,6 +806,14 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                 >
                   <td style={{ ...tdStyle, textAlign: 'left', color: '#555577' }}>{p.id}</td>
                   <td style={{ ...tdStyle, textAlign: 'left', color: '#aaaaff' }}>
+                    {onlineUserIds.has(p.id) && (
+                      <span style={{
+                        display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                        background: '#44ff88', marginRight: 6, verticalAlign: 'middle',
+                        boxShadow: '0 0 6px #44ff88',
+                        animation: 'online-pulse 1.6s ease-in-out infinite',
+                      }} />
+                    )}
                     {p.username ?? '—'}
                     {p.role === 'admin' && (
                       <span style={{
@@ -835,7 +840,11 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                     )
                   })}
                   <td style={{ ...tdStyle, color: '#555577', fontSize: 11 }}>
-                    {p.last_active ? formatLastActive(p.last_active) : '—'}
+                    {(() => {
+                      const liveAt = playerOnlineAt[p.id]
+                      const iso = liveAt && (!p.last_active || liveAt > p.last_active) ? liveAt : p.last_active
+                      return iso ? formatLastActive(iso) : '—'
+                    })()}
                   </td>
                   <td style={{ ...tdStyle, display: 'flex', gap: 4, alignItems: 'center', justifyContent: 'center' }}>
                     <button

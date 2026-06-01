@@ -20,8 +20,8 @@ export function SystemToast() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 140, left: '50%',
-      transform: `translateX(-50%) translateY(${visible ? 0 : 40}px)`,
+      position: 'fixed', top: 24, right: 24,
+      transform: `translateY(${visible ? 0 : -20}px)`,
       opacity: visible ? 1 : 0,
       transition: 'transform 0.35s ease, opacity 0.35s ease',
       zIndex: 1000,

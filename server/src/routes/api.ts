@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto'
 import { requireAuth } from '../middleware/auth.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 import { db } from '../db.js'
-import { userSockets } from '../userSockets.js'
+import { userSockets, notifySuperAdmins } from '../userSockets.js'
 import { ALL_WEAPON_UNLOCK_KEYS } from '../runSaver.js'
 
 const VALID_WEAPON_UNLOCK_KEYS = new Set<string>(ALL_WEAPON_UNLOCK_KEYS)
@@ -15,6 +15,17 @@ const writeRateLimit = rateLimit(30, 60_000)
 
 export const apiRouter = Router()
 apiRouter.use(requireAuth)
+
+async function pushProfileUpdate(userId: number) {
+  const r = await db.query(
+    `SELECT u.role, p.coins, p.upgrades, p.updated_at AS last_active, p.unlocked_stages
+     FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = $1`,
+    [userId],
+  )
+  if (!r.rows[0]) return
+  const row = r.rows[0]
+  notifySuperAdmins(JSON.stringify({ type: 'playerProfileUpdate', userId, ...row }))
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -132,6 +143,7 @@ apiRouter.post('/characters/unlock', async (req: Request, res: Response) => {
     )
     await client.query('COMMIT')
     res.json({ ok: true, coins: coins - cost, unlocked_characters: newUnlocked })
+    pushProfileUpdate(req.userId).catch(() => {})
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('Character unlock error:', err)
@@ -202,6 +214,7 @@ apiRouter.post('/upgrades/purchase', writeRateLimit, async (req: Request, res: R
     )
     await client.query('COMMIT')
     res.json({ ok: true, coins: coins - cost, upgrades: newUpgrades })
+    pushProfileUpdate(req.userId).catch(() => {})
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('Purchase error:', err)
@@ -245,6 +258,7 @@ apiRouter.post('/upgrades/refund', async (req: Request, res: Response) => {
     )
     await client.query('COMMIT')
     res.json({ ok: true, coins: newCoins, upgrades: newUpgrades })
+    pushProfileUpdate(req.userId).catch(() => {})
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('Refund error:', err)
@@ -286,6 +300,7 @@ apiRouter.post('/upgrades/refund-all', async (req: Request, res: Response) => {
     )
     await client.query('COMMIT')
     res.json({ ok: true, coins: newCoins, upgrades: emptyUpgrades })
+    pushProfileUpdate(req.userId).catch(() => {})
   } catch (err) {
     await client.query('ROLLBACK')
     console.error('Refund-all error:', err)
@@ -309,7 +324,11 @@ apiRouter.get('/admin/players', async (req: Request, res: Response) => {
        FROM users u LEFT JOIN profiles p ON p.user_id = u.id
        ORDER BY u.id`,
     )
-    res.json({ players: result.rows })
+    const players = result.rows.map(row => ({
+      ...row,
+      online: userSockets.has(row.id) && (userSockets.get(row.id) as any)?.readyState === 1,
+    }))
+    res.json({ players })
   } catch (err) {
     console.error('Admin players error:', err)
     res.status(500).json({ error: 'Internal server error' })
@@ -345,6 +364,7 @@ apiRouter.post('/admin/players/:id/role', async (req: Request, res: Response) =>
       targetWs.send(JSON.stringify({ type: 'roleChanged', role: newRole }))
     }
     res.json({ ok: true, role })
+    pushProfileUpdate(targetId).catch(() => {})
   } catch (err) {
     console.error('Admin set role error:', err)
     res.status(500).json({ error: 'Internal server error' })
@@ -368,6 +388,7 @@ apiRouter.post('/admin/players/:id/reset', async (req: Request, res: Response) =
       [JSON.stringify(emptyUpgrades), targetId],
     )
     res.json({ ok: true })
+    pushProfileUpdate(targetId).catch(() => {})
   } catch (err) {
     console.error('Admin reset error:', err)
     res.status(500).json({ error: 'Internal server error' })
@@ -405,6 +426,7 @@ apiRouter.post('/admin/players/:id/full-reset', async (req: Request, res: Respon
       db.query('DELETE FROM runs WHERE user_id = $1', [targetId]),
     ])
     res.json({ ok: true })
+    pushProfileUpdate(targetId).catch(() => {})
   } catch (err) {
     console.error('Admin full-reset error:', err)
     res.status(500).json({ error: 'Internal server error' })
@@ -432,6 +454,7 @@ apiRouter.post('/admin/players/:id/coins', async (req: Request, res: Response) =
     )
     const newCoins = result.rows[0]?.coins ?? null
     res.json({ ok: true, coins: newCoins })
+    pushProfileUpdate(targetId).catch(() => {})
   } catch (err) {
     console.error('Admin give coins error:', err)
     res.status(500).json({ error: 'Internal server error' })
@@ -477,6 +500,7 @@ apiRouter.post('/admin/players/:id/stages', async (req: Request, res: Response) 
     const result = await db.query(sql, [stageNum, targetId])
     if (result.rowCount === 0) { res.status(404).json({ error: 'Profile not found' }); return }
     res.json({ ok: true, unlocked_stages: result.rows[0].unlocked_stages })
+    pushProfileUpdate(targetId).catch(() => {})
   } catch (err) {
     console.error('Admin stage unlock error:', err)
     res.status(500).json({ error: 'Internal server error' })

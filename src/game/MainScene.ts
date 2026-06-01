@@ -663,7 +663,19 @@ export class MainScene extends Phaser.Scene {
     })
 
     net.on('playerOnline', (msg) => {
+      useAuthStore.getState().setUserOnline(msg.userId)
       useAuthStore.getState().showSystemToast(`${msg.username} is online`, '#44aaff')
+    })
+
+    net.on('playerOffline', (msg) => {
+      useAuthStore.getState().setUserOffline(msg.userId)
+    })
+
+    net.on('playerProfileUpdate', (msg) => {
+      useAuthStore.getState().patchAdminPlayerRow(msg.userId, {
+        coins: msg.coins, upgrades: msg.upgrades,
+        last_active: msg.last_active, unlocked_stages: msg.unlocked_stages, role: msg.role,
+      })
     })
 
     net.on('exploderExplode', (msg) => {

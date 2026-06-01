@@ -11,7 +11,7 @@ import { authRouter } from './routes/auth.js'
 import { apiRouter } from './routes/api.js'
 import { saveRunRecord } from './runSaver.js'
 import { db } from './db.js'
-import { userSockets } from './userSockets.js'
+import { userSockets, superAdminUserIds, notifySuperAdmins } from './userSockets.js'
 import type { C2SMessage } from './protocol.js'
 
 const VALID_CHARACTER_TYPES = new Set(['ares', 'freyja', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin', 'heimdall'])
@@ -136,21 +136,20 @@ wss.on('connection', (ws) => {
   userSockets.set(authed.userId, ws as unknown as import('ws').WebSocket)
   console.log(`[${label}] connected`)
 
-  // Notify connected super_admins that a player came online
-  if (authed.username) {
-    const connectedIds = [...userSockets.keys()].filter(id => id !== authed.userId)
-    if (connectedIds.length > 0) {
-      db.query(`SELECT id FROM users WHERE id = ANY($1) AND role = 'super_admin'`, [connectedIds])
-        .then(res => {
-          const payload = JSON.stringify({ type: 'playerOnline', username: authed.username })
-          for (const row of res.rows) {
-            const sock = userSockets.get(row.id)
-            if (sock && sock.readyState === 1) sock.send(payload)
-          }
-        })
-        .catch(() => {})
-    }
-  }
+  // Track super_admins for instant push without DB queries, then notify others
+  db.query('SELECT role FROM users WHERE id = $1', [authed.userId])
+    .then(res => {
+      const isSuperAdmin = res.rows[0]?.role === 'super_admin'
+      if (isSuperAdmin) superAdminUserIds.add(authed.userId)
+      if (authed.username) {
+        // Temporarily exclude self so a super_admin doesn't see their own connect toast
+        const wasSuperAdmin = isSuperAdmin
+        if (wasSuperAdmin) superAdminUserIds.delete(authed.userId)
+        notifySuperAdmins(JSON.stringify({ type: 'playerOnline', username: authed.username, userId: authed.userId }))
+        if (wasSuperAdmin) superAdminUserIds.add(authed.userId)
+      }
+    })
+    .catch(() => {})
 
   ws.on('error', (err) => console.error(`[${label}] ws error:`, err))
 
@@ -259,7 +258,11 @@ wss.on('connection', (ws) => {
   })
 
   ws.on('close', () => {
-    if (userSockets.get(authed.userId) === (ws as unknown as import('ws').WebSocket)) userSockets.delete(authed.userId)
+    if (userSockets.get(authed.userId) === (ws as unknown as import('ws').WebSocket)) {
+      userSockets.delete(authed.userId)
+      superAdminUserIds.delete(authed.userId)
+      notifySuperAdmins(JSON.stringify({ type: 'playerOffline', userId: authed.userId }))
+    }
     console.log(`[${label}] disconnected`)
     if (room) {
       const wasOpen = openRoom === room

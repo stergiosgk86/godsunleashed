@@ -1,4 +1,5 @@
 import { db } from './db.js'
+import { notifySuperAdmins } from './userSockets.js'
 
 const MAX_RUN_SCORE    = 100_000
 const MAX_RUN_KILLS    = 7_000
@@ -175,6 +176,15 @@ export async function saveRunRecord(data: PlayerRunData): Promise<{ achievements
         ),
     Promise.all(achievementInserts),
   ])
+
+  // Push live profile update to any watching super_admins
+  db.query(
+    `SELECT u.role, p.coins, p.upgrades, p.updated_at AS last_active, p.unlocked_stages
+     FROM users u LEFT JOIN profiles p ON p.user_id = u.id WHERE u.id = $1`,
+    [data.userId],
+  ).then(r => {
+    if (r.rows[0]) notifySuperAdmins(JSON.stringify({ type: 'playerProfileUpdate', userId: data.userId, ...r.rows[0] }))
+  }).catch(() => {})
 
   return {
     achievements: achievementResults.flatMap(r => r.rows).map(r => r.achievement_id as string),
