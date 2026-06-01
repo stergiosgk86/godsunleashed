@@ -393,6 +393,8 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
     description: 'Both Equinox (gold) and Solstice (cyan) fire piercing bolts in all 4 diagonal directions. Pick both for staggered double volleys.',
     unlockKey: 'equinox', unlockHint: 'Survive 15 min with Chronos',
     upgrades: [
+      { id: 'equinox',       label: 'Equinox',         description: 'Unlock the golden Equinox gun — fires piercing bolts in all 4 diagonal directions' },
+      { id: 'solstice',      label: 'Solstice',        description: 'Unlock the cyan Solstice gun — staggered volleys double the fire rate when paired with Equinox' },
       { id: 'dualGunDamage', label: 'Solar Intensity', description: 'Sunray bolts deal 30% more damage (stackable, up to 3×)' },
       { id: 'dualGunSpeed',  label: 'Solar Tempo',     description: 'Sunray guns fire 20% faster (stackable, up to 2×)' },
       { id: 'dualGunExtra',  label: 'Solar Barrage',   description: 'Fires one extra staggered burst per gun per volley (stackable, up to 2×)' },

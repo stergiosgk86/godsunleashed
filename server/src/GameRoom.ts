@@ -29,7 +29,7 @@ const ALL_UPGRADE_IDS = [
   'echo',
   'ravens', 'ravensCD', 'ravensPower', 'ravensCount',
   'spear', 'spearCount', 'spearInterval', 'spearPierce', 'spearSpeed', 'spearStorm',
-  'meleeRange', 'meleeSpeed', 'meleeDamage',
+  'meleeRange', 'meleeArc', 'meleeSpeed', 'meleeDamage',
 ] as const
 type UpgradeId = typeof ALL_UPGRADE_IDS[number]
 const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
@@ -45,7 +45,7 @@ const WEAPON_FAMILIES: Record<string, readonly string[]> = {
   spear:     ['spearCount', 'spearInterval', 'spearPierce'],
   dash:      ['dashCooldown', 'dashDistance'],
   dualGun:   ['dualGunDamage', 'dualGunSpeed', 'dualGunExtra'],
-  melee:     ['meleeRange', 'meleeSpeed', 'meleeDamage'],
+  melee:     ['meleeRange', 'meleeArc', 'meleeSpeed', 'meleeDamage'],
 }
 const UPGRADE_FAMILY: Record<string, string> = {}
 for (const [family, ids] of Object.entries(WEAPON_FAMILIES)) {
@@ -278,8 +278,9 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean, unlockedWeapons
     if (id === 'spearStorm'     && u.spearCount < 5)           return false
     if (id === 'spearStorm'     && u.spearSpeed < 3)           return false
     if (id === 'spearStorm'     && u.spearStorm)               return false
-    if ((id === 'meleeRange' || id === 'meleeSpeed' || id === 'meleeDamage') && !isMelee) return false
+    if ((id === 'meleeRange' || id === 'meleeArc' || id === 'meleeSpeed' || id === 'meleeDamage') && !isMelee) return false
     if (id === 'meleeRange'     && u.meleeRange >= 4)          return false
+    if (id === 'meleeArc'       && u.meleeArc >= 1)            return false
     if (id === 'meleeSpeed'     && u.meleeSpeed >= 4)          return false
     if (id === 'meleeDamage'    && u.meleeDamage >= 4)         return false
     return true
@@ -572,6 +573,7 @@ export class GameRoom {
       case 'dashCooldown':  u.dashCooldownPicks = Math.min(4, u.dashCooldownPicks + 1); break
       case 'dashDistance':  u.dashDistancePicks = Math.min(3, u.dashDistancePicks + 1); break
       case 'meleeRange':    u.meleeRange = Math.min(4, u.meleeRange + 1); break
+      case 'meleeArc':      u.meleeArc = Math.min(1, u.meleeArc + 1); break
       case 'meleeSpeed':    u.meleeSpeed = Math.min(4, u.meleeSpeed + 1); break
       case 'meleeDamage':   u.meleeDamage = Math.min(4, u.meleeDamage + 1); break
 
@@ -725,6 +727,7 @@ export class GameRoom {
       case 'spearSpeed':         u.spearSpeed = Math.min(5, level); break
       case 'spearStorm':         u.spearStorm = level >= 1; break
       case 'meleeRange':         u.meleeRange = Math.min(4, level); break
+      case 'meleeArc':           u.meleeArc = Math.min(1, level); break
       case 'meleeSpeed':         u.meleeSpeed = Math.min(4, level); break
       case 'meleeDamage':        u.meleeDamage = Math.min(4, level); break
     }

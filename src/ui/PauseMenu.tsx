@@ -117,6 +117,8 @@ const SPAWN_GROUPS: { label: string; color: string; items: { label: string; enti
       { label: 'Spirit Orb',   entity: 'weapon:orbital' },
       { label: "Odin's Ravens", entity: 'weapon:ravens' },
       { label: 'Bifrost Spear', entity: 'weapon:spear' },
+      { label: 'Equinox',       entity: 'weapon:equinox' },
+      { label: 'Solstice',      entity: 'weapon:solstice' },
     ],
   },
 ]
@@ -245,6 +247,7 @@ const WEAPON_UPGRADE_GROUPS: WeaponGroup[] = [
     items: [
       { id: 'meleeDamage', label: 'Blade Mastery', max: 4 },
       { id: 'meleeRange',  label: 'Iron Reach',    max: 4 },
+      { id: 'meleeArc',    label: 'Rear Strike',   max: 1 },
       { id: 'meleeSpeed',  label: 'Battle Fury',   max: 4 },
     ],
   },
@@ -298,6 +301,7 @@ function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getSta
     case 'dashCooldown':      return Math.round(Math.log(s.dashCooldown / DASH_COOLDOWN_MS) / Math.log(0.75))
     case 'dashDistance':      return Math.round((s.dashDistance - 1) / 0.4)
     case 'meleeRange':        return s.meleeRange ?? 0
+    case 'meleeArc':          return s.meleeArc ?? 0
     case 'meleeSpeed':        return s.meleeSpeed ?? 0
     case 'meleeDamage':       return s.meleeDamage ?? 0
     default:                  return 0
@@ -369,7 +373,7 @@ function UpgradesView({ onBack }: { onBack: () => void }) {
     <>
       <div style={{
         color: '#cc88ff', fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold',
-        letterSpacing: 3, textShadow: '0 0 10px #8844cc', alignSelf: 'flex-start',
+        letterSpacing: 3, textShadow: '0 0 10px #8844cc', alignSelf: 'center',
       }}>
         UPGRADES
       </div>
@@ -636,9 +640,14 @@ function AdminPanel({ onBack, onSubViewChange }: { onBack: () => void; onSubView
 
         <button
           onClick={() => changeSubView('main')}
-          style={{ ...btnBase, color: '#aaaaff', background: 'transparent', boxShadow: 'none', marginTop: 8 }}
+          style={{
+            width: 'calc((100% - 12px) / 3)', padding: '7px 0', fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold',
+            border: '1px solid #4444cc', borderRadius: 6, cursor: 'pointer', letterSpacing: 2,
+            color: '#aaaaff', background: '#0d0d1f', boxShadow: 'none', marginTop: 8,
+            position: 'sticky', bottom: 0, alignSelf: 'center',
+          }}
           onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
-          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          onMouseLeave={e => (e.currentTarget.style.background = '#0d0d1f')}
         >
           ← BACK
         </button>
@@ -729,7 +738,7 @@ export function PauseMenu({ onQuit, hidden = false }: { onQuit: () => void; hidd
       padding: mob ? '20px 16px' : (view === 'admin' && (adminSubView === 'upgrades' || adminSubView === 'spawn' || adminSubView === 'players') ? '28px 36px' : '40px 60px'),
       display: 'flex', flexDirection: 'column', alignItems: 'center', gap: mob ? 12 : 16,
       boxShadow: '0 0 40px #2222aa88',
-      width: !mob && view === 'admin' && adminSubView === 'players' ? 'calc(100vw - 48px)' : !mob && view === 'admin' && (adminSubView === 'upgrades' || adminSubView === 'spawn') ? 'min(940px, calc(100vw - 48px))' : mob ? 'calc(100vw - 32px)' : 'min(360px, calc(100vw - 32px))',
+      width: !mob && view === 'admin' && adminSubView === 'players' ? 'min(1160px, calc(100vw - 48px))' : !mob && view === 'admin' && (adminSubView === 'upgrades' || adminSubView === 'spawn') ? 'min(940px, calc(100vw - 48px))' : mob ? 'calc(100vw - 32px)' : 'min(360px, calc(100vw - 32px))',
       minWidth: mob ? undefined : 320,
       maxWidth: 'calc(100vw - 32px)',
       maxHeight: 'calc(100vh - 48px)',

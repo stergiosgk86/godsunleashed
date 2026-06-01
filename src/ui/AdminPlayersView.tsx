@@ -26,14 +26,6 @@ const tdStyle: React.CSSProperties = {
   color: '#ccccff', fontSize: 12, fontFamily: 'monospace',
   padding: '5px 10px', textAlign: 'center', borderBottom: '1px solid #111133',
 }
-const backBtn: React.CSSProperties = {
-  display: 'block', margin: '8px auto 0',
-  padding: '9px 30px', fontSize: 13, fontFamily: 'monospace', fontWeight: 'normal',
-  border: '1px solid rgba(80,80,160,0.2)', borderRadius: 8,
-  cursor: 'pointer', letterSpacing: 1,
-  color: '#6666aa', background: 'rgba(20,20,60,0.25)',
-  transition: 'all 0.18s ease',
-}
 
 function formatLastActive(iso: string) {
   const d = new Date(iso)
@@ -764,7 +756,7 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       <div style={{
         color: '#ff4444', fontSize: 22, fontFamily: 'monospace', fontWeight: 'bold',
         letterSpacing: 3, textShadow: '0 0 10px #ff2222',
-        marginBottom: 8,
+        marginBottom: 8, textAlign: 'center',
       }}>
         PLAYERS
       </div>
@@ -1014,11 +1006,16 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       <button
         type="button"
         onClick={onBack}
-        style={backBtn}
-        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,80,0.55)'; e.currentTarget.style.color = '#9999cc'; e.currentTarget.style.borderColor = 'rgba(100,100,200,0.4)' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,60,0.25)'; e.currentTarget.style.color = '#6666aa'; e.currentTarget.style.borderColor = 'rgba(80,80,160,0.2)' }}
+        style={{
+          width: 'calc((100% - 12px) / 3)', padding: '7px 0', fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold',
+          border: '1px solid #4444cc', borderRadius: 6, cursor: 'pointer', letterSpacing: 2,
+          color: '#aaaaff', background: '#0d0d1f', boxShadow: 'none', marginTop: 8,
+          position: 'sticky', bottom: 0, display: 'block', margin: '8px auto 0',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
+        onMouseLeave={e => (e.currentTarget.style.background = '#0d0d1f')}
       >
-        {'<-'} BACK
+        ← BACK
       </button>
     </div>
   )
