@@ -99,6 +99,9 @@ httpServer.on('upgrade', (req, socket, head) => {
 let openRoom: GameRoom | null = null
 let idCounter = 0
 
+// Tracks when a user last disconnected so page-refresh reconnects don't trigger a toast
+const recentDisconnects = new Map<number, number>()
+
 function attachGameEndHandler(room: GameRoom) {
   room.onGameEnd = (results) => {
     for (const result of results) {
@@ -140,13 +143,20 @@ wss.on('connection', (ws) => {
   db.query('SELECT role FROM users WHERE id = $1', [authed.userId])
     .then(res => {
       const isSuperAdmin = res.rows[0]?.role === 'super_admin'
-      if (isSuperAdmin) superAdminUserIds.add(authed.userId)
+      if (isSuperAdmin) {
+        superAdminUserIds.add(authed.userId)
+        // Send a fresh snapshot of who's online so the admin panel is accurate immediately
+        const snapshot = JSON.stringify({ type: 'adminOnlineSnapshot', onlineUserIds: [...userSockets.keys()] })
+        if ((ws as any).readyState === 1) (ws as any).send(snapshot)
+      }
       if (authed.username) {
-        // Temporarily exclude self so a super_admin doesn't see their own connect toast
-        const wasSuperAdmin = isSuperAdmin
-        if (wasSuperAdmin) superAdminUserIds.delete(authed.userId)
-        notifySuperAdmins(JSON.stringify({ type: 'playerOnline', username: authed.username, userId: authed.userId }))
-        if (wasSuperAdmin) superAdminUserIds.add(authed.userId)
+        const disconnectedAt = recentDisconnects.get(authed.userId) ?? 0
+        recentDisconnects.delete(authed.userId)
+        const isRefresh = Date.now() - disconnectedAt < 8_000
+        // Always notify so the online dot updates; silent=true suppresses the toast on refresh
+        if (isSuperAdmin) superAdminUserIds.delete(authed.userId)
+        notifySuperAdmins(JSON.stringify({ type: 'playerOnline', username: authed.username, userId: authed.userId, silent: isRefresh }))
+        if (isSuperAdmin) superAdminUserIds.add(authed.userId)
       }
     })
     .catch(() => {})
@@ -261,6 +271,7 @@ wss.on('connection', (ws) => {
     if (userSockets.get(authed.userId) === (ws as unknown as import('ws').WebSocket)) {
       userSockets.delete(authed.userId)
       superAdminUserIds.delete(authed.userId)
+      recentDisconnects.set(authed.userId, Date.now())
       notifySuperAdmins(JSON.stringify({ type: 'playerOffline', userId: authed.userId }))
     }
     console.log(`[${label}] disconnected`)

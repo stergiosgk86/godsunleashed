@@ -321,9 +321,11 @@ function App() {
           }
         } else if (msg.type === 'playerOnline') {
           useAuthStore.getState().setUserOnline(msg.userId)
-          useAuthStore.getState().showSystemToast(`${msg.username} is online`, '#44aaff')
+          if (!msg.silent) useAuthStore.getState().showSystemToast(`${msg.username} is online`, '#44aaff')
         } else if (msg.type === 'playerOffline') {
           useAuthStore.getState().setUserOffline(msg.userId)
+        } else if (msg.type === 'adminOnlineSnapshot') {
+          useAuthStore.getState().seedOnlineUsers(msg.onlineUserIds)
         } else if (msg.type === 'playerProfileUpdate') {
           useAuthStore.getState().patchAdminPlayerRow(msg.userId, {
             coins: msg.coins, upgrades: msg.upgrades,
