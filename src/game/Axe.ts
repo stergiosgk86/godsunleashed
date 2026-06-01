@@ -2,8 +2,8 @@ import Phaser from 'phaser'
 
 const GRAVITY    = 780  // px/s²
 const LAUNCH_VY  = -580 // upward
-const SPEED_X    = 80   // horizontal
-const LAND_BELOW = 650  // px below launch before destroying
+const SPEED_X    = 240  // horizontal — fast enough to visibly arc across the screen
+const LAND_BELOW = 400  // px below launch before destroying
 const BASE_HIT_R = 20
 
 export class Axe {
@@ -57,57 +57,108 @@ export class Axe {
   }
 }
 
-// ── Berserker's Ring: orbiting ring of axes ──────────────────────────────────
-const DS_COUNT        = 6
-const DS_RADIUS       = 125   // px from player centre
-const DS_SPEED        = 4.5   // rad/s — orbit speed
-const DS_SELF_SPIN    = 10.0  // rad/s — each axe spins on its own centre
-const DS_HIT_R        = 22    // collision radius per axe
-const DS_HIT_COOLDOWN = 500   // ms before the same enemy can be hit again
+// ── Death Spiral: burst of axes one at a time, then cooldown, then next burst ──
+const DS_SPEED_PX        = 88            // px/s — slow travel so axes linger on screen
+const DS_HIT_R           = 30            // base collision radius per axe (large)
+const DS_PIERCE_BONUS    = 8             // extra hitRadius per pierce upgrade level
+const DS_LIFETIME        = 5000          // ms before axe despawns (~440 px at full speed)
+const DS_AXES_PER_CIRCLE = 8             // axes per burst (one full 360° sweep)
+const DS_FIRE_MS         = 150           // ms between axes within a burst
+const DS_COOLDOWN_MS     = 1400          // ms pause after completing one circle
+const DS_SELF_SPIN       = 7.0           // rad/s spin on own axis
+const DS_ANGLE_STEP      = Math.PI / 4   // 45° per shot → 8 shots = full circle
+
+class DeathSpiralAxe {
+  x: number
+  y: number
+  active = true
+  hitTargets = new Set<object>()   // unlimited pierce: each enemy hit once per axe
+  private vx: number
+  private vy: number
+  private spinAngle = 0
+  private timeLeft = DS_LIFETIME
+  private image: Phaser.GameObjects.Image
+
+  constructor(scene: Phaser.Scene, x: number, y: number, angle: number, pierceLevel: number) {
+    this.x = x
+    this.y = y
+    this.vx = Math.cos(angle) * DS_SPEED_PX
+    this.vy = Math.sin(angle) * DS_SPEED_PX
+    this.image = scene.add.image(x, y, 'axe')
+      .setDepth(4)
+      .setScale(0.45 + pierceLevel * 0.10)
+      .setAlpha(0.92)
+  }
+
+  update(delta: number): void {
+    const dt = delta / 1000
+    this.x += this.vx * dt
+    this.y += this.vy * dt
+    this.spinAngle += DS_SELF_SPIN * dt
+    this.timeLeft -= delta
+    if (this.timeLeft <= 0) { this.destroy(); return }
+    this.image.setPosition(this.x, this.y).setRotation(this.spinAngle)
+  }
+
+  destroy(): void {
+    this.image.destroy()
+    this.active = false
+  }
+}
 
 export class BerserkerRing {
-  private images: Phaser.GameObjects.Image[] = []
+  private projectiles: DeathSpiralAxe[] = []
+  private fireTimer: number
+  private burstCount = 0   // how many axes fired in the current burst
   private angle = 0
-  private spinAngle = 0
-  private hitCooldowns = new Map<object, number>()
+  private scene: Phaser.Scene
+  private pierceLevel: number
 
-  constructor(scene: Phaser.Scene) {
-    for (let i = 0; i < DS_COUNT; i++) {
-      this.images.push(scene.add.image(0, 0, 'axe').setDepth(4).setScale(0.6).setAlpha(0.92))
-    }
+  constructor(scene: Phaser.Scene, pierceLevel = 0) {
+    this.scene = scene
+    this.pierceLevel = pierceLevel
+    // Pre-charge so the first axe fires immediately on pickup
+    this.fireTimer = DS_FIRE_MS
   }
 
-  update(delta: number, playerX: number, playerY: number): void {
-    this.angle     += DS_SPEED     * delta / 1000
-    this.spinAngle += DS_SELF_SPIN * delta / 1000
-    for (let i = 0; i < DS_COUNT; i++) {
-      const a = this.angle + (i * Math.PI * 2 / DS_COUNT)
-      const ix = playerX + Math.cos(a) * DS_RADIUS
-      const iy = playerY + Math.sin(a) * DS_RADIUS
-      this.images[i].setPosition(ix, iy).setRotation(this.spinAngle)
+  /** Returns true if an axe was fired this frame (for sound cue). */
+  update(delta: number, playerX: number, playerY: number): boolean {
+    this.fireTimer += delta
+    let fired = false
+
+    if (this.burstCount < DS_AXES_PER_CIRCLE) {
+      // Burst phase: fire one axe every DS_FIRE_MS
+      if (this.fireTimer >= DS_FIRE_MS) {
+        this.fireTimer -= DS_FIRE_MS
+        this.projectiles.push(new DeathSpiralAxe(this.scene, playerX, playerY, this.angle, this.pierceLevel))
+        this.angle += DS_ANGLE_STEP
+        this.burstCount++
+        fired = true
+      }
+    } else {
+      // Cooldown phase: wait before starting the next circle
+      if (this.fireTimer >= DS_COOLDOWN_MS) {
+        this.fireTimer = DS_FIRE_MS  // pre-charge so next burst starts immediately
+        this.burstCount = 0
+      }
     }
-    // tick down per-enemy hit cooldowns
-    for (const [e, remaining] of this.hitCooldowns) {
-      const next = remaining - delta
-      if (next <= 0) this.hitCooldowns.delete(e)
-      else this.hitCooldowns.set(e, next)
-    }
+
+    for (const a of this.projectiles) a.update(delta)
+    this.projectiles = this.projectiles.filter(a => a.active)
+    return fired
   }
 
-  checkHits<T extends { active: boolean; x: number; y: number; hitRadius: number }>(enemies: T[], playerX: number, playerY: number): T[] {
+  checkHits<T extends { active: boolean; x: number; y: number; hitRadius: number }>(enemies: T[]): T[] {
     const hit: T[] = []
-    const alreadyHitThisFrame = new Set<object>()
-    for (let i = 0; i < DS_COUNT; i++) {
-      const a = this.angle + (i * Math.PI * 2 / DS_COUNT)
-      const ix = playerX + Math.cos(a) * DS_RADIUS
-      const iy = playerY + Math.sin(a) * DS_RADIUS
+    for (const a of this.projectiles) {
+      if (!a.active) continue
+      const rSum = DS_HIT_R + this.pierceLevel * DS_PIERCE_BONUS
       for (const e of enemies) {
-        if (!e.active || this.hitCooldowns.has(e) || alreadyHitThisFrame.has(e)) continue
-        const dx = ix - e.x
-        const dy = iy - e.y
-        if (dx * dx + dy * dy < (DS_HIT_R + e.hitRadius) * (DS_HIT_R + e.hitRadius)) {
-          this.hitCooldowns.set(e, DS_HIT_COOLDOWN)
-          alreadyHitThisFrame.add(e)
+        if (!e.active || a.hitTargets.has(e)) continue
+        const dx = a.x - e.x
+        const dy = a.y - e.y
+        if (dx * dx + dy * dy < (rSum + e.hitRadius) * (rSum + e.hitRadius)) {
+          a.hitTargets.add(e)
           hit.push(e)
         }
       }
@@ -116,7 +167,7 @@ export class BerserkerRing {
   }
 
   destroy(): void {
-    for (const img of this.images) img.destroy()
-    this.images = []
+    for (const a of this.projectiles) a.destroy()
+    this.projectiles = []
   }
 }

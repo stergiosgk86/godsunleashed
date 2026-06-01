@@ -44,7 +44,7 @@ function upgradeLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getState>
     case 'bloodNovaCD':      return { current: s.bloodNovaCD,          max: 4 }
     case 'lightningTargets': return { current: s.lightningTargets,     max: 2 }
     case 'lightningCooldown':return { current: s.lightningCooldown,    max: 2 }
-    case 'might':            return { current: Math.min(5, Math.round((s.might - 1) / 0.1)), max: 5 }
+    case 'might':            return { current: s.mightPicks, max: 5 }
     case 'auraTick':         return { current: s.auraTick,             max: 3 }
     case 'auraRange':        return { current: s.auraRange,            max: 3 }
     case 'xpGain':           return { current: s.xpGain,              max: 5 }

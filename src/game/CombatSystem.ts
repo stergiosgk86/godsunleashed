@@ -179,7 +179,7 @@ export class CombatSystem {
     this.playerMoving = moving
   }
 
-  private static readonly SLASH_RANGE = 120
+  private static readonly SLASH_RANGE = 140
 
   // True for Ares by default; also activates for any character that has at least one melee upgrade (admin testing)
   private get isMeleeActive(): boolean {
@@ -210,7 +210,7 @@ export class CombatSystem {
   private fireSwordSwing(px: number, py: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
     const { meleeRange, meleeArc, meleeDamage } = getValidatedCombatState()
     const slashRange = CombatSystem.SLASH_RANGE * (1 + meleeRange * 0.25)
-    const halfspan = Math.PI / 4  // fixed 90° total arc
+    const halfspan = Math.PI * 5 / 12  // 150° total arc
     const meleeDmg = Math.floor(damage * (1 + meleeDamage * 0.2))
     const fx = this.facingVx, fy = this.facingVy
 
@@ -329,7 +329,7 @@ export class CombatSystem {
     if (!this.isMeleeActive) return
     const { meleeRange, meleeArc } = getValidatedCombatState()
     const R = CombatSystem.SLASH_RANGE * (1 + meleeRange * 0.25)
-    const halfSpan = Math.PI / 4
+    const halfSpan = Math.PI * 5 / 12
     const innerR = R * 0.18
     const steps = 24
 
@@ -961,16 +961,16 @@ export class CombatSystem {
 
     // === War Axe ===
     if (axeEvolution) {
-      // Berserker's Ring: orbiting ring of axes replaces the throw mechanic
+      // Death Spiral: slow piercing axes carpet the arena as you move
       if (!this.berserkerRing) {
-        this.berserkerRing = new BerserkerRing(this.scene)
+        this.berserkerRing = new BerserkerRing(this.scene, axePierce)
         for (const a of this.axes) a.destroy()
         this.axes = []
         this.axeQueue = []
       }
-      this.berserkerRing.update(delta, playerX, playerY)
+      if (this.berserkerRing.update(delta, playerX, playerY)) soundSystem.shootAxe()
       const spiralDamage = Math.floor(weaponBaseDamage(level) * might * AXE_DAMAGE_MULT * (1 + axeDamage * 0.5))
-      const spiralHits = this.berserkerRing.checkHits(enemies, playerX, playerY)
+      const spiralHits = this.berserkerRing.checkHits(enemies)
       for (const e of spiralHits) {
         this.applyHit(e, spiralDamage, coinDropChance, lifeDrain, vampiric)
       }

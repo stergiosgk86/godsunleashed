@@ -137,6 +137,7 @@ function StatRow({ label, value, color = '#7777aa' }: { label: string; value: st
 }
 
 const WEAPON_SLOT_DEFS = [
+  { id: 'melee',      label: 'MLÉ', color: '#dd3311' },
   { id: 'wand',       label: 'WND', color: '#88aaff' },
   { id: 'lightning',  label: 'ZAP', color: '#ddee44' },
   { id: 'axe',        label: 'AXE', color: '#ffaa44' },
@@ -152,6 +153,7 @@ const WEAPON_SLOT_DEFS = [
 ] as const
 
 function WeaponSlots() {
+  const isMeleeChar = useGameStore(s => s.isMeleeChar)
   const wand       = useGameStore(s => s.wand)
   const lightning  = useGameStore(s => s.lightning)
   const axe        = useGameStore(s => s.axe)
@@ -166,6 +168,7 @@ function WeaponSlots() {
   const spear      = useGameStore(s => s.spear)
 
   const ownedMap: Record<string, boolean> = {
+    melee: !!isMeleeChar,
     wand: !!wand, lightning: !!lightning, axe: !!axe,
     aura: aura > 0, orbital: orbital > 0, boomerang: !!boomerang,
     flameTrail: !!flameTrail, bloodNova: !!bloodNova,
