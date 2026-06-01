@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 
 const BASE_ATTRACT_RADIUS = 150
 const ATTRACT_SPEED = 280
-const COLLECT_RADIUS = 20
+const COLLECT_RADIUS = 26
 
 export class CoinOrb {
   private graphic: Phaser.GameObjects.Image

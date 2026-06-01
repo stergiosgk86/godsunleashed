@@ -69,6 +69,20 @@ export interface RunSnapshot {
   ravensCD?: number
   ravensPower?: number
   ravensCount?: number
+  spear?: boolean
+  spearCount?: number
+  spearInterval?: number
+  spearPierce?: number
+  spearSpeed?: number
+  spearStorm?: boolean
+  axeAmount?: number
+  axeDamage?: number
+  axePierce?: number
+  axeEvolution?: boolean
+  meleeRange?: number
+  meleeArc?: number
+  meleeSpeed?: number
+  meleeDamage?: number
 }
 
 function authHeader(): HeadersInit {

@@ -17,7 +17,7 @@ function WaveLabel() {
   const color = isBoss ? '#ff6633' : isSurge ? '#ffcc00' : '#aabbff'
   return (
     <div style={{
-      position: 'absolute', top: window.innerWidth <= 768 ? 8 : 16, left: window.innerWidth <= 768 ? 60 : 16,
+      position: 'absolute', top: window.innerWidth <= 768 ? 58 : 16, left: 16,
       color, fontSize: 11, fontFamily: 'monospace',
       background: '#05050faa', border: `1px solid ${isBoss ? '#552200' : isSurge ? '#554400' : '#1a1a33'}`,
       borderRadius: 4, padding: '3px 8px',
@@ -148,6 +148,7 @@ const WEAPON_SLOT_DEFS = [
   { id: 'equinox',    label: 'EQN', color: '#44aaff' },
   { id: 'solstice',   label: 'SOL', color: '#ffbb22' },
   { id: 'ravens',     label: 'RVN', color: '#bb77ff' },
+  { id: 'spear',      label: 'SPR', color: '#00ddff' },
 ] as const
 
 function WeaponSlots() {
@@ -162,12 +163,13 @@ function WeaponSlots() {
   const equinox    = useGameStore(s => s.equinox)
   const solstice   = useGameStore(s => s.solstice)
   const ravens     = useGameStore(s => s.ravens)
+  const spear      = useGameStore(s => s.spear)
 
   const ownedMap: Record<string, boolean> = {
     wand: !!wand, lightning: !!lightning, axe: !!axe,
     aura: aura > 0, orbital: orbital > 0, boomerang: !!boomerang,
     flameTrail: !!flameTrail, bloodNova: !!bloodNova,
-    equinox: !!equinox, solstice: !!solstice, ravens: !!ravens,
+    equinox: !!equinox, solstice: !!solstice, ravens: !!ravens, spear: !!spear,
   }
 
   const owned = WEAPON_SLOT_DEFS.filter(w => ownedMap[w.id])
@@ -248,15 +250,20 @@ function LeftPanel() {
   const flameTrail  = useGameStore(s => s.flameTrail)
   const bloodNova   = useGameStore(s => s.bloodNova)
   const lightning   = useGameStore(s => s.lightning)
-  const axe         = useGameStore(s => s.axe)
+  const axe            = useGameStore(s => s.axe)
+  const axeAmountHud   = useGameStore(s => s.axeAmount)
+  const axeEvolutionHud = useGameStore(s => s.axeEvolution)
   const equinox     = useGameStore(s => s.equinox)
   const solstice    = useGameStore(s => s.solstice)
   const ravens      = useGameStore(s => s.ravens)
+  const spear2         = useGameStore(s => s.spear)
+  const spearStormHud  = useGameStore(s => s.spearStorm)
+  const spearCountHud  = useGameStore(s => s.spearCount)
 
   const dmg = Math.floor(weaponBaseDamage(level) * might)
   const aps = (1000 / attackInterval).toFixed(2)
 
-  const hasWeapons = wand || multiShot > 0 || piercing || aura > 0 || orbital > 0 || boomerang || flameTrail || bloodNova || lightning || axe || equinox || solstice || ravens
+  const hasWeapons = wand || multiShot > 0 || piercing || aura > 0 || orbital > 0 || boomerang || flameTrail || bloodNova || lightning || axe || equinox || solstice || ravens || spear2
 
   return (
     <div style={{
@@ -302,7 +309,7 @@ function LeftPanel() {
           {multiShot > 0   && <WeaponChip label="MULTI SHOT"  detail={`×${multiShot + 1}`}          color="#88aaff" />}
           {piercing         && <WeaponChip label="PIERCING"                                          color="#44ccff" />}
           {lightning        && <WeaponChip label="THUNDER STRIKE"                                    color="#ddee44" />}
-          {axe              && <WeaponChip label="WAR AXE"                                           color="#ffaa44" />}
+          {axe              && <WeaponChip label={axeEvolutionHud ? "BERSERKER'S RING" : "WAR AXE"} detail={!axeEvolutionHud && axeAmountHud > 0 ? '×2' : undefined} color="#ffaa44" />}
           {aura > 0         && <WeaponChip label="AURA"        detail={`${'●'.repeat(Math.min(aura, 5))}${aura > 5 ? `+${aura - 5}` : ''}`} color="#aa55ff" />}
           {orbital > 0      && <WeaponChip label="SPIRIT ORB"  detail={`×${orbital}`}               color="#cc88ff" />}
           {boomerang         && <WeaponChip label="BOOMERANG"                                        color="#ffcc44" />}
@@ -311,6 +318,7 @@ function LeftPanel() {
           {equinox           && <WeaponChip label="EQUINOX"                                          color="#44aaff" />}
           {solstice          && <WeaponChip label="SOLSTICE"                                         color="#ffbb22" />}
           {ravens            && <WeaponChip label="ODIN'S RAVENS"                                    color="#bb77ff" />}
+          {spear2            && <WeaponChip label={spearStormHud ? "THOUSAND SPEARS" : "BIFROST SPEAR"} detail={!spearStormHud && spearCountHud > 0 ? `×${1 + spearCountHud}` : undefined} color="#00ddff" />}
         </>
       )}
       <WeaponSlots />
@@ -367,7 +375,7 @@ export function HUD() {
         paddingBottom: window.innerWidth <= 768 ? 72 : 16,
         display: 'flex', flexDirection: 'column', gap: 12,
       }}>
-        <DashIndicator />
+        {window.innerWidth > 768 && <DashIndicator />}
         <div>
           <div style={{ color: '#ff8888', fontSize: 13, fontFamily: 'monospace', marginBottom: 4, textAlign: 'center' }}>
             HP {hp} / {maxHp}

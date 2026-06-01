@@ -2,7 +2,7 @@ import Phaser from 'phaser'
 
 const ATTRACT_RADIUS = 80
 const ATTRACT_SPEED = 260
-const COLLECT_RADIUS = 22
+const COLLECT_RADIUS = 30
 
 export class HealthPotion {
   private graphic: Phaser.GameObjects.Image

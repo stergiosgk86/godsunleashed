@@ -49,5 +49,6 @@ export class NetClient {
     return this
   }
 
-  close() { this.ws.close() }
+  closedGracefully = false
+  close() { this.closedGracefully = true; this.ws.close() }
 }

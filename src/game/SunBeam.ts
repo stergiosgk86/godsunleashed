@@ -8,18 +8,21 @@ export class SunBeam {
   active = true
   hitRadius = 11
   hitTargets = new Set<object>()
+  pierceCount = 0
+  readonly maxPierces: number
   private graphic: Phaser.GameObjects.Graphics
   private age = 0
   private static readonly LIFETIME = 5000
 
   private gold: boolean
 
-  constructor(scene: Phaser.Scene, x: number, y: number, vx: number, vy: number, gold = true) {
+  constructor(scene: Phaser.Scene, x: number, y: number, vx: number, vy: number, gold = true, maxPierces = 2) {
     this.x = x
     this.y = y
     this.vx = vx
     this.vy = vy
     this.gold = gold
+    this.maxPierces = maxPierces
     this.graphic = scene.add.graphics().setDepth(3)
     this.drawOrb()
     this.graphic.setPosition(x, y)

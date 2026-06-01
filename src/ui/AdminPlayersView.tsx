@@ -36,10 +36,13 @@ const backBtn: React.CSSProperties = {
 
 function formatLastActive(iso: string) {
   const d = new Date(iso)
+  const now = new Date()
+  const isToday = d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+  if (isToday) return `Today ${time}`
   const dd = String(d.getDate()).padStart(2, '0')
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const yy = String(d.getFullYear()).slice(-2)
-  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
   return `${dd}/${mm}/${yy} ${time}`
 }
 
@@ -94,6 +97,86 @@ function ConfirmResetModal({ player, onConfirm, onCancel }: {
             }}
           >
             CONFIRM
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+              color: '#aaaaff', background: 'transparent',
+              border: '1px solid #2a2a50', borderRadius: 5,
+              cursor: 'pointer', letterSpacing: 1,
+              transition: 'background 0.15s, border-color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#111133'
+              e.currentTarget.style.borderColor = '#aaaaff'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = '#2a2a50'
+            }}
+          >
+            CANCEL
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ConfirmFullResetModal({ player, onConfirm, onCancel }: {
+  player: PlayerRow
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const label = player.username ?? `#${player.id}`
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: 'rgba(0,0,0,0.85)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 10, borderRadius: 'inherit',
+    }}>
+      <div style={{
+        background: '#0d0d1a', border: '2px solid #ff2200',
+        borderRadius: 10, padding: '28px 32px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
+        boxShadow: '0 0 40px #ff220077',
+        minWidth: 300,
+      }}>
+        <div style={{ color: '#ff4400', fontSize: 14, fontFamily: 'monospace', letterSpacing: 2, fontWeight: 'bold' }}>
+          !! FULL PROGRESS RESET !!
+        </div>
+        <div style={{ color: '#ccccff', fontSize: 12, fontFamily: 'monospace', textAlign: 'center', lineHeight: 1.8 }}>
+          Wipe <span style={{ color: '#ff8866', fontWeight: 'bold' }}>ALL</span> progress for{' '}
+          <span style={{ color: '#aaaaff', fontWeight: 'bold' }}>{label}</span>:<br />
+          coins · upgrades · characters · stages<br />
+          weapons · achievements · runs
+        </div>
+        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              padding: '6px 20px', fontSize: 11, fontFamily: 'monospace',
+              color: '#ff4400', background: 'transparent',
+              border: '1px solid #661100', borderRadius: 5,
+              cursor: 'pointer', letterSpacing: 1,
+              transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = '#3a0800'
+              e.currentTarget.style.borderColor = '#ff4400'
+              e.currentTarget.style.color = '#ff8866'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.borderColor = '#661100'
+              e.currentTarget.style.color = '#ff4400'
+            }}
+          >
+            NUKE IT
           </button>
           <button
             type="button"
@@ -446,6 +529,7 @@ function StageUnlockModal({ player, onToggle, toggling, onClose }: {
 export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const token = useAuthStore(s => s.token)
   const myId = useAuthStore(s => s.userId)
+  const myRole = useAuthStore(s => s.role)
   const fetchProfile = useProfileStore(s => s.fetchProfile)
   const [players, setPlayers] = useState<PlayerRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -455,8 +539,10 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
   const [clearingRuns, setClearingRuns] = useState<Set<number>>(new Set())
   const [givingCoins, setGivingCoins] = useState<Set<number>>(new Set())
   const [togglingRole, setTogglingRole] = useState<Set<number>>(new Set())
+  const [fullResetting, setFullResetting] = useState<Set<number>>(new Set())
   const [confirmTarget, setConfirmTarget] = useState<PlayerRow | null>(null)
   const [confirmClearRuns, setConfirmClearRuns] = useState<PlayerRow | null>(null)
+  const [confirmFullReset, setConfirmFullReset] = useState<PlayerRow | null>(null)
   const [giveCoinsTarget, setGiveCoinsTarget] = useState<PlayerRow | null>(null)
   const [roleTarget, setRoleTarget] = useState<PlayerRow | null>(null)
   const [stageTarget, setStageTarget] = useState<PlayerRow | null>(null)
@@ -536,6 +622,30 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
       showToast('Failed to reset player', '#ff4444')
     } finally {
       setResetting(prev => { const next = new Set(prev); next.delete(p.id); return next })
+    }
+  }
+
+  async function executeFullReset(p: PlayerRow) {
+    setConfirmFullReset(null)
+    setFullResetting(prev => new Set(prev).add(p.id))
+    try {
+      const res = await fetch(`/api/admin/players/${p.id}/full-reset`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!res.ok) throw new Error()
+      const emptyUpgrades = Object.fromEntries(UPGRADE_KEYS.map(k => [k, 0]))
+      setPlayers(prev => prev.map(row =>
+        row.id === p.id
+          ? { ...row, coins: 0, upgrades: emptyUpgrades, unlocked_stages: [] }
+          : row
+      ))
+      if (p.id === myId) void fetchProfile()
+      showToast(`Full reset done for ${p.username ?? `#${p.id}`}`, '#ff8866')
+    } catch {
+      showToast('Failed to full-reset player', '#ff4444')
+    } finally {
+      setFullResetting(prev => { const next = new Set(prev); next.delete(p.id); return next })
     }
   }
 
@@ -644,6 +754,13 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
           onToggle={(stage, unlock) => executeToggleStage(stageTarget, stage, unlock)}
           toggling={togglingStage}
           onClose={() => setStageTarget(null)}
+        />
+      )}
+      {confirmFullReset && (
+        <ConfirmFullResetModal
+          player={confirmFullReset}
+          onConfirm={() => executeFullReset(confirmFullReset)}
+          onCancel={() => setConfirmFullReset(null)}
         />
       )}
 
@@ -825,6 +942,35 @@ export function AdminPlayersView({ onBack }: { onBack: () => void }) {
                     >
                       STAGES
                     </button>
+                    {myRole === 'super_admin' && (
+                      <button
+                        type="button"
+                        disabled={fullResetting.has(p.id)}
+                        onClick={() => setConfirmFullReset(p)}
+                        style={{
+                          padding: '2px 8px', fontSize: 10, fontFamily: 'monospace',
+                          color: '#ff6622', background: 'transparent',
+                          border: '1px solid #441100', borderRadius: 4,
+                          cursor: fullResetting.has(p.id) ? 'default' : 'pointer',
+                          opacity: fullResetting.has(p.id) ? 0.4 : 1,
+                          letterSpacing: 1,
+                          transition: 'background 0.15s, border-color 0.15s, color 0.15s',
+                        }}
+                        onMouseEnter={e => {
+                          if (fullResetting.has(p.id)) return
+                          e.currentTarget.style.background = '#3a0800'
+                          e.currentTarget.style.borderColor = '#ff6622'
+                          e.currentTarget.style.color = '#ff9966'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = 'transparent'
+                          e.currentTarget.style.borderColor = '#441100'
+                          e.currentTarget.style.color = '#ff6622'
+                        }}
+                      >
+                        NUKE
+                      </button>
+                    )}
                     {p.role !== 'super_admin' && (
                       <button
                         type="button"

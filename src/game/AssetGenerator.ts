@@ -141,6 +141,23 @@ export function generateAssets(scene: Phaser.Scene) {
   g.generateTexture('projectile', 14, 8)
   g.clear()
 
+  // Bifrost Spear (24×6) — glowing cyan lance, tip points right
+  g.fillStyle(0x00ccff, 0.3)
+  g.fillRect(0, 0, 24, 6)
+  g.fillStyle(0x44eeff, 1)
+  g.fillRect(1, 1, 20, 4)
+  g.fillStyle(0xaaffff, 1)
+  g.fillRect(4, 2, 14, 2)
+  g.fillStyle(0xffffff, 1)
+  g.fillRect(8, 2, 8, 2)
+  // pointed tip
+  g.fillStyle(0x00eeff, 1)
+  g.fillRect(21, 2, 3, 2)
+  g.fillRect(22, 1, 2, 4)
+  g.fillRect(23, 0, 1, 6)
+  g.generateTexture('spear', 24, 6)
+  g.clear()
+
   // Zeus thunderbolt (32×10) — horizontal zigzag drawn with layered lines
   // Tip points right; setRotation() will orient it toward the target at runtime.
   const boltPts: [number, number][] = [[2,5],[8,3],[16,7],[24,3],[30,5]]

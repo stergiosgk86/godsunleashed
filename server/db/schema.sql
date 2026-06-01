@@ -33,6 +33,9 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS max_stage1_level INT NOT NULL DEFA
 -- Migration: admin-granted stage unlocks (bypasses level requirements)
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_stages INT[] NOT NULL DEFAULT '{}';
 
+-- Migration: weapon unlock progression
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS unlocked_weapons TEXT[] NOT NULL DEFAULT '{}';
+
 -- One profile per user
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_user_id_idx ON profiles(user_id);
 

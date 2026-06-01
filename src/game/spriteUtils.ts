@@ -62,6 +62,10 @@ export function createChronosAnims(anims: Phaser.Animations.AnimationManager) {
   createRemappedWalkAnims(anims, 'char_chronos')
 }
 
+export function createOdinAnims(anims: Phaser.Animations.AnimationManager) {
+  createRemappedWalkAnims(anims, 'char_odin')
+}
+
 // Zeus spritesheet: rows 0-3 = walk, rows 4-7 = attack.
 // The artist labeled rows 1/2 as LEFT/RIGHT but the sprites face the opposite direction,
 // so we swap them: sheet row 1 ("LEFT") → game 'right', sheet row 2 ("RIGHT") → game 'left'.

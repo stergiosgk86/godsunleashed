@@ -5,7 +5,6 @@ import { createWalkAnims, createZeusAnims, createApolloAnims, createHadesAnims, 
 const SHEETS: Array<{ key: string; url: string; frameWidth: number; frameHeight: number; frameRate?: number }> = [
   { key: 'player',         url: SPRITE_URLS.player,       frameWidth: 32, frameHeight: 32 },
   { key: 'char_freyja',   url: SPRITE_URLS.charFreyja,   frameWidth: 96, frameHeight: 96 },
-  { key: 'char_witch',    url: SPRITE_URLS.charWitch,    frameWidth: 32, frameHeight: 32 },
   { key: 'char_shade',   url: SPRITE_URLS.charShade,   frameWidth: 32, frameHeight: 32 },
   { key: 'char_zeus',    url: SPRITE_URLS.charZeus,    frameWidth: 96, frameHeight: 96 },
   { key: 'char_ares',    url: SPRITE_URLS.charAres,    frameWidth: 64, frameHeight: 64 },

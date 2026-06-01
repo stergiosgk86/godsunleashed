@@ -23,7 +23,6 @@ import { useStageStore } from '../store/stageStore'
 const CHAR_SPRITE_URL: Record<string, string> = {
   player:          SPRITE_URLS.player,
   char_freyja:     SPRITE_URLS.charFreyja,
-  char_witch:      SPRITE_URLS.charWitch,
   char_shade:      SPRITE_URLS.charShade,
   char_zeus:       SPRITE_URLS.charZeus,
   char_ares:       SPRITE_URLS.charAres,
@@ -41,7 +40,7 @@ const FRAME_H = 32 * SCALE
 const SHEET_W = 96 * SCALE
 const SHEET_H = 128 * SCALE
 
-function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprite, innerScale }: {
+function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprite, innerScale, yOffset = 0 }: {
   spriteKey: string
   color: string
   menuFrame?: { fw: number; fh: number; sw: number; sh: number }
@@ -49,6 +48,8 @@ function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprit
   compact?: boolean
   staticSprite?: boolean
   innerScale?: number
+  // Shifts the view window down by N original-frame pixels (positive = see more of the bottom)
+  yOffset?: number
 }) {
   const [frame, setFrame] = useState(0)
   const url = CHAR_SPRITE_URL[spriteKey]
@@ -67,14 +68,13 @@ function CharSprite({ spriteKey, color, menuFrame, menuRow, compact, staticSprit
   const is = innerScale ?? 1
   const dfw = Math.round(fw * sf)
   const dfh = Math.round(fh * sf)
-  // Scale the background up by `is`, then offset to show the center of the frame
   const totalSF = sf * is
   const dsw = Math.round(sw * totalSF)
   const dsh = Math.round(sh * totalSF)
   const bfw = Math.round(fw * totalSF)
   const bfh = Math.round(fh * totalSF)
   const bpxBase = Math.round((dfw - bfw) / 2)
-  const bpyBase = Math.round((dfh - bfh) / 2)
+  const bpyBase = Math.round((dfh - bfh) / 2) - Math.round(yOffset * totalSF)
   const pad = Math.round(16 * sf)
 
   return (
@@ -297,18 +297,36 @@ function MenuBackground() {
 
 // ── Collection ────────────────────────────────────────────────────────────────
 
-const COLLECTION_WEAPONS = [
+// unlockKey: weapon group key from profileStore.unlockedWeapons; null = always available
+const COLLECTION_WEAPONS: ReadonlyArray<{
+  id: string; label: string; color: string; icon: string; description: string
+  unlockKey: string | null; unlockHint: string | null
+  upgrades: ReadonlyArray<{ id: string; label: string; description: string }>
+}> = [
+  {
+    id: 'melee', label: 'Melee Arc', color: '#dd3311', icon: '⚔',
+    description: 'A devastating front arc slash. Default weapon of Ares.',
+    unlockKey: null, unlockHint: null,
+    upgrades: [
+      { id: 'meleeRange',  label: 'Iron Reach',   description: 'Melee arc extends 25% further (stackable, up to ×4)' },
+      { id: 'meleeArc',    label: 'Rear Strike',  description: 'Strikes behind you 100ms after the front arc' },
+      { id: 'meleeSpeed',  label: 'Battle Fury',  description: 'Melee strikes 15% faster (stackable, up to ×4)' },
+      { id: 'meleeDamage', label: 'Blade Mastery', description: '+20% melee arc damage (stackable, up to ×4)' },
+    ],
+  },
   {
     id: 'wand', label: 'Arcane Wand', color: '#88aaff', icon: '✦',
     description: 'Fires a magic bolt at the nearest enemy',
+    unlockKey: null, unlockHint: null,
     upgrades: [
-      { id: 'multiShot',  label: 'Multi Shot', description: 'Wand fires an extra bolt per attack (stackable, up to 3×)' },
+      { id: 'multiShot',  label: 'Multi Shot', description: 'Wand fires an extra bolt per attack (stackable, up to 4×)' },
       { id: 'piercing',   label: 'Piercing',   description: 'Wand bolts pass through enemies' },
     ],
   },
   {
     id: 'aura', label: 'Aura', color: '#9944ff', icon: '◎',
     description: 'Pulses damage to all enemies in range and knocks them back',
+    unlockKey: 'aura', unlockHint: 'Survive 15 min in any run',
     upgrades: [
       { id: 'auraTick',  label: 'Aura Tempo',  description: 'Aura pulses 100ms faster (stackable, up to 3×)' },
       { id: 'auraRange', label: 'Aura Range',  description: 'Expands the aura radius (stackable, up to 3×)' },
@@ -317,6 +335,7 @@ const COLLECTION_WEAPONS = [
   {
     id: 'orbital', label: 'Spirit Orb', color: '#44ffcc', icon: '◉',
     description: 'An orb orbits you, damaging and knocking back enemies on contact (+1 orb per pick, max 5)',
+    unlockKey: 'orbital', unlockHint: 'Survive 12 min with Poseidon',
     upgrades: [
       { id: 'orbSpeed', label: 'Orb Velocity', description: 'Spirit Orbs rotate 25% faster (stackable, up to 3×)' },
       { id: 'orbPower', label: 'Orb Power',    description: 'Spirit Orbs deal 20% more damage (stackable, up to 3×)' },
@@ -326,16 +345,19 @@ const COLLECTION_WEAPONS = [
   {
     id: 'boomerang', label: 'Boomerang', color: '#ffaa22', icon: '↩',
     description: 'Throws a disc that flies out then returns, hitting enemies twice',
+    unlockKey: 'boomerang', unlockHint: 'Survive 12 min with Freyja',
     upgrades: [],
   },
   {
     id: 'flameTrail', label: 'Flame Trail', color: '#ff6622', icon: '♨',
     description: 'Leaves burning patches as you move that damage nearby enemies',
+    unlockKey: 'flameTrail', unlockHint: 'Survive 15 min in any run',
     upgrades: [],
   },
   {
     id: 'bloodNova', label: 'Blood Nova', color: '#cc2244', icon: '✸',
     description: 'Every 90s wipes all enemies on screen in a massive dark shockwave',
+    unlockKey: 'bloodNova', unlockHint: 'Survive 25 min in any run',
     upgrades: [
       { id: 'bloodNovaCD', label: 'Dark Convergence', description: 'Blood Nova triggers 10s sooner (stackable, up to 4×, down to 50s)' },
     ],
@@ -343,24 +365,33 @@ const COLLECTION_WEAPONS = [
   {
     id: 'lightning', label: 'Thunder Strike', color: '#ddee22', icon: '⚡',
     description: 'Every 4.5s lightning bolts strike 2 random enemies for heavy damage',
+    unlockKey: 'lightning', unlockHint: 'Survive 12 min with Zeus',
     upgrades: [
       { id: 'lightningTargets',  label: 'Storm Surge',   description: 'Thunder Strike hits 1 additional enemy (stackable, up to +2)' },
       { id: 'lightningCooldown', label: 'Thunderhaste',  description: 'Thunder Strike fires 1s faster (stackable, up to 2×)' },
     ],
   },
   {
-    id: 'axe', label: 'War Axe', color: '#dd8844', icon: '⚔',
+    id: 'axe', label: 'War Axe', color: '#dd8844', icon: '🪓',
     description: 'Hurls a spinning axe in an arc — hits on the way up and again on the way down',
-    upgrades: [],
+    unlockKey: 'axe', unlockHint: 'Reach Level 20 in any run',
+    upgrades: [
+      { id: 'axeAmount',    label: 'Double Axe',  description: '+1 axe per volley — two axes arc simultaneously through enemy formations' },
+      { id: 'axeDamage',    label: 'Axe Mastery', description: '+50% axe damage — each throw cleaves harder through armored foes' },
+      { id: 'axePierce',    label: 'Broad Edge',  description: 'Axes grow larger (+50% hit radius), cleaving through wider enemy formations' },
+      { id: 'axeEvolution', label: "Berserker's Ring", description: "Evolution — a ring of 6 orbiting axes shreds every enemy in their path. Requires all 3 axe upgrades." },
+    ],
   },
   {
     id: 'divineShield', label: 'Divine Shield', color: '#ffee66', icon: '◈',
     description: 'Grants periodic invincibility — active for 3s, then recharges for 9s. While active, all damage is blocked.',
+    unlockKey: 'divineShield', unlockHint: 'Survive 10 min in any run',
     upgrades: [],
   },
   {
     id: 'dualGun', label: 'Dual Sunrays', color: '#ffcc00', icon: '✦✦',
     description: 'Both Equinox (gold) and Solstice (cyan) fire piercing bolts in all 4 diagonal directions. Pick both for staggered double volleys.',
+    unlockKey: 'equinox', unlockHint: 'Survive 15 min with Chronos',
     upgrades: [
       { id: 'dualGunDamage', label: 'Solar Intensity', description: 'Sunray bolts deal 30% more damage (stackable, up to 3×)' },
       { id: 'dualGunSpeed',  label: 'Solar Tempo',     description: 'Sunray guns fire 20% faster (stackable, up to 2×)' },
@@ -370,6 +401,7 @@ const COLLECTION_WEAPONS = [
   {
     id: 'ravens', label: "Odin's Ravens", color: '#bb77ff', icon: '🪶',
     description: 'Two ravens orbit you, unleashing bomb barrages toward a rotating zone circle — feathers pierce all enemies',
+    unlockKey: 'ravens', unlockHint: "Survive 15 min with Odin",
     upgrades: [
       { id: 'ravensCD',    label: "Raven's Fury",   description: 'Ravens bomb 500ms faster (stackable, up to 3×, down to 2s)' },
       { id: 'ravensPower', label: "Raven's Curse",  description: 'Each feather deals 20% more damage (stackable, up to 3×)' },
@@ -379,6 +411,7 @@ const COLLECTION_WEAPONS = [
   {
     id: 'spear', label: 'Bifrost Spear', color: '#00ddff', icon: '◆',
     description: 'Hurls a glowing lance in the direction you move, piercing up to 3 enemies per throw',
+    unlockKey: 'spear', unlockHint: 'Survive 12 min with Heimdall',
     upgrades: [
       { id: 'spearCount',    label: 'Spear Barrage',  description: '+1 spear per burst — all fire in rapid succession (up to 6 total, stackable ×5)' },
       { id: 'spearInterval', label: 'Spear Tempo',    description: 'Throws erupt faster and burst tighter (stackable ×3)' },
@@ -387,90 +420,118 @@ const COLLECTION_WEAPONS = [
       { id: 'spearStorm',    label: 'Thousand Spears', description: 'Evolution — transforms the burst into a never-ending torrent of lances. Requires max Barrage + Bracer ×3.' },
     ],
   },
-] as const
+]
 
-const COLLECTION_PASSIVES = [
-  { id: 'might',       label: 'Power',        color: '#ff6644', icon: '▲', description: '+10% weapon damage (stackable)' },
-  { id: 'vampiric',    label: 'Soul Drain',   color: '#cc3355', icon: '♥', description: 'Each hit restores 0.25% of damage dealt as HP (scales well with fast weapons)' },
-  { id: 'echo',        label: 'Echo',         color: '#aaddff', icon: '≋', description: 'Each projectile weapon fires one additional copy per attack — wand, boomerang, axe, sunrays, spear, and Thunder Strike all gain an extra strike (stackable, up to 2×)' },
-  { id: 'xpGain',      label: 'Gilded Soul',  color: '#ffcc33', icon: '★', description: '+8% XP gained from all sources (stackable, up to 5×)' },
-  { id: 'magnetRange', label: 'Astral Pull',  color: '#66ccff', icon: '◎', description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },
-  { id: 'dashCooldown',label: 'Swift Dash',   color: '#88aaff', icon: '→', description: '25% shorter dash cooldown' },
-  { id: 'dashDistance',label: 'Longer Dash',  color: '#88aaff', icon: '⟶', description: '40% further dash distance' },
-] as const
+const COLLECTION_PASSIVES: ReadonlyArray<{
+  id: string; label: string; color: string; icon: string; description: string
+  unlockKey: string | null; unlockHint: string | null
+}> = [
+  { id: 'might',        label: 'Power',        color: '#ff6644', icon: '▲', description: '+10% weapon damage (stackable)', unlockKey: null, unlockHint: null },
+  { id: 'vampiric',     label: 'Soul Drain',   color: '#cc3355', icon: '♥', description: 'Each hit restores 0.25% of damage dealt as HP', unlockKey: 'vampiric', unlockHint: 'Kill 500 enemies in a single run' },
+  { id: 'echo',         label: 'Echo',         color: '#aaddff', icon: '≋', description: 'Each projectile weapon fires one additional copy per attack (stackable, up to 2×)', unlockKey: 'echo', unlockHint: 'Carry 4 or more different weapons in one run' },
+  { id: 'xpGain',       label: 'Gilded Soul',  color: '#ffcc33', icon: '★', description: '+8% XP gained from all sources (stackable, up to 5×)', unlockKey: null, unlockHint: null },
+  { id: 'magnetRange',  label: 'Astral Pull',  color: '#66ccff', icon: '◎', description: 'XP orbs attracted from 50% further away (stackable, up to 3×)', unlockKey: null, unlockHint: null },
+  { id: 'dashCooldown', label: 'Swift Dash',   color: '#88aaff', icon: '→', description: '25% shorter dash cooldown', unlockKey: null, unlockHint: null },
+  { id: 'dashDistance', label: 'Longer Dash',  color: '#88aaff', icon: '⟶', description: '40% further dash distance', unlockKey: null, unlockHint: null },
+]
 
 function CollectionView({ onBack }: { onBack: () => void }) {
+  const { unlockedWeapons } = useProfileStore()
+  const unlocked = new Set(unlockedWeapons)
+
+  const totalLockable = [...COLLECTION_WEAPONS, ...COLLECTION_PASSIVES].filter(e => e.unlockKey !== null).length
+  const totalUnlocked = [...COLLECTION_WEAPONS, ...COLLECTION_PASSIVES].filter(e => e.unlockKey !== null && unlocked.has(e.unlockKey)).length
+
   return (
     <>
       <ViewHeader color="#44ccaa">COLLECTION</ViewHeader>
       <div style={{ width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
-          <span style={{ color: '#88aaff', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 4, flexShrink: 0 }}>⚔ WEAPONS</span>
-          <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #88aaff44, transparent)' }} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ color: '#88aaff', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 4, flexShrink: 0 }}>⚔ WEAPONS</span>
+            <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #88aaff44, transparent)', width: 60 }} />
+          </div>
+          <span style={{ color: '#44cc88', fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 }}>
+            {totalUnlocked}/{totalLockable} unlocked
+          </span>
         </div>
 
-        {COLLECTION_WEAPONS.map(w => (
-          <div key={w.id} style={{
-            background: 'rgba(10,10,26,0.6)',
-            border: `1px solid ${w.color}25`,
-            borderLeft: `3px solid ${w.color}99`,
-            borderRadius: 10, padding: '10px 14px',
-            display: 'flex', flexDirection: 'column', gap: 5,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ color: w.color, fontSize: 17, width: 22, textAlign: 'center', flexShrink: 0, filter: `drop-shadow(0 0 5px ${w.color}99)` }}>
-                {w.icon}
-              </span>
-              <div>
-                <div style={{ color: '#ddddff', fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold', letterSpacing: 1 }}>
-                  {w.label.toUpperCase()}
-                </div>
-                <div style={{ color: '#505070', fontFamily: 'monospace', fontSize: 10, marginTop: 2 }}>
-                  {w.description}
-                </div>
-              </div>
-            </div>
-            {w.upgrades.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 32 }}>
-                {w.upgrades.map(u => (
-                  <div key={u.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
-                    <span style={{ color: w.color + '77', fontSize: 9, flexShrink: 0 }}>▸</span>
-                    <span style={{ color: w.color + 'cc', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', flexShrink: 0 }}>{u.label}</span>
-                    <span style={{ color: '#383858', fontFamily: 'monospace', fontSize: 10 }}>— {u.description}</span>
+        {COLLECTION_WEAPONS.map(w => {
+          const isLocked = w.unlockKey !== null && !unlocked.has(w.unlockKey)
+          return (
+            <div key={w.id} style={{
+              background: isLocked ? 'rgba(6,6,18,0.7)' : 'rgba(10,10,26,0.6)',
+              border: `1px solid ${isLocked ? '#222244' : w.color + '25'}`,
+              borderLeft: `3px solid ${isLocked ? '#333355' : w.color + '99'}`,
+              borderRadius: 10, padding: '10px 14px',
+              display: 'flex', flexDirection: 'column', gap: 5,
+              opacity: isLocked ? 0.55 : 1,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ color: isLocked ? '#333355' : w.color, fontSize: 17, width: 22, textAlign: 'center', flexShrink: 0, filter: isLocked ? 'none' : `drop-shadow(0 0 5px ${w.color}99)` }}>
+                  {isLocked ? '🔒' : w.icon}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: isLocked ? '#444466' : '#ddddff', fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold', letterSpacing: 1 }}>
+                    {isLocked ? '???' : w.label.toUpperCase()}
                   </div>
-                ))}
+                  <div style={{ color: isLocked ? '#2a2a44' : '#505070', fontFamily: 'monospace', fontSize: 10, marginTop: 2 }}>
+                    {isLocked ? w.unlockHint : w.description}
+                  </div>
+                </div>
+                {!isLocked && w.unlockKey !== null && (
+                  <span style={{ color: '#44cc88', fontSize: 13, flexShrink: 0 }}>✓</span>
+                )}
               </div>
-            )}
-          </div>
-        ))}
+              {!isLocked && w.upgrades.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginLeft: 32 }}>
+                  {w.upgrades.map(u => (
+                    <div key={u.id} style={{ display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                      <span style={{ color: w.color + '77', fontSize: 9, flexShrink: 0 }}>▸</span>
+                      <span style={{ color: w.color + 'cc', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', flexShrink: 0 }}>{u.label}</span>
+                      <span style={{ color: '#383858', fontFamily: 'monospace', fontSize: 10 }}>— {u.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, marginBottom: 2 }}>
           <span style={{ color: '#ffcc44', fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 4, flexShrink: 0 }}>★ PASSIVES</span>
           <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #ffcc4444, transparent)' }} />
         </div>
 
-        {COLLECTION_PASSIVES.map(p => (
-          <div key={p.id} style={{
-            background: 'rgba(10,10,26,0.6)',
-            border: `1px solid ${p.color}20`,
-            borderLeft: `3px solid ${p.color}66`,
-            borderRadius: 10, padding: '10px 14px',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <span style={{ color: p.color, fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0, filter: `drop-shadow(0 0 4px ${p.color}77)` }}>
-              {p.icon}
-            </span>
-            <div>
-              <div style={{ color: '#ccccff', fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold', letterSpacing: 1 }}>
-                {p.label.toUpperCase()}
+        {COLLECTION_PASSIVES.map(p => {
+          const isLocked = p.unlockKey !== null && !unlocked.has(p.unlockKey)
+          return (
+            <div key={p.id} style={{
+              background: isLocked ? 'rgba(6,6,18,0.7)' : 'rgba(10,10,26,0.6)',
+              border: `1px solid ${isLocked ? '#222244' : p.color + '20'}`,
+              borderLeft: `3px solid ${isLocked ? '#333355' : p.color + '66'}`,
+              borderRadius: 10, padding: '10px 14px',
+              display: 'flex', alignItems: 'center', gap: 10,
+              opacity: isLocked ? 0.55 : 1,
+            }}>
+              <span style={{ color: isLocked ? '#333355' : p.color, fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0, filter: isLocked ? 'none' : `drop-shadow(0 0 4px ${p.color}77)` }}>
+                {isLocked ? '🔒' : p.icon}
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: isLocked ? '#444466' : '#ccccff', fontFamily: 'monospace', fontSize: 12, fontWeight: 'bold', letterSpacing: 1 }}>
+                  {isLocked ? '???' : p.label.toUpperCase()}
+                </div>
+                <div style={{ color: isLocked ? '#2a2a44' : '#383858', fontFamily: 'monospace', fontSize: 10, marginTop: 2 }}>
+                  {isLocked ? p.unlockHint : p.description}
+                </div>
               </div>
-              <div style={{ color: '#383858', fontFamily: 'monospace', fontSize: 10, marginTop: 2 }}>
-                {p.description}
-              </div>
+              {!isLocked && p.unlockKey !== null && (
+                <span style={{ color: '#44cc88', fontSize: 13, flexShrink: 0 }}>✓</span>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
       <BackButton onBack={onBack} />
     </>
@@ -615,6 +676,7 @@ function LeaderboardView({ onBack }: { onBack: () => void }) {
 function AchievementsView({ onBack }: { onBack: () => void }) {
   const [unlocked, setUnlocked] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
+  const [hideCompleted, setHideCompleted] = useState(false)
   const token = useAuthStore.getState().token
 
   useEffect(() => {
@@ -634,18 +696,18 @@ function AchievementsView({ onBack }: { onBack: () => void }) {
       <ViewHeader color="#8888ff">ACHIEVEMENTS</ViewHeader>
 
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 10,
       }}>
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '3px 12px', borderRadius: 20,
+          padding: '3px 12px', borderRadius: 20, flexShrink: 0,
           background: 'rgba(60,60,120,0.25)', border: '1px solid rgba(80,80,160,0.3)',
           color: '#6666aa', fontFamily: 'monospace', fontSize: 11, letterSpacing: 2,
         }}>
           {unlockedCount} / {ACHIEVEMENTS.length} UNLOCKED
         </div>
         <div style={{
-          height: 5, flex: 1, marginLeft: 12, borderRadius: 4,
+          height: 5, flex: 1, borderRadius: 4,
           background: 'rgba(40,40,80,0.5)',
           overflow: 'hidden',
         }}>
@@ -656,6 +718,21 @@ function AchievementsView({ onBack }: { onBack: () => void }) {
             transition: 'width 0.4s ease',
           }} />
         </div>
+        <button
+          type="button"
+          onClick={() => setHideCompleted(h => !h)}
+          style={{
+            flexShrink: 0, padding: '4px 12px', borderRadius: 20, cursor: 'pointer',
+            fontFamily: 'monospace', fontSize: 10, letterSpacing: 1, fontWeight: 'bold',
+            background: hideCompleted ? 'rgba(100,70,220,0.55)' : 'rgba(60,60,130,0.55)',
+            border: `1px solid ${hideCompleted ? 'rgba(160,120,255,0.7)' : 'rgba(100,100,200,0.6)'}`,
+            color: hideCompleted ? '#ddccff' : '#aaaadd',
+            boxShadow: hideCompleted ? '0 0 8px rgba(120,80,255,0.35)' : '0 0 4px rgba(80,80,180,0.2)',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          {hideCompleted ? 'SHOW ALL' : 'HIDE DONE'}
+        </button>
       </div>
 
       {loading ? (
@@ -666,6 +743,8 @@ function AchievementsView({ onBack }: { onBack: () => void }) {
             const catAchs = cat.ids.map(id => ACHIEVEMENT_MAP[id]).filter(Boolean)
             const catUnlocked = catAchs.filter(a => unlocked.has(a.id)).length
             const allDone = catUnlocked === catAchs.length
+            const visibleAchs = hideCompleted ? catAchs.filter(a => !unlocked.has(a.id)) : catAchs
+            if (hideCompleted && visibleAchs.length === 0) return null
             return (
               <div key={cat.label} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {/* Category header */}
@@ -689,7 +768,7 @@ function AchievementsView({ onBack }: { onBack: () => void }) {
                 </div>
 
                 {/* Achievement rows */}
-                {catAchs.map(a => {
+                {visibleAchs.map(a => {
                   const done = unlocked.has(a.id)
                   return (
                     <div key={a.id} style={{
@@ -812,6 +891,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const [confirmRefund, setConfirmRefund] = useState<keyof MetaUpgrades | null>(null)
   const [confirmUnlock, setConfirmUnlock] = useState<string | null>(null)
   const [unlockError, setUnlockError] = useState<string | null>(null)
+  const [achRequiredModal, setAchRequiredModal] = useState<string | null>(null)
   const [playAfterSelect, setPlayAfterSelect] = useState(false)
   const mob = useIsMobile()
 
@@ -1166,13 +1246,14 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       onClick={() => {
                         if (!isLocked) setCharacter(id)
                         else if (unlockCost !== undefined) { setUnlockError(null); setConfirmUnlock(id) }
+                        else if (achievementRequired !== undefined) setAchRequiredModal(id)
                       }}
                       style={{
                         position: 'relative', overflow: 'hidden',
                         background: isGridSelected ? 'rgba(20,20,50,0.9)' : 'rgba(10,10,28,0.55)',
                         border: `2px solid ${isLocked ? 'rgba(60,30,80,0.35)' : isGridSelected ? def.color : 'rgba(40,40,90,0.45)'}`,
                         borderRadius: 10, padding: '8px 4px 6px',
-                        cursor: isLocked ? (unlockCost !== undefined ? 'pointer' : 'default') : 'pointer',
+                        cursor: 'pointer',
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                         transition: 'all 0.15s ease',
                         boxShadow: isGridSelected ? `0 0 14px ${def.color}44` : 'none',
@@ -1185,7 +1266,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                       }} />}
                       <div style={{ position: 'relative' }}>
                         <div style={{ opacity: isLocked ? 0.35 : 1 }}>
-                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} compact staticSprite={def.staticSprite} innerScale={id === 'poseidon' ? 1.4 : undefined} />
+                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} compact staticSprite={def.staticSprite} innerScale={id === 'poseidon' ? 1.3 : undefined} yOffset={id === 'poseidon' ? -1 : 0} />
                         </div>
                         {isLocked && (
                           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>🔒</div>
@@ -1311,10 +1392,10 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
 
               <div style={{ display: 'flex', gap: 16, width: '100%', flex: 1, minHeight: 0 }}>
 
-                {/* Left: 2-column portrait grid */}
+                {/* Left: 3-column portrait grid */}
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 7,
-                  flex: '0 0 196px', overflowY: 'auto', alignContent: 'start',
+                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+                  flex: '0 0 318px', overflowY: 'auto', alignContent: 'start',
                 }}>
                   {ALL_CHARACTERS.map((id, i) => {
                     const def = CHARACTER_DEFS[id]
@@ -1328,14 +1409,15 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                         onClick={() => {
                           if (!isLocked) setCharacter(id)
                           else if (unlockCost !== undefined) { setUnlockError(null); setConfirmUnlock(id) }
+                          else if (achievementRequired !== undefined) setAchRequiredModal(id)
                         }}
                         style={{
-                          position: 'relative', overflow: 'hidden',
+                          position: 'relative',
                           background: isGridSelected ? 'rgba(20,20,50,0.9)' : 'rgba(10,10,28,0.55)',
                           border: `2px solid ${isLocked ? 'rgba(60,30,80,0.35)' : isGridSelected ? def.color : 'rgba(40,40,90,0.45)'}`,
-                          borderRadius: 10, padding: '10px 6px 7px',
-                          cursor: isLocked ? (unlockCost !== undefined ? 'pointer' : 'default') : 'pointer',
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                          borderRadius: 10, padding: '10px 8px 12px',
+                          cursor: 'pointer', minHeight: 110,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
                           transition: 'all 0.15s ease',
                           boxShadow: isGridSelected ? `0 0 16px ${def.color}44` : 'none',
                         }}
@@ -1350,7 +1432,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
 
                         <div style={{ position: 'relative' }}>
                           <div style={{ opacity: isLocked ? 0.35 : 1 }}>
-                            <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} compact staticSprite={def.staticSprite} innerScale={id === 'poseidon' ? 1.4 : undefined} />
+                            <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} compact staticSprite={def.staticSprite} innerScale={id === 'poseidon' ? 1.3 : undefined} yOffset={id === 'poseidon' ? -1 : 0} />
                           </div>
                           {isLocked && (
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15 }}>🔒</div>
@@ -1358,8 +1440,8 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                         </div>
 
                         <span style={{
-                          fontFamily: 'monospace', fontSize: 9, fontWeight: 'bold',
-                          letterSpacing: 1, textAlign: 'center',
+                          fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold',
+                          letterSpacing: 0.5, textAlign: 'center', lineHeight: 1.2,
                           color: isLocked ? '#443355' : isGridSelected ? def.color : '#7777aa',
                         }}>
                           {def.name.toUpperCase()}
@@ -1384,7 +1466,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                         borderRadius: 12, flexShrink: 0,
                       }}>
                         <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} staticSprite={def.staticSprite} innerScale={selectedCharacter === 'poseidon' ? 1.4 : undefined} />
+                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} staticSprite={def.staticSprite} innerScale={selectedCharacter === 'poseidon' ? 1.3 : undefined} yOffset={selectedCharacter === 'poseidon' ? -1 : 0} />
                         </div>
                         <div style={{
                           color: def.color, fontFamily: 'monospace', fontSize: 22, fontWeight: 'bold',
@@ -1932,6 +2014,68 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   CANCEL
                 </button>
               </div>
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Achievement-required unlock modal */}
+      {achRequiredModal !== null && (() => {
+        const def = CHARACTER_DEFS[achRequiredModal as keyof typeof CHARACTER_DEFS]
+        const achId = CHARACTER_ACHIEVEMENT_REQUIRED[achRequiredModal]!
+        const ach = ACHIEVEMENT_MAP[achId]
+        return (
+          <div
+            style={{
+              position: 'fixed', inset: 0, zIndex: 100,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)',
+            }}
+            onClick={() => setAchRequiredModal(null)}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'rgba(8,8,22,0.95)', backdropFilter: 'blur(20px)',
+                border: `1px solid ${def.color}55`, borderRadius: 18,
+                padding: '28px 32px',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14,
+                boxShadow: `0 12px 48px rgba(0,0,0,0.8), 0 0 30px ${def.color}22`,
+                minWidth: 280, maxWidth: 340,
+              }}
+            >
+              <div style={{ fontSize: 28 }}>🏆</div>
+              <div style={{ fontFamily: 'monospace', fontSize: 15, fontWeight: 'bold', color: '#ccccff', textAlign: 'center', letterSpacing: 1 }}>
+                Unlock <span style={{ color: def.color }}>{def.name}</span>
+              </div>
+              <div style={{ fontFamily: 'monospace', fontSize: 13, color: '#776688', textAlign: 'center' }}>
+                {def.description}
+              </div>
+              <div style={{
+                background: 'rgba(20,20,50,0.6)', border: '1px solid rgba(80,60,120,0.4)',
+                borderRadius: 10, padding: '10px 16px', textAlign: 'center',
+              }}>
+                <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#8888aa', marginBottom: 4 }}>ACHIEVEMENT REQUIRED</div>
+                <div style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 'bold', color: '#ccaa44' }}>
+                  {ach ? `${ach.icon} ${ach.name}` : achId}
+                </div>
+                {ach && <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#998888', marginTop: 4 }}>{ach.description}</div>}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAchRequiredModal(null)}
+                style={{
+                  width: '100%', padding: '10px 0',
+                  background: 'rgba(20,20,50,0.5)', border: '1px solid rgba(60,60,120,0.35)',
+                  borderRadius: 10, color: '#8888cc',
+                  fontFamily: 'monospace', fontSize: 13, fontWeight: 'bold', letterSpacing: 1,
+                  cursor: 'pointer', transition: 'all 0.18s ease',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,30,75,0.7)'; e.currentTarget.style.color = '#aaaaff' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(20,20,50,0.5)'; e.currentTarget.style.color = '#8888cc' }}
+              >
+                OK
+              </button>
             </div>
           </div>
         )

@@ -21,12 +21,49 @@ export interface PlayerRunData {
   multiplayer: boolean
   damageDealt: number
   stage: number
+  characterType?: string
 }
 
+// Keys for weapon groups that can be unlocked. Each key gates the entire group in the level-up pool.
+// 'melee' and 'wand' are always available and not listed here.
+export const ALL_WEAPON_UNLOCK_KEYS = [
+  'orbital', 'boomerang', 'flameTrail', 'bloodNova', 'lightning',
+  'axe', 'aura', 'equinox', 'ravens', 'spear',
+  'vampiric', 'divineShield', 'echo',
+] as const
+export type WeaponUnlockKey = typeof ALL_WEAPON_UNLOCK_KEYS[number]
+
+function computeNewWeaponUnlocks(data: PlayerRunData, already: Set<string>): string[] {
+  const t = data.timeSurvived
+  const char = data.characterType ?? ''
+  const earned: string[] = []
+  const add = (key: string) => { if (!already.has(key)) earned.push(key) }
+
+  // Any-character milestones
+  if (t >= 10 * 60_000) add('divineShield')
+  if (t >= 15 * 60_000) { add('aura'); add('flameTrail') }
+  if (t >= 25 * 60_000) add('bloodNova')
+  if (data.level >= 20)      add('axe')
+  if (data.kills >= 500)     add('vampiric')
+  if (data.weaponCount >= 4) add('echo')
+
+  // Character-specific survival
+  if (char === 'freyja'   && t >= 12 * 60_000) add('boomerang')
+  if (char === 'zeus'     && t >= 12 * 60_000) add('lightning')
+  if (char === 'poseidon' && t >= 12 * 60_000) add('orbital')
+  if (char === 'heimdall' && t >= 12 * 60_000) add('spear')
+  if (char === 'chronos'  && t >= 15 * 60_000) add('equinox')
+  if (char === 'odin'     && t >= 15 * 60_000) add('ravens')
+
+  return earned
+}
+
+const CHAR_30_MIN_SET = new Set(['poseidon', 'apollo', 'zeus', 'chronos', 'odin', 'hades'])
+
 // Validates, computes score and achievements, saves run + credits coins to profile.
-// Returns the list of newly unlocked achievement IDs.
-export async function saveRunRecord(data: PlayerRunData): Promise<string[]> {
-  if (data.kills === 0) return []  // skip trivial runs
+// Returns newly unlocked achievement IDs and weapon group keys.
+export async function saveRunRecord(data: PlayerRunData): Promise<{ achievements: string[]; weapons: string[] }> {
+  if (data.kills === 0) return { achievements: [], weapons: [] }  // skip trivial runs
 
   const safeKills    = clamp(data.kills,        0, MAX_RUN_KILLS)
   const safeCoins    = clamp(data.coins,         0, MAX_SESSION_COINS)
@@ -45,6 +82,14 @@ export async function saveRunRecord(data: PlayerRunData): Promise<string[]> {
     safeKills * 10 + safeCoins * 5 + Math.floor(safeTime / 1000) * 2 + (safeWon ? 5000 : 0),
     0, MAX_RUN_SCORE,
   )
+
+  // Fetch current unlocked weapons before the run's DB writes
+  const weaponRow = await db.query(
+    'SELECT unlocked_weapons FROM profiles WHERE user_id = $1',
+    [data.userId],
+  )
+  const currentWeapons = new Set<string>(weaponRow.rows[0]?.unlocked_weapons ?? [])
+  const newWeapons = computeNewWeaponUnlocks(data, currentWeapons)
 
   const earned: string[] = []
   // Survival
@@ -94,6 +139,11 @@ export async function saveRunRecord(data: PlayerRunData): Promise<string[]> {
   }
   // Multiplayer
   if (safeMulti && (safeWon || safeKills > 0)) earned.push('team_player')
+  // Character survival
+  const char = data.characterType ?? ''
+  if (char && safeTime >= 5  * 60 * 1000) earned.push(`char_${char}_5`)
+  if (char && safeTime >= 15 * 60 * 1000) earned.push(`char_${char}_15`)
+  if (char && CHAR_30_MIN_SET.has(char) && safeTime >= 30 * 60 * 1000) earned.push(`char_${char}_30`)
 
   const achievementInserts = earned.map(id =>
     db.query(
@@ -112,16 +162,22 @@ export async function saveRunRecord(data: PlayerRunData): Promise<string[]> {
     data.stage === 1
       ? db.query(
           `UPDATE profiles SET coins = LEAST(coins + $1, 5000000), active_run_token = NULL,
-           max_stage1_level = GREATEST(max_stage1_level, $2), updated_at = NOW() WHERE user_id = $3`,
-          [safeCoins, safeLevel, data.userId],
+           max_stage1_level = GREATEST(max_stage1_level, $2),
+           unlocked_weapons = ARRAY(SELECT DISTINCT unnest(unlocked_weapons || $3::text[])),
+           updated_at = NOW() WHERE user_id = $4`,
+          [safeCoins, safeLevel, newWeapons, data.userId],
         )
       : db.query(
-          `UPDATE profiles SET coins = LEAST(coins + $1, 5000000), active_run_token = NULL, updated_at = NOW()
-           WHERE user_id = $2`,
-          [safeCoins, data.userId],
+          `UPDATE profiles SET coins = LEAST(coins + $1, 5000000), active_run_token = NULL,
+           unlocked_weapons = ARRAY(SELECT DISTINCT unnest(unlocked_weapons || $2::text[])),
+           updated_at = NOW() WHERE user_id = $3`,
+          [safeCoins, newWeapons, data.userId],
         ),
     Promise.all(achievementInserts),
   ])
 
-  return achievementResults.flatMap(r => r.rows).map(r => r.achievement_id as string)
+  return {
+    achievements: achievementResults.flatMap(r => r.rows).map(r => r.achievement_id as string),
+    weapons: newWeapons,
+  }
 }

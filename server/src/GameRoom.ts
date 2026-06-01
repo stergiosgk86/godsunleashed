@@ -21,12 +21,15 @@ const ALL_UPGRADE_IDS = [
   'dashCooldown', 'dashDistance', 'wand', 'multiShot', 'piercing',
   'aura', 'auraTick', 'auraRange', 'orbital', 'orbSpeed', 'orbPower', 'orbRange',
   'boomerang', 'flameTrail', 'bloodNova', 'bloodNovaCD', 'vampiric',
-  'lightning', 'lightningTargets', 'lightningCooldown', 'might', 'axe', 'divineShield',
+  'lightning', 'lightningTargets', 'lightningCooldown', 'might',
+  'axe', 'axeAmount', 'axeDamage', 'axePierce', 'axeEvolution',
+  'divineShield',
   'xpGain', 'magnetRange',
   'equinox', 'solstice', 'dualGunDamage', 'dualGunSpeed', 'dualGunExtra',
   'echo',
   'ravens', 'ravensCD', 'ravensPower', 'ravensCount',
   'spear', 'spearCount', 'spearInterval', 'spearPierce', 'spearSpeed', 'spearStorm',
+  'meleeRange', 'meleeArc', 'meleeSpeed', 'meleeDamage',
 ] as const
 type UpgradeId = typeof ALL_UPGRADE_IDS[number]
 const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
@@ -38,9 +41,11 @@ const WEAPON_FAMILIES: Record<string, readonly string[]> = {
   lightning: ['lightningTargets', 'lightningCooldown'],
   bloodNova: ['bloodNovaCD'],
   ravens:    ['ravensCD', 'ravensPower', 'ravensCount'],
+  axe:       ['axeAmount', 'axeDamage', 'axePierce', 'axeEvolution'],
   spear:     ['spearCount', 'spearInterval', 'spearPierce'],
   dash:      ['dashCooldown', 'dashDistance'],
   dualGun:   ['dualGunDamage', 'dualGunSpeed', 'dualGunExtra'],
+  melee:     ['meleeRange', 'meleeArc', 'meleeSpeed', 'meleeDamage'],
 }
 const UPGRADE_FAMILY: Record<string, string> = {}
 for (const [family, ids] of Object.entries(WEAPON_FAMILIES)) {
@@ -52,6 +57,42 @@ const BASE_WEAPONS = new Set<string>([
   'bloodNova', 'lightning', 'axe', 'equinox', 'solstice', 'ravens', 'spear',
 ])
 const WEAPON_CAP = 6
+
+// Maps each upgrade ID to its unlock group key. Upgrades not listed here are always available.
+const UPGRADE_TO_WEAPON_GROUP: Partial<Record<string, string>> = {
+  orbital: 'orbital', orbSpeed: 'orbital', orbPower: 'orbital', orbRange: 'orbital',
+  boomerang: 'boomerang',
+  flameTrail: 'flameTrail',
+  bloodNova: 'bloodNova', bloodNovaCD: 'bloodNova',
+  lightning: 'lightning', lightningTargets: 'lightning', lightningCooldown: 'lightning',
+  axe: 'axe', axeAmount: 'axe', axeDamage: 'axe', axePierce: 'axe', axeEvolution: 'axe',
+  aura: 'aura', auraTick: 'aura', auraRange: 'aura',
+  equinox: 'equinox', solstice: 'equinox', dualGunDamage: 'equinox', dualGunSpeed: 'equinox', dualGunExtra: 'equinox',
+  ravens: 'ravens', ravensCD: 'ravens', ravensPower: 'ravens', ravensCount: 'ravens',
+  spear: 'spear', spearCount: 'spear', spearInterval: 'spear', spearPierce: 'spear', spearSpeed: 'spear', spearStorm: 'spear',
+  vampiric: 'vampiric',
+  divineShield: 'divineShield',
+  echo: 'echo',
+}
+
+function playerOwnsGroup(group: string, u: PlayerUpgrades): boolean {
+  switch (group) {
+    case 'orbital':      return u.orbital > 0
+    case 'boomerang':    return u.boomerang
+    case 'flameTrail':   return u.flameTrail
+    case 'bloodNova':    return u.bloodNova
+    case 'lightning':    return u.lightning
+    case 'axe':          return u.axe
+    case 'aura':         return u.aura
+    case 'equinox':      return u.equinox || u.solstice
+    case 'ravens':       return u.ravens
+    case 'spear':        return u.spear
+    case 'vampiric':     return u.vampiric
+    case 'divineShield': return u.divineShield
+    case 'echo':         return u.echo > 0
+    default:             return true
+  }
+}
 
 function countOwnedWeapons(u: PlayerUpgrades): number {
   return [
@@ -110,6 +151,14 @@ interface PlayerUpgrades {
   spearPierce: number    // 0–2, base 3 pierce + 1 per level
   spearSpeed: number     // 0–5, each +10% projectile speed (Bracer)
   spearStorm: boolean    // Thousand Spears evolution
+  axeAmount: number      // 0–1, +1 axe per volley
+  axeDamage: number      // 0–1, +50% damage
+  axePierce: number      // 0–1, +50% hit radius
+  axeEvolution: boolean  // Death Spiral
+  meleeRange: number     // 0–4, each +25% range
+  meleeArc: number       // 0–1, adds rear strike 100ms after front
+  meleeSpeed: number     // 0–4, each -15% attack interval
+  meleeDamage: number    // 0–4, each +20% melee damage
 }
 
 function emptyUpgrades(): PlayerUpgrades {
@@ -122,13 +171,14 @@ function emptyUpgrades(): PlayerUpgrades {
     equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, echo: 0,
     ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
     spear: false, spearCount: 0, spearInterval: 0, spearPierce: 0, spearSpeed: 0, spearStorm: false,
+    axeAmount: 0, axeDamage: 0, axePierce: 0, axeEvolution: false,
+    meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0,
   }
 }
 
 // Characters that start the run with a weapon already unlocked.
 // These are pre-set so those weapons are never offered as level-up choices.
 function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
-  if (characterType === 'witch')    return { aura: true }
   if (characterType === 'zeus')     return { lightning: true }
   if (characterType === 'freyja')   return { boomerang: true }
   if (characterType === 'shade')    return { flameTrail: true }
@@ -140,10 +190,15 @@ function startingUpgrades(characterType: string): Partial<PlayerUpgrades> {
   return {}
 }
 
-function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
+function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean, unlockedWeapons: Set<string>): string[] {
   const atWeaponCap = countOwnedWeapons(u) >= WEAPON_CAP
 
   const eligible = ALL_UPGRADE_IDS.filter(id => {
+    // Weapon unlock gate: only offer weapons the player has unlocked
+    // (unless they already own it via starting equipment)
+    const group = UPGRADE_TO_WEAPON_GROUP[id]
+    if (group && !playerOwnsGroup(group, u) && !unlockedWeapons.has(group)) return false
+
     // At weapon cap, stop offering new base weapons — only upgrades for owned weapons remain
     if (atWeaponCap && BASE_WEAPONS.has(id)) return false
     if (isMelee && (id === 'multiShot' || id === 'piercing')) return false
@@ -171,7 +226,18 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'lightningCooldown' && !u.lightning)                  return false
     if (id === 'lightningCooldown' && u.lightningCooldown >= 2)      return false
     if (id === 'might'       && u.mightPicks >= 5)   return false
-    if (id === 'axe'         && u.axe)               return false
+    if (id === 'axe'          && u.axe)                        return false
+    if (id === 'axeAmount'    && !u.axe)                       return false
+    if (id === 'axeAmount'    && u.axeAmount >= 1)             return false
+    if (id === 'axeDamage'    && !u.axe)                       return false
+    if (id === 'axeDamage'    && u.axeDamage >= 1)             return false
+    if (id === 'axePierce'    && !u.axe)                       return false
+    if (id === 'axePierce'    && u.axePierce >= 1)             return false
+    if (id === 'axeEvolution' && !u.axe)                       return false
+    if (id === 'axeEvolution' && u.axeAmount < 1)              return false
+    if (id === 'axeEvolution' && u.axeDamage < 1)              return false
+    if (id === 'axeEvolution' && u.axePierce < 1)              return false
+    if (id === 'axeEvolution' && u.axeEvolution)               return false
     if (id === 'divineShield'&& u.divineShield)      return false
     if (id === 'xpGain'      && u.xpGain >= 5)      return false
     if (id === 'magnetRange'    && u.magnetRange >= 3)       return false
@@ -211,6 +277,12 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean): string[] {
     if (id === 'spearStorm'     && u.spearCount < 5)           return false
     if (id === 'spearStorm'     && u.spearSpeed < 3)           return false
     if (id === 'spearStorm'     && u.spearStorm)               return false
+    if ((id === 'meleeRange' || id === 'meleeArc' || id === 'meleeSpeed' || id === 'meleeDamage') && !isMelee) return false
+    if (id === 'meleeRange'     && u.meleeRange >= 4)          return false
+    if (id === 'meleeArc'       && u.meleeArc >= 1)            return false
+    if (id === 'meleeArc'       && u.meleeRange < 1 && u.meleeSpeed < 1 && u.meleeDamage < 1) return false
+    if (id === 'meleeSpeed'     && u.meleeSpeed >= 4)          return false
+    if (id === 'meleeDamage'    && u.meleeDamage >= 4)         return false
     return true
   })
 
@@ -258,6 +330,7 @@ interface Player {
   pendingChoices: string[] | null  // non-null while waiting for chooseUpgrade
   pendingRawXP: number             // XP collected while upgrade screen is open; applied on chooseUpgrade
   upgrades: PlayerUpgrades
+  unlockedWeapons: Set<string>
   // Server-tracked run stats
   kills: number
   bossKills: number
@@ -281,12 +354,13 @@ export class GameRoom {
 
   constructor(isSolo = false) { this.isSolo = isSolo }
 
-  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720, resumeLevel = 1, resumeXp = 0, resumeElapsed = 0, stage = 1) {
+  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720, resumeLevel = 1, resumeXp = 0, resumeElapsed = 0, stage = 1, unlockedWeapons: string[] = []) {
     if (this.started) return
     const isHost = this.players.length === 0
     this.players.push({
       id, userId, ws, x, y, viewW, viewH, characterType, username, dead: false, paused: false, isHost, aura: 0, orbital: 0,
       xp: resumeXp, level: resumeLevel, pendingChoices: null, pendingRawXP: 0, upgrades: { ...emptyUpgrades(), ...startingUpgrades(characterType) },
+      unlockedWeapons: new Set(unlockedWeapons),
       kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
     if (this.isSolo && resumeElapsed > 0) this.resumeElapsed = resumeElapsed
@@ -470,6 +544,10 @@ export class GameRoom {
       case 'lightningCooldown': u.lightningCooldown = Math.min(2, u.lightningCooldown + 1); break
       case 'might':       u.mightPicks = Math.min(5, u.mightPicks + 1); break
       case 'axe':         u.axe = true; break
+      case 'axeAmount':   u.axeAmount = Math.min(1, u.axeAmount + 1); break
+      case 'axeDamage':   u.axeDamage = Math.min(1, u.axeDamage + 1); break
+      case 'axePierce':   u.axePierce = Math.min(1, u.axePierce + 1); break
+      case 'axeEvolution':u.axeEvolution = true; break
       case 'aura':        u.aura = true; p.aura = 1; break
       case 'auraTick':    u.auraTick = Math.min(3, u.auraTick + 1); break
       case 'auraRange':   u.auraRange = Math.min(3, u.auraRange + 1); break
@@ -494,6 +572,10 @@ export class GameRoom {
       case 'magnetRange':   u.magnetRange = Math.min(3, u.magnetRange + 1); break
       case 'dashCooldown':  u.dashCooldownPicks = Math.min(4, u.dashCooldownPicks + 1); break
       case 'dashDistance':  u.dashDistancePicks = Math.min(3, u.dashDistancePicks + 1); break
+      case 'meleeRange':    u.meleeRange = Math.min(4, u.meleeRange + 1); break
+      case 'meleeArc':      u.meleeArc = Math.min(1, u.meleeArc + 1); break
+      case 'meleeSpeed':    u.meleeSpeed = Math.min(4, u.meleeSpeed + 1); break
+      case 'meleeDamage':   u.meleeDamage = Math.min(4, u.meleeDamage + 1); break
 
     }
 
@@ -526,7 +608,7 @@ export class GameRoom {
     if (p.xp >= needed) {
       p.xp -= needed
       p.level++
-      const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares')
+      const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares', p.unlockedWeapons)
       // If no upgrades are eligible (all maxed), level up silently — don't block XP with pendingChoices
       p.pendingChoices = choices.length > 0 ? choices : null
       obs('LEVEL', `→ Lv${p.level} | gained=${gained} needed=${needed} overflow=${p.xp} nextNeed=${xpNeeded(p.level)} | scale=${xpScale.toFixed(2)} xpGain=${p.upgrades.xpGain}`)
@@ -616,6 +698,10 @@ export class GameRoom {
       case 'lightningCooldown':  u.lightningCooldown = Math.min(2, level); break
       case 'might':              u.mightPicks = Math.min(5, level); break
       case 'axe':                u.axe = level >= 1; break
+      case 'axeAmount':          u.axeAmount = Math.min(1, level); break
+      case 'axeDamage':          u.axeDamage = Math.min(1, level); break
+      case 'axePierce':          u.axePierce = Math.min(1, level); break
+      case 'axeEvolution':       u.axeEvolution = level >= 1; break
       case 'aura':               u.aura = level >= 1; requester.aura = u.aura ? 1 : 0; break
       case 'auraTick':           u.auraTick = Math.min(3, level); break
       case 'auraRange':          u.auraRange = Math.min(3, level); break
@@ -640,6 +726,10 @@ export class GameRoom {
       case 'spearPierce':        u.spearPierce = Math.min(2, level); break
       case 'spearSpeed':         u.spearSpeed = Math.min(5, level); break
       case 'spearStorm':         u.spearStorm = level >= 1; break
+      case 'meleeRange':         u.meleeRange = Math.min(4, level); break
+      case 'meleeArc':           u.meleeArc = Math.min(1, level); break
+      case 'meleeSpeed':         u.meleeSpeed = Math.min(4, level); break
+      case 'meleeDamage':        u.meleeDamage = Math.min(4, level); break
     }
 
     this.send(requester.ws, { type: 'adminSetUpgrade', upgradeId, level })
@@ -743,6 +833,7 @@ export class GameRoom {
         multiplayer: !this.isSolo,
         damageDealt: p.damageDealt,
         stage: this.spawner.stage2Mode ? 2 : 1,
+        characterType: p.characterType,
       }
     })
     for (const p of this.players) {

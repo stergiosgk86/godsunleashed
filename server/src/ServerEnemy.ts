@@ -121,7 +121,7 @@ export class ServerEnemy {
     this.hp      = Math.round(cfg.maxHp * hpMult)
     this.maxHp   = this.hp
     this.speed   = cfg.speed
-    this.xpValue = cfg.xpValue
+    this.xpValue = Math.max(1, Math.round(cfg.xpValue * hpMult))
     this.isBoss  = cfg.isBoss
     // Initial shoot/charge timers match frontend BossEnemy and FinalBossEnemy
     if (kind === 'finalBoss') {

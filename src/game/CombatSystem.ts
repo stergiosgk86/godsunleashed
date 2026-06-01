@@ -4,7 +4,7 @@ import type { ClientEnemy } from './ClientEnemy'
 import { Projectile } from './Projectile'
 import { SunBeam } from './SunBeam'
 import { Boomerang } from './Boomerang'
-import { Axe } from './Axe'
+import { Axe, BerserkerRing } from './Axe'
 import { XPOrb, orbTierForValue } from './XPOrb'
 import { CoinOrb } from './CoinOrb'
 import { HealthPotion } from './HealthPotion'
@@ -22,8 +22,13 @@ const CONTACT_RADIUS = 28
 const CONTACT_ENEMY_COOLDOWN = 240   // ms — matches VS post-hit immunity window
 const BULLET_HIT_RADIUS = 15
 const BOOMERANG_INTERVAL = 3000
+const SPEAR_BASE_CD = 700         // ms base cooldown between volleys
+const SPEAR_STORM_INTERVAL = 60   // ms per spear in Thousand Spears mode
+const WEAPON_STAGGER = 65         // ms between adjacent projectiles in a staggered volley
+const SPEAR_PERP_GAP = 15         // px perpendicular spacing between spears
+const SPEAR_SPEED = 680
+const SPEAR_HIT_R = 12
 const AXE_INTERVAL = 4000
-const AXE_HIT_R = 20
 const AXE_DAMAGE_MULT = 2.5
 const BOOMERANG_HIT_R = 28
 const FLAME_SPAWN_DIST = 55
@@ -45,9 +50,9 @@ const POTION_SPAWN_MAX = 320
 const DIVINE_ACTIVE_MS  = 3000
 const DIVINE_COOLDOWN_MS = 9000
 
-const RAVENS_ZONE_ORBIT_R = 160   // zone circle orbits player at this radius
-const RAVENS_ZONE_VIS_R = 44      // visual radius of the zone circle indicator
-const RAVENS_ROT_SPEED = 0.00028  // radians/ms counterclockwise
+const RAVENS_ZONE_ORBIT_R = 210   // zone circle orbits player at this radius
+const RAVENS_ZONE_VIS_R = 60      // visual radius of the zone circle indicator
+const RAVENS_ROT_SPEED = 0.00095  // radians/ms counterclockwise
 const RAVENS_BASE_CD = 3500       // ms base cooldown between bursts
 const RAVENS_CD_STEP = 500        // ms reduction per ravensCD level
 const RAVENS_BURST_SETS = 4       // sets per burst
@@ -103,14 +108,21 @@ export class CombatSystem {
   private boomerangs: Boomerang[] = []
   private wandTimer = 0
   private boomerangTimer = 0
+  private boomerangQueue: Array<{ delay: number; perpOff: number; toAngle: number; tx: number; ty: number }> = []
+  // Bifrost Spear
+  private spearCooldownTimer = 0
+  private spearQueue: Array<{ delay: number; perpOffset: number }> = []
+  private spearProjectiles: Projectile[] = []
   // Dual guns (Chronos / Equinox + Solstice)
   private sunBeams: SunBeam[] = []
   private dualGunTimer = 0
-  private dualGunQueue: Array<{ timeLeft: number; gold: boolean }> = []
+  private dualGunQueue: Array<{ timeLeft: number; gold: boolean; maxPierces: number }> = []
   // Axe
   private axes: Axe[] = []
   private axeTimer = 0
   private axeDir = 1
+  private axeQueue: Array<{ delay: number; yOff: number; dirX: number }> = []
+  private berserkerRing: BerserkerRing | null = null
   // Flame Trail
   private flamePools: FlamePool[] = []
   private lastFlameX = NaN
@@ -132,13 +144,8 @@ export class CombatSystem {
   private divineGraphic: Phaser.GameObjects.Graphics
   private divineAngle = 0
   // Odin's Ravens
-  private ravensCenterX = 0
-  private ravensCenterY = 0
-  private ravensCenterInit = false
-  private ravensCenterBX = 0
-  private ravensCenterBY = 0
-  private ravensCenterBInit = false
   private ravensZoneAngle = 0
+  private ravensBirdAngle = 0
   private ravensCooldownTimer = 0
   private ravensBurstActive = false
   private ravensBurstAge = 0
@@ -159,8 +166,8 @@ export class CombatSystem {
     this.orbGraphic = scene.add.graphics().setDepth(5)
     this.divineGraphic = scene.add.graphics().setDepth(7)
     this.ravensGraphic = scene.add.graphics().setDepth(4.5)
-    this.ravenSpriteA = scene.add.image(0, 0, 'odins-ravens', 0).setDepth(4.6).setScale(0.11).setVisible(false)
-    this.ravenSpriteB = scene.add.image(0, 0, 'odins-ravens', 1).setDepth(4.6).setScale(0.11).setVisible(false)
+    this.ravenSpriteA = scene.add.image(0, 0, 'raven').setDepth(4.6).setScale(0.15).setTint(0x66ffbb).setVisible(false)
+    this.ravenSpriteB = scene.add.image(0, 0, 'raven').setFlipX(true).setDepth(4.6).setScale(0.15).setTint(0x66ffbb).setVisible(false)
   }
 
   setFacing(vx: number, vy: number) {
@@ -174,34 +181,52 @@ export class CombatSystem {
 
   private static readonly SLASH_RANGE = 120
 
-  // Full front hemisphere — dot > 0 means any enemy on the forward side
-  private inFrontHemisphere(ex: number, ey: number, px: number, py: number): boolean {
-    const dx = ex - px, dy = ey - py
-    const dist = Math.sqrt(dx * dx + dy * dy) || 1
-    return (dx / dist) * this.facingVx + (dy / dist) * this.facingVy > 0
+  // True for Ares by default; also activates for any character that has at least one melee upgrade (admin testing)
+  private get isMeleeActive(): boolean {
+    if (this.frontArcOnly) return true
+    const s = useGameStore.getState()
+    return (s.meleeRange ?? 0) > 0 || (s.meleeArc ?? 0) > 0 || (s.meleeSpeed ?? 0) > 0 || (s.meleeDamage ?? 0) > 0
   }
 
-  private fireSwordSwing(px: number, py: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
-    const r2 = CombatSystem.SLASH_RANGE * CombatSystem.SLASH_RANGE
+  // Strike a cone in the given direction (fx, fy must be unit vector)
+  private fireSwordSwingDir(px: number, py: number, damage: number, fx: number, fy: number, slashRange: number, halfspan: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
+    const r2 = slashRange * slashRange
+    const cosH = Math.cos(halfspan)
     let hit = false
     for (const e of enemies) {
       if (!e.active) continue
       const dx = e.x - px, dy = e.y - py
       if (dx * dx + dy * dy > r2) continue
-      if (!this.inFrontHemisphere(e.x, e.y, px, py)) continue
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1
+      if ((dx / dist) * fx + (dy / dist) * fy <= cosH) continue
       this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
       hit = true
     }
     soundSystem.shootMelee()
     if (hit) soundSystem.enemyHit()
-    this.showSlashEffect(px, py)
+    this.showSlashEffect(px, py, slashRange, halfspan, fx, fy)
   }
 
-  private showSlashEffect(px: number, py: number) {
+  private fireSwordSwing(px: number, py: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
+    const { meleeRange, meleeArc, meleeDamage } = getValidatedCombatState()
+    const slashRange = CombatSystem.SLASH_RANGE * (1 + meleeRange * 0.25)
+    const halfspan = Math.PI / 4  // fixed 90° total arc
+    const meleeDmg = Math.floor(damage * (1 + meleeDamage * 0.2))
+    const fx = this.facingVx, fy = this.facingVy
+
+    this.fireSwordSwingDir(px, py, meleeDmg, fx, fy, slashRange, halfspan, enemies, coinDropChance, lifeDrain, vampiric)
+
+    // Rear strike (VS Whip Amount-style): fires 100ms after front, opposite direction
+    if (meleeArc >= 1) {
+      this.scene.time.delayedCall(100, () => {
+        this.fireSwordSwingDir(px, py, meleeDmg, -fx, -fy, slashRange, halfspan, enemies.filter(e => e.active), coinDropChance, lifeDrain, vampiric)
+      })
+    }
+  }
+
+  private showSlashEffect(px: number, py: number, R: number, halfSpan: number, fx: number, fy: number) {
     const g = this.scene.add.graphics().setDepth(6)
-    const baseAngle = Math.atan2(this.facingVy, this.facingVx)
-    const R = CombatSystem.SLASH_RANGE
-    const halfSpan = Math.PI * 0.5
+    const baseAngle = Math.atan2(fy, fx)
     const innerR = R * 0.18
     const steps = 32
 
@@ -301,36 +326,41 @@ export class CombatSystem {
 
   private drawSwordIndicator(px: number, py: number) {
     this.arcGraphic.clear()
-    if (!this.frontArcOnly) return
-    const R = CombatSystem.SLASH_RANGE
-    const baseAngle = Math.atan2(this.facingVy, this.facingVx)
-    const halfSpan = Math.PI * 0.5
+    if (!this.isMeleeActive) return
+    const { meleeRange, meleeArc } = getValidatedCombatState()
+    const R = CombatSystem.SLASH_RANGE * (1 + meleeRange * 0.25)
+    const halfSpan = Math.PI / 4
     const innerR = R * 0.18
     const steps = 24
 
-    // Forward arc centered on facing direction
-    this.arcGraphic.lineStyle(1, 0xff6622, 0.18)
-    this.arcGraphic.beginPath()
-    for (let i = 0; i <= steps; i++) {
-      const a = baseAngle - halfSpan + (i / steps) * halfSpan * 2
-      if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
-      else this.arcGraphic.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+    const drawArcBand = (centerAngle: number, alpha: number) => {
+      this.arcGraphic.lineStyle(1, 0xff6622, alpha)
+      this.arcGraphic.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const a = centerAngle - halfSpan + (i / steps) * halfSpan * 2
+        if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+        else this.arcGraphic.lineTo(px + Math.cos(a) * R, py + Math.sin(a) * R)
+      }
+      this.arcGraphic.strokePath()
+      this.arcGraphic.lineStyle(1, 0xff6622, alpha * 0.5)
+      this.arcGraphic.beginPath()
+      for (let i = 0; i <= steps; i++) {
+        const a = centerAngle - halfSpan + (i / steps) * halfSpan * 2
+        if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
+        else this.arcGraphic.lineTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
+      }
+      this.arcGraphic.strokePath()
     }
-    this.arcGraphic.strokePath()
-    this.arcGraphic.lineStyle(1, 0xff6622, 0.09)
-    this.arcGraphic.beginPath()
-    for (let i = 0; i <= steps; i++) {
-      const a = baseAngle - halfSpan + (i / steps) * halfSpan * 2
-      if (i === 0) this.arcGraphic.moveTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
-      else this.arcGraphic.lineTo(px + Math.cos(a) * innerR, py + Math.sin(a) * innerR)
-    }
-    this.arcGraphic.strokePath()
+
+    const fwdAngle = Math.atan2(this.facingVy, this.facingVx)
+    drawArcBand(fwdAngle, 0.18)
+    if (meleeArc >= 1) drawArcBand(fwdAngle + Math.PI, 0.10)  // rear indicator dimmer
   }
 
   update(playerX: number, playerY: number, enemies: AnyEnemy[], delta: number) {
     this.playerX = playerX
     this.playerY = playerY
-    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, divineShield, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra, echo, ravens, ravensCD, ravensPower, ravensCount } = getValidatedCombatState()
+    const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, spear, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, axeAmount, axeDamage, axePierce, axeEvolution, divineShield, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra, echo, ravens, ravensCD, ravensPower, ravensCount, spearCount, spearInterval, spearPierce, spearSpeed, spearStorm } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
 
     const { upgrades } = useProfileStore.getState()
@@ -341,8 +371,8 @@ export class CombatSystem {
 
     this.drawSwordIndicator(playerX, playerY)
 
-    // Ares primary weapon: melee arc sweep (front-arc only)
-    if (this.frontArcOnly) {
+    // Ares primary weapon: melee arc sweep; also activates via admin for any character
+    if (this.isMeleeActive) {
       this.fireTimer += delta
       if (this.fireTimer >= attackInterval) {
         this.fireTimer = 0
@@ -376,6 +406,8 @@ export class CombatSystem {
     // Both guns fire 4 diagonal beams (NE/SE/SW/NW). Equinox = gold, Solstice = cyan.
     // With both equipped, gun 2 fires 200ms after gun 1 so its beams trail behind.
     // dualGunExtra adds more trailing volleys at 200ms intervals.
+    // Base pierce: 2 enemies. Each dualGunDamage level adds +1 pierce.
+    const sunBeamMaxPierces = 2 + dualGunDamage
     if (equinox || solstice) {
       this.dualGunTimer += delta
       if (this.dualGunTimer >= dualGunAttackInterval) {
@@ -387,9 +419,9 @@ export class CombatSystem {
           if (equinox)  shots.push(true)
           if (solstice) shots.push(false)
         }
-        this.fireSunBeams(playerX, playerY, shots[0])
+        this.fireSunBeams(playerX, playerY, shots[0], sunBeamMaxPierces)
         for (let i = 1; i < shots.length; i++) {
-          this.dualGunQueue.push({ timeLeft: i * DUAL_GUN_BURST_DELAY, gold: shots[i] })
+          this.dualGunQueue.push({ timeLeft: i * DUAL_GUN_BURST_DELAY, gold: shots[i], maxPierces: sunBeamMaxPierces })
         }
       }
     }
@@ -399,7 +431,7 @@ export class CombatSystem {
       this.dualGunQueue[i].timeLeft -= delta
       if (this.dualGunQueue[i].timeLeft <= 0) {
         const q = this.dualGunQueue.splice(i, 1)[0]
-        this.fireSunBeams(playerX, playerY, q.gold)
+        this.fireSunBeams(playerX, playerY, q.gold, q.maxPierces)
       }
     }
 
@@ -422,7 +454,9 @@ export class CombatSystem {
         const hitDist = b.hitRadius + e.hitRadius
         if (dx * dx + dy * dy < hitDist * hitDist) {
           this.applyHit(e, gunDmgActive, coinDropChance, lifeDrain, vampiric)
-          b.hitTargets.add(e)  // pierce: beam keeps going
+          b.hitTargets.add(e)
+          b.pierceCount++
+          if (b.pierceCount >= b.maxPierces) { b.destroy(); break }
         }
       }
     }
@@ -762,14 +796,26 @@ export class CombatSystem {
         this.boomerangTimer = 0
         const target = this.findNearest(playerX, playerY, enemies)
         if (target) {
-          const toTarget = Math.atan2(target.y - playerY, target.x - playerX)
-          const perpX = -Math.sin(toTarget)
-          const perpY = Math.cos(toTarget)
-          for (let ei = 0; ei <= echo; ei++) {
-            const offset = (ei - echo / 2) * 24
-            this.boomerangs.push(new Boomerang(this.scene, playerX + perpX * offset, playerY + perpY * offset, target.x, target.y))
+          const toAngle = Math.atan2(target.y - playerY, target.x - playerX)
+          const offsets: number[] = []
+          for (let ei = 0; ei <= echo; ei++) offsets.push((ei - echo / 2) * 24)
+          for (let i = offsets.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1))
+            ;[offsets[i], offsets[j]] = [offsets[j], offsets[i]]
           }
+          offsets.forEach((perpOff, s) =>
+            this.boomerangQueue.push({ delay: s * WEAPON_STAGGER, perpOff, toAngle, tx: target.x, ty: target.y })
+          )
+        }
+      }
+      for (let q = this.boomerangQueue.length - 1; q >= 0; q--) {
+        this.boomerangQueue[q].delay -= delta
+        if (this.boomerangQueue[q].delay <= 0) {
+          const { perpOff, toAngle, tx, ty } = this.boomerangQueue[q]
+          const perpX = -Math.sin(toAngle), perpY = Math.cos(toAngle)
+          this.boomerangs.push(new Boomerang(this.scene, playerX + perpX * perpOff, playerY + perpY * perpOff, tx, ty))
           soundSystem.shootBoomerang()
+          this.boomerangQueue.splice(q, 1)
         }
       }
       for (const b of this.boomerangs) {
@@ -788,6 +834,88 @@ export class CombatSystem {
         }
       }
       this.boomerangs = this.boomerangs.filter(b => b.active)
+    }
+
+    // === Bifrost Spear ===
+    if (spear) {
+      const burstCount  = 1 + spearCount
+      const cooldown    = Math.max(400, SPEAR_BASE_CD - spearInterval * 100)   // 700/600/500/400 ms
+      const pierceMax   = 3 + spearPierce                                       // 3/4/5 enemies
+      const speed       = SPEAR_SPEED * (1 + spearSpeed * 0.1)
+      const echoCount   = 1 + echo
+
+      const fireSingle = (perpOffset: number) => {
+        const fx = this.facingVx, fy = this.facingVy
+        const perpX = -fy, perpY = fx
+        for (let i = 0; i < echoCount; i++) {
+          const echoOff = (i - (echoCount - 1) / 2) * 16
+          const sx = playerX + perpX * (perpOffset + echoOff)
+          const sy = playerY + perpY * (perpOffset + echoOff)
+          const proj = new Projectile(this.scene, sx, sy, sx + fx * 100, sy + fy * 100, 'spear_sprite', speed, 0.07, Math.PI / 2)
+          proj.maxHits   = pierceMax
+          proj.hitRadius = SPEAR_HIT_R
+          this.spearProjectiles.push(proj)
+        }
+        soundSystem.shootWand()
+      }
+
+      const enqueueVolley = () => {
+        const offsets: number[] = []
+        for (let s = 0; s < burstCount; s++)
+          offsets.push((s - (burstCount - 1) / 2) * SPEAR_PERP_GAP)
+        // shuffle so spears don't fire in neat bottom-to-top order
+        for (let i = offsets.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[offsets[i], offsets[j]] = [offsets[j], offsets[i]]
+        }
+        offsets.forEach((perpOffset, s) =>
+          this.spearQueue.push({ delay: s * WEAPON_STAGGER, perpOffset })
+        )
+      }
+
+      if (spearStorm) {
+        // Thousand Spears: fire the full parallel set very rapidly
+        this.spearCooldownTimer += delta
+        if (this.spearCooldownTimer >= SPEAR_STORM_INTERVAL) {
+          this.spearCooldownTimer -= SPEAR_STORM_INTERVAL
+          enqueueVolley()
+        }
+      } else {
+        this.spearCooldownTimer += delta
+        if (this.spearCooldownTimer >= cooldown) {
+          this.spearCooldownTimer = 0
+          enqueueVolley()
+        }
+      }
+      for (let q = this.spearQueue.length - 1; q >= 0; q--) {
+        this.spearQueue[q].delay -= delta
+        if (this.spearQueue[q].delay <= 0) {
+          fireSingle(this.spearQueue[q].perpOffset)
+          this.spearQueue.splice(q, 1)
+        }
+      }
+
+      for (const p of this.spearProjectiles) {
+        if (!p.active) continue
+        p.update(delta)
+        if (!p.active) continue
+        const camWVS = this.scene.cameras.main.worldView
+        if (p.x < camWVS.left - 200 || p.x > camWVS.right + 200 ||
+            p.y < camWVS.top  - 200 || p.y > camWVS.bottom + 200) {
+          p.destroy(); continue
+        }
+        for (const e of enemies) {
+          if (!e.active || p.hitTargets.has(e)) continue
+          const dx = p.x - e.x, dy = p.y - e.y
+          const hitDist = p.hitRadius + e.hitRadius
+          if (dx * dx + dy * dy < hitDist * hitDist) {
+            this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
+            p.hitTargets.add(e)
+            if (p.maxHits > 0 && p.hitTargets.size >= p.maxHits) { p.destroy(); break }
+          }
+        }
+      }
+      this.spearProjectiles = this.spearProjectiles.filter(p => p.active)
     }
 
     // === Flame Trail ===
@@ -832,20 +960,52 @@ export class CombatSystem {
     }
 
     // === War Axe ===
-    if (axe) {
+    if (axeEvolution) {
+      // Berserker's Ring: orbiting ring of axes replaces the throw mechanic
+      if (!this.berserkerRing) {
+        this.berserkerRing = new BerserkerRing(this.scene)
+        for (const a of this.axes) a.destroy()
+        this.axes = []
+        this.axeQueue = []
+      }
+      this.berserkerRing.update(delta, playerX, playerY)
+      const spiralDamage = Math.floor(weaponBaseDamage(level) * might * AXE_DAMAGE_MULT * (1 + axeDamage * 0.5))
+      const spiralHits = this.berserkerRing.checkHits(enemies, playerX, playerY)
+      for (const e of spiralHits) {
+        this.applyHit(e, spiralDamage, coinDropChance, lifeDrain, vampiric)
+      }
+    } else if (axe) {
+      if (this.berserkerRing) {
+        this.berserkerRing.destroy()
+        this.berserkerRing = null
+      }
       this.axeTimer += delta
       if (this.axeTimer >= AXE_INTERVAL) {
         this.axeTimer = 0
         const target = this.findNearest(playerX, playerY, enemies)
         const dirX = target ? Math.sign(target.x - playerX) || this.axeDir : this.axeDir
         this.axeDir = -dirX
-        for (let ei = 0; ei <= echo; ei++) {
-          const yOff = (ei - echo / 2) * 24
-          this.axes.push(new Axe(this.scene, playerX, playerY + yOff, dirX))
+        const axeCount = 1 + axeAmount + echo
+        const yOffs: number[] = []
+        for (let ei = 0; ei < axeCount; ei++) yOffs.push((ei - (axeCount - 1) / 2) * 24)
+        for (let i = yOffs.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[yOffs[i], yOffs[j]] = [yOffs[j], yOffs[i]]
         }
-        soundSystem.shootAxe()
+        yOffs.forEach((yOff, s) =>
+          this.axeQueue.push({ delay: s * WEAPON_STAGGER, yOff, dirX })
+        )
       }
-      const axeDamage = Math.floor(weaponBaseDamage(level) * might * AXE_DAMAGE_MULT)
+      for (let q = this.axeQueue.length - 1; q >= 0; q--) {
+        this.axeQueue[q].delay -= delta
+        if (this.axeQueue[q].delay <= 0) {
+          const { yOff, dirX } = this.axeQueue[q]
+          this.axes.push(new Axe(this.scene, playerX, playerY + yOff, dirX, axePierce))
+          soundSystem.shootAxe()
+          this.axeQueue.splice(q, 1)
+        }
+      }
+      const throwDamage = Math.floor(weaponBaseDamage(level) * might * AXE_DAMAGE_MULT * (1 + axeDamage * 0.5))
       for (const a of this.axes) {
         if (!a.active) continue
         a.update(delta)
@@ -854,13 +1014,18 @@ export class CombatSystem {
           if (!e.active || a.currentHitTargets.has(e)) continue
           const dx = a.x - e.x
           const dy = a.y - e.y
-          if (dx * dx + dy * dy < (AXE_HIT_R + e.hitRadius) * (AXE_HIT_R + e.hitRadius)) {
+          if (dx * dx + dy * dy < (a.hitRadius + e.hitRadius) * (a.hitRadius + e.hitRadius)) {
             a.currentHitTargets.add(e)
-            this.applyHit(e, axeDamage, coinDropChance, lifeDrain, vampiric)
+            this.applyHit(e, throwDamage, coinDropChance, lifeDrain, vampiric)
           }
         }
       }
       this.axes = this.axes.filter(a => a.active)
+    } else {
+      if (this.berserkerRing) {
+        this.berserkerRing.destroy()
+        this.berserkerRing = null
+      }
     }
 
     // === Lightning Strike ===
@@ -900,27 +1065,21 @@ export class CombatSystem {
       // Zone circles orbit directly around player at fixed radius (A and B at 180° apart)
       this.ravensZoneAngle -= delta * RAVENS_ROT_SPEED
 
-      // Both ravens orbit at BIRD_R, 180° apart, with lag interpolation
-      const BIRD_R = 42
-      const bodyLag = 1 - Math.exp(-delta / 160)
+      // VS-style: birds orbit a tilted ellipse — tilt follows zone angle so the sweep
+      // direction slowly rotates, giving the Peachone/Ebony-Wings diagonal feel
+      const BIRD_RX = 60, BIRD_RY = 26
+      this.ravensBirdAngle += delta * 0.0022
 
-      const birdTargetX = playerX + Math.cos(this.ravensZoneAngle) * BIRD_R
-      const birdTargetY = playerY + Math.sin(this.ravensZoneAngle) * BIRD_R
-      if (!this.ravensCenterInit) {
-        this.ravensCenterX = birdTargetX; this.ravensCenterY = birdTargetY; this.ravensCenterInit = true
-      }
-      this.ravensCenterX += (birdTargetX - this.ravensCenterX) * bodyLag
-      this.ravensCenterY += (birdTargetY - this.ravensCenterY) * bodyLag
-      const bx = this.ravensCenterX, by = this.ravensCenterY
+      const cosT = Math.cos(this.ravensZoneAngle), sinT = Math.sin(this.ravensZoneAngle)
+      const eaX = BIRD_RX * Math.cos(this.ravensBirdAngle)
+      const eaY = BIRD_RY * Math.sin(this.ravensBirdAngle)
+      const bx = playerX + eaX * cosT - eaY * sinT
+      const by = playerY + eaX * sinT + eaY * cosT
 
-      const birdTargetBX = playerX + Math.cos(this.ravensZoneAngle + Math.PI) * BIRD_R
-      const birdTargetBY = playerY + Math.sin(this.ravensZoneAngle + Math.PI) * BIRD_R
-      if (!this.ravensCenterBInit) {
-        this.ravensCenterBX = birdTargetBX; this.ravensCenterBY = birdTargetBY; this.ravensCenterBInit = true
-      }
-      this.ravensCenterBX += (birdTargetBX - this.ravensCenterBX) * bodyLag
-      this.ravensCenterBY += (birdTargetBY - this.ravensCenterBY) * bodyLag
-      const bx2 = this.ravensCenterBX, by2 = this.ravensCenterBY
+      const ebX = BIRD_RX * Math.cos(this.ravensBirdAngle + Math.PI)
+      const ebY = BIRD_RY * Math.sin(this.ravensBirdAngle + Math.PI)
+      const bx2 = playerX + ebX * cosT - ebY * sinT
+      const by2 = playerY + ebX * sinT + ebY * cosT
 
       const zx = playerX + Math.cos(this.ravensZoneAngle) * RAVENS_ZONE_ORBIT_R
       const zy = playerY + Math.sin(this.ravensZoneAngle) * RAVENS_ZONE_ORBIT_R
@@ -1040,7 +1199,7 @@ export class CombatSystem {
           this.ravensGraphic.strokeCircle(cx, cy, RAVENS_ZONE_VIS_R * 0.52)
         } else {
           this.ravensGraphic.lineStyle(1.5, 0x003311, 0.24)
-          this.ravensGraphic.strokeCircle(cx, cy, RAVENS_ZONE_VIS_R * 0.68)
+          this.ravensGraphic.strokeCircle(cx, cy, RAVENS_ZONE_VIS_R)
         }
       }
       drawZone(zx, zy)
@@ -1061,9 +1220,9 @@ export class CombatSystem {
       }
 
       // --- Raven sprites (Huginn & Muninn) ---
-      this.ravensWingPhase += delta * 0.0045
-      const RAVEN_SCALE = 0.11
-      const scaleY = RAVEN_SCALE * (0.95 + 0.05 * Math.sin(this.ravensWingPhase))
+      this.ravensWingPhase += delta * 0.009
+      const RAVEN_SCALE = 0.15
+      const scaleY = RAVEN_SCALE * (0.5 + 0.5 * Math.abs(Math.sin(this.ravensWingPhase)))
 
       // Attack glow under each sprite when burst is active
       if (this.ravensBurstActive) {
@@ -1074,19 +1233,29 @@ export class CombatSystem {
         this.ravensGraphic.fillCircle(bx2, by2, 30)
       }
 
-      // Raven A (frame 0 = left-facing raven, natural angle = Math.PI)
-      const toZoneA = Math.atan2(zy - by, zx - bx)
+      // Velocity direction from ellipse derivative — used for facing/tilt, never full rotation
+      const vxA = -BIRD_RX * Math.sin(this.ravensBirdAngle) * cosT - BIRD_RY * Math.cos(this.ravensBirdAngle) * sinT
+      const vyA = -BIRD_RX * Math.sin(this.ravensBirdAngle) * sinT + BIRD_RY * Math.cos(this.ravensBirdAngle) * cosT
+      const facingRightA = vxA > 0
+      const tiltRawA = Math.atan2(vyA, Math.abs(vxA))
+      const tiltA = Math.max(-0.38, Math.min(0.38, facingRightA ? -tiltRawA : tiltRawA))
+
       this.ravenSpriteA
         .setPosition(bx, by)
-        .setRotation(toZoneA - Math.PI)
+        .setFlipX(facingRightA)
+        .setRotation(tiltA)
         .setScale(RAVEN_SCALE, scaleY)
         .setVisible(true)
 
-      // Raven B (frame 1 = right-facing raven, natural angle = 0)
-      const toZoneB = Math.atan2(zy2 - by2, zx2 - bx2)
+      // Bird B velocity is exactly opposite to A
+      const facingRightB = !facingRightA
+      const tiltRawB = Math.atan2(-vyA, Math.abs(vxA))
+      const tiltB = Math.max(-0.38, Math.min(0.38, facingRightB ? -tiltRawB : tiltRawB))
+
       this.ravenSpriteB
         .setPosition(bx2, by2)
-        .setRotation(toZoneB)
+        .setFlipX(facingRightB)
+        .setRotation(tiltB)
         .setScale(RAVEN_SCALE, scaleY)
         .setVisible(true)
     } else {
@@ -1233,7 +1402,7 @@ export class CombatSystem {
     })
   }
 
-  private fireSunBeams(px: number, py: number, gold: boolean) {
+  private fireSunBeams(px: number, py: number, gold: boolean, maxPierces: number) {
     const MOVE_OFFSET = 20
     const spawnX = this.playerMoving ? px + this.facingVx * MOVE_OFFSET : px
     const spawnY = this.playerMoving ? py + this.facingVy * MOVE_OFFSET : py
@@ -1241,7 +1410,7 @@ export class CombatSystem {
     const cosA = DUAL_GUN_SPEED * (16 / Math.sqrt(16 * 16 + 9 * 9))
     const sinA = DUAL_GUN_SPEED * (9  / Math.sqrt(16 * 16 + 9 * 9))
     for (const [vx, vy] of [[cosA, -sinA], [cosA, sinA], [-cosA, sinA], [-cosA, -sinA]] as [number, number][]) {
-      this.sunBeams.push(new SunBeam(this.scene, spawnX, spawnY, vx, vy, gold))
+      this.sunBeams.push(new SunBeam(this.scene, spawnX, spawnY, vx, vy, gold, maxPierces))
     }
   }
 

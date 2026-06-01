@@ -250,6 +250,9 @@ function App() {
           if (a) useGameStore.setState({ recentAchievement: { id, name: a.name } })
         }
       }
+      if (msg.newWeaponUnlocks?.length) {
+        useProfileStore.getState().addWeaponUnlocks(msg.newWeaponUnlocks)
+      }
       useProfileStore.getState().fetchProfile()
     })
   }
@@ -285,6 +288,7 @@ function App() {
         damageDealt: s.damageDealt, weaponCount, tookDamage: s.tookDamageThisRun,
         finalHp: s.hp, maxHp: s.maxHp,
         stage: useStageStore.getState().selectedStage,
+        characterType: useCharacterStore.getState().selectedCharacter,
       }),
     })
       .then(r => r.json())
@@ -315,6 +319,8 @@ function App() {
           } else {
             useAuthStore.getState().showSystemToast('Your admin access has been revoked', '#ffaa44')
           }
+        } else if (msg.type === 'playerOnline') {
+          useAuthStore.getState().showSystemToast(`${msg.username} is online`, '#44aaff')
         }
       } catch {}
     }

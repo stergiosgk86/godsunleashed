@@ -11,7 +11,7 @@ const CONFIGS: Record<PassiveItemType, { texture: string; label: string; color: 
 
 const ATTRACT_RADIUS = 110
 const ATTRACT_SPEED = 260
-const COLLECT_RADIUS = 24
+const COLLECT_RADIUS = 32
 
 export class PassiveItem {
   x: number

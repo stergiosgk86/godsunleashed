@@ -11,6 +11,7 @@ export class RemotePlayer {
   private spriteKey: string
   private lastDir: Direction = 'down'
   private nameLabel: Phaser.GameObjects.Text
+  private labelOffsetY = 28
   private auraGraphic: Phaser.GameObjects.Graphics
   private orbGraphic: Phaser.GameObjects.Graphics
   private ravensGraphic: Phaser.GameObjects.Graphics
@@ -34,7 +35,8 @@ export class RemotePlayer {
       .setScale(charDef?.scale ?? 1.5)
       .setAlpha(0.85)
     if (!STATIC_SPRITES.has(this.spriteKey)) this.sprite.play(`${this.spriteKey}_down`)
-    this.nameLabel = scene.add.text(x, y - 28, label, {
+    this.labelOffsetY = (this.sprite.displayHeight / 2) + 14
+    this.nameLabel = scene.add.text(x, y - this.labelOffsetY, label, {
       fontSize: '10px', color: '#aaffaa', fontFamily: 'monospace',
       stroke: '#000000', strokeThickness: 3,
     }).setOrigin(0.5).setDepth(5)
@@ -50,7 +52,7 @@ export class RemotePlayer {
     this._orbital = orbital
     this._ravens = ravens
     this.sprite.setPosition(x, y)
-    this.nameLabel.setPosition(x, y - 28)
+    this.nameLabel.setPosition(x, y - this.labelOffsetY)
     if (moving) {
       const dir = getDirection(dx, dy)
       this.lastDir = playDir(this.sprite, this.spriteKey, dir, this.lastDir, true, undefined, STATIC_SPRITES.has(this.spriteKey))

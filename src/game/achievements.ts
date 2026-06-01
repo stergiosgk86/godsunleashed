@@ -60,6 +60,35 @@ export const ACHIEVEMENTS: Achievement[] = [
   // Multiplayer
   { id: 'team_player',    name: 'Team Player',     description: 'Complete a multiplayer game',             icon: '◉' },
   { id: 'champions',      name: 'Champions',       description: 'Win a multiplayer run',                   icon: '★' },
+  // Characters — 5 min
+  { id: 'char_ares_5',      name: "War's Trial",         description: 'Survive 5 minutes as Ares',      icon: '◇' },
+  { id: 'char_freyja_5',    name: "Seiðr's Trial",       description: 'Survive 5 minutes as Freyja',    icon: '◇' },
+  { id: 'char_heimdall_5',  name: "Warden's Trial",      description: 'Survive 5 minutes as Heimdall',  icon: '◇' },
+  { id: 'char_shade_5',     name: "Shadow's Trial",      description: 'Survive 5 minutes as Shade',     icon: '◇' },
+  { id: 'char_poseidon_5',  name: "Trident's Trial",     description: 'Survive 5 minutes as Poseidon',  icon: '◇' },
+  { id: 'char_apollo_5',    name: 'Solar Trial',         description: 'Survive 5 minutes as Apollo',    icon: '◇' },
+  { id: 'char_zeus_5',      name: "Storm's Trial",       description: 'Survive 5 minutes as Zeus',      icon: '◇' },
+  { id: 'char_chronos_5',   name: "Time's Trial",        description: 'Survive 5 minutes as Chronos',   icon: '◇' },
+  { id: 'char_odin_5',      name: "Allfather's Trial",   description: 'Survive 5 minutes as Odin',      icon: '◇' },
+  { id: 'char_hades_5',     name: "Soul Reaper's Trial", description: 'Survive 5 minutes as Hades',     icon: '◇' },
+  // Characters — 15 min
+  { id: 'char_ares_15',     name: "War's Fury",          description: 'Survive 15 minutes as Ares',     icon: '◆' },
+  { id: 'char_freyja_15',   name: "Seiðr's Power",       description: 'Survive 15 minutes as Freyja',   icon: '◆' },
+  { id: 'char_heimdall_15', name: "Warden's Watch",      description: 'Survive 15 minutes as Heimdall', icon: '◆' },
+  { id: 'char_shade_15',    name: "Shadow's Curse",      description: 'Survive 15 minutes as Shade',    icon: '◆' },
+  { id: 'char_poseidon_15', name: "Trident's Fury",      description: 'Survive 15 minutes as Poseidon', icon: '◆' },
+  { id: 'char_apollo_15',   name: 'Solar Path',          description: 'Survive 15 minutes as Apollo',   icon: '◆' },
+  { id: 'char_zeus_15',     name: "Storm Lord's Path",   description: 'Survive 15 minutes as Zeus',     icon: '◆' },
+  { id: 'char_chronos_15',  name: 'Temporal Path',       description: 'Survive 15 minutes as Chronos',  icon: '◆' },
+  { id: 'char_odin_15',     name: "Allfather's Path",    description: 'Survive 15 minutes as Odin',     icon: '◆' },
+  { id: 'char_hades_15',    name: "Soul Reaper's Path",  description: 'Survive 15 minutes as Hades',    icon: '◆' },
+  // Characters — 30 min (high-cost + achievement-locked characters only)
+  { id: 'char_poseidon_30', name: "Trident's Dominion",  description: 'Survive 30 minutes as Poseidon', icon: '✦' },
+  { id: 'char_apollo_30',   name: 'Solar Mastery',       description: 'Survive 30 minutes as Apollo',   icon: '✦' },
+  { id: 'char_zeus_30',     name: "Storm Lord's Reign",  description: 'Survive 30 minutes as Zeus',     icon: '✦' },
+  { id: 'char_chronos_30',  name: 'Master of Time',      description: 'Survive 30 minutes as Chronos',  icon: '✦' },
+  { id: 'char_odin_30',     name: "Allfather's Wisdom",  description: 'Survive 30 minutes as Odin',     icon: '✦' },
+  { id: 'char_hades_30',    name: 'Lord of the Dead',    description: 'Survive 30 minutes as Hades',    icon: '✦' },
 ]
 
 export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = [
@@ -72,6 +101,21 @@ export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = [
   { label: 'WEAPONS',     color: '#88aaff', ids: ['weapon_hoarder', 'arsenal', 'all_weapons'] },
   { label: 'WIN',         color: '#ffee44', ids: ['full_health', 'untouchable', 'glass_cannon'] },
   { label: 'MULTIPLAYER', color: '#aa66ff', ids: ['team_player', 'champions'] },
+  {
+    label: 'CHARACTERS', color: '#ffaa44',
+    ids: [
+      'char_ares_5',     'char_ares_15',
+      'char_freyja_5',   'char_freyja_15',
+      'char_heimdall_5', 'char_heimdall_15',
+      'char_shade_5',    'char_shade_15',
+      'char_poseidon_5', 'char_poseidon_15', 'char_poseidon_30',
+      'char_apollo_5',   'char_apollo_15',   'char_apollo_30',
+      'char_zeus_5',     'char_zeus_15',     'char_zeus_30',
+      'char_chronos_5',  'char_chronos_15',  'char_chronos_30',
+      'char_odin_5',     'char_odin_15',     'char_odin_30',
+      'char_hades_5',    'char_hades_15',    'char_hades_30',
+    ],
+  },
 ]
 
 export const ACHIEVEMENT_MAP = Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a]))

@@ -116,6 +116,7 @@ const SPAWN_GROUPS: { label: string; color: string; items: { label: string; enti
       { label: 'Aura',         entity: 'weapon:aura' },
       { label: 'Spirit Orb',   entity: 'weapon:orbital' },
       { label: "Odin's Ravens", entity: 'weapon:ravens' },
+      { label: 'Bifrost Spear', entity: 'weapon:spear' },
     ],
   },
 ]
@@ -138,6 +139,7 @@ const ADMIN_UPGRADE_GROUPS: { label: string; color: string; items: UpgradeDef[] 
       { id: 'solstice', label: 'Solstice', max: 1 },
       { id: 'divineShield', label: 'D.Shield', max: 1 },
       { id: 'ravens', label: "Ravens", max: 1 },
+      { id: 'spear', label: 'B.Spear', max: 1 },
     ],
   },
   {
@@ -160,6 +162,15 @@ const ADMIN_UPGRADE_GROUPS: { label: string; color: string; items: UpgradeDef[] 
       { id: 'ravensCD', label: 'Ravens CD', max: 3 },
       { id: 'ravensPower', label: 'Ravens Pwr', max: 3 },
       { id: 'ravensCount', label: 'Ravens Cnt', max: 2 },
+      { id: 'axeAmount',    label: 'Axe Amt',        max: 1 },
+      { id: 'axeDamage',    label: 'Axe Dmg',        max: 1 },
+      { id: 'axePierce',    label: 'Axe Prc',        max: 1 },
+      { id: 'axeEvolution', label: "Berserker's Ring", max: 1 },
+      { id: 'spearCount',    label: 'Spear Cnt',  max: 5 },
+      { id: 'spearInterval', label: 'Spear Tmp',  max: 3 },
+      { id: 'spearPierce',   label: 'Spear Prc',  max: 2 },
+      { id: 'spearSpeed',    label: 'Spear Spd',  max: 5 },
+      { id: 'spearStorm',    label: '1000 Spears', max: 1 },
     ],
   },
   {
@@ -170,6 +181,15 @@ const ADMIN_UPGRADE_GROUPS: { label: string; color: string; items: UpgradeDef[] 
       { id: 'magnetRange', label: 'Magnet', max: 3 },
       { id: 'dashCooldown', label: 'Dash CD', max: 4 },
       { id: 'dashDistance', label: 'Dash Dist', max: 3 },
+    ],
+  },
+  {
+    label: 'MELEE (Ares)', color: '#ff8844',
+    items: [
+      { id: 'meleeDamage', label: 'Blade Mastery', max: 4 },
+      { id: 'meleeRange',  label: 'Iron Reach',    max: 4 },
+      { id: 'meleeSpeed',  label: 'Battle Fury',   max: 4 },
+      { id: 'meleeArc',    label: 'Rear Strike',   max: 1 },
     ],
   },
 ]
@@ -196,6 +216,10 @@ function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getSta
     case 'lightningCooldown': return s.lightningCooldown
     case 'might':             return s.mightPicks
     case 'axe':               return s.axe ? 1 : 0
+    case 'axeAmount':         return s.axeAmount ?? 0
+    case 'axeDamage':         return s.axeDamage ?? 0
+    case 'axePierce':         return s.axePierce ?? 0
+    case 'axeEvolution':      return s.axeEvolution ? 1 : 0
     case 'divineShield':      return s.divineShield ? 1 : 0
     case 'xpGain':            return s.xpGain
     case 'magnetRange':       return s.magnetRange
@@ -209,8 +233,18 @@ function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getSta
     case 'ravensCD':          return s.ravensCD
     case 'ravensPower':       return s.ravensPower
     case 'ravensCount':       return s.ravensCount
+    case 'spear':             return s.spear ? 1 : 0
+    case 'spearCount':        return s.spearCount ?? 0
+    case 'spearInterval':     return s.spearInterval ?? 0
+    case 'spearPierce':       return s.spearPierce ?? 0
+    case 'spearSpeed':        return s.spearSpeed ?? 0
+    case 'spearStorm':        return s.spearStorm ? 1 : 0
     case 'dashCooldown':      return Math.round(Math.log(s.dashCooldown / DASH_COOLDOWN_MS) / Math.log(0.75))
     case 'dashDistance':      return Math.round((s.dashDistance - 1) / 0.4)
+    case 'meleeRange':        return s.meleeRange ?? 0
+    case 'meleeArc':          return s.meleeArc ?? 0
+    case 'meleeSpeed':        return s.meleeSpeed ?? 0
+    case 'meleeDamage':       return s.meleeDamage ?? 0
     default:                  return 0
   }
 }
@@ -234,6 +268,14 @@ function UpgradesView({ onBack }: { onBack: () => void }) {
     }
   }, [])
 
+  const selectAll = useCallback(() => {
+    for (const group of ADMIN_UPGRADE_GROUPS) {
+      for (const item of group.items) {
+        give(item.id, item.max)
+      }
+    }
+  }, [give])
+
   const levelBtnStyle = (active: boolean, color: string): React.CSSProperties => ({
     padding: '2px 7px', fontSize: 11, fontFamily: 'monospace', fontWeight: 'bold',
     border: `1px solid ${active ? color : '#333355'}`,
@@ -252,18 +294,32 @@ function UpgradesView({ onBack }: { onBack: () => void }) {
         UPGRADES
       </div>
 
-      <button
-        onClick={clearAll}
-        style={{
-          width: '100%', padding: '8px 0', fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
-          border: '1px solid #661111', borderRadius: 6, cursor: 'pointer', letterSpacing: 2,
-          background: '#1a0808', color: '#ff6666',
-        }}
-        onMouseEnter={e => (e.currentTarget.style.background = '#2a0808')}
-        onMouseLeave={e => (e.currentTarget.style.background = '#1a0808')}
-      >
-        CLEAR ALL
-      </button>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={clearAll}
+          style={{
+            flex: 1, padding: '8px 0', fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
+            border: '1px solid #661111', borderRadius: 6, cursor: 'pointer', letterSpacing: 2,
+            background: '#1a0808', color: '#ff6666',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#2a0808')}
+          onMouseLeave={e => (e.currentTarget.style.background = '#1a0808')}
+        >
+          CLEAR ALL
+        </button>
+        <button
+          onClick={selectAll}
+          style={{
+            flex: 1, padding: '8px 0', fontSize: 13, fontFamily: 'monospace', fontWeight: 'bold',
+            border: '1px solid #116611', borderRadius: 6, cursor: 'pointer', letterSpacing: 2,
+            background: '#081a08', color: '#66ff66',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#082a08')}
+          onMouseLeave={e => (e.currentTarget.style.background = '#081a08')}
+        >
+          SELECT ALL
+        </button>
+      </div>
 
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', maxHeight: '58vh' }}>
         {ADMIN_UPGRADE_GROUPS.map(group => (

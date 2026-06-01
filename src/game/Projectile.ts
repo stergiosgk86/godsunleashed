@@ -14,12 +14,14 @@ export class Projectile {
   piercing = false
   hitTargets = new Set<object>()
   hitRadius = 20
+  maxHits = 0   // 0 = unlimited; >0 = deactivate after this many hits
   private age = 0
 
   constructor(
     scene: Phaser.Scene, x: number, y: number,
     targetX: number, targetY: number,
-    textureKey = 'projectile', speed = SPEED, scale = 1
+    textureKey = 'projectile', speed = SPEED, scale = 1,
+    rotationOffset = 0
   ) {
     this.x = x
     this.y = y
@@ -29,7 +31,7 @@ export class Projectile {
     this.vx = (dx / dist) * speed
     this.vy = (dy / dist) * speed
     this.graphic = scene.add.image(x, y, textureKey)
-      .setRotation(Math.atan2(dy, dx))
+      .setRotation(Math.atan2(dy, dx) + rotationOffset)
       .setScale(scale)
       .setDepth(3)
   }

@@ -22,7 +22,7 @@ function emptyUpgrades(): MetaUpgrades {
 }
 
 // Characters that cost coins — must match server CHARACTER_UNLOCK_COSTS
-export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { rogue: 100, witch: 150, shade: 300, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500 }
+export const CHARACTER_UNLOCK_COSTS: Partial<Record<string, number>> = { freyja: 100, heimdall: 150, shade: 300, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500, odin: 2000 }
 // Characters unlocked by earning a specific achievement — must match server ACHIEVEMENT_CHARACTER_UNLOCKS
 export const CHARACTER_ACHIEVEMENT_REQUIRED: Partial<Record<string, string>> = { hades: 'transcendent' }
 
@@ -30,10 +30,12 @@ interface ProfileStore {
   coins: number
   upgrades: MetaUpgrades
   unlockedCharacters: string[]
+  unlockedWeapons: string[]
   unlockedStages: number[]
   maxStage1Level: number
   loaded: boolean
   fetchProfile: () => Promise<void>
+  addWeaponUnlocks: (keys: string[]) => void
   // Optimistic local-only update — server credit happens via POST /api/runs
   depositCoins: (amount: number) => void
   // Server-authoritative purchase — returns false if server rejects
@@ -48,6 +50,7 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
   coins: 0,
   upgrades: emptyUpgrades(),
   unlockedCharacters: [],
+  unlockedWeapons: [],
   unlockedStages: [],
   maxStage1Level: 0,
   loaded: false,
@@ -77,11 +80,17 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
         coins: data.coins ?? 0,
         upgrades: { ...emptyUpgrades(), ...(data.upgrades ?? {}) },
         unlockedCharacters: Array.isArray(data.unlocked_characters) ? data.unlocked_characters : [],
+        unlockedWeapons: Array.isArray(data.unlocked_weapons) ? data.unlocked_weapons.filter((k: unknown) => typeof k === 'string') : [],
         unlockedStages: Array.isArray(data.unlocked_stages) ? data.unlocked_stages.filter((s: unknown) => typeof s === 'number') : [],
         maxStage1Level: typeof data.max_stage1_level === 'number' ? data.max_stage1_level : 0,
         loaded: true,
       })
     } catch { /* network error — keep current state */ }
+  },
+
+  addWeaponUnlocks: (keys) => {
+    if (!keys.length) return
+    set(s => ({ unlockedWeapons: [...new Set([...s.unlockedWeapons, ...keys])] }))
   },
 
   depositCoins: (amount) => {
@@ -157,5 +166,5 @@ export const useProfileStore = create<ProfileStore>()((set) => ({
     } catch { return 'Network error' }
   },
 
-  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), unlockedCharacters: [], unlockedStages: [], maxStage1Level: 0, loaded: false }),
+  reset: () => set({ coins: 0, upgrades: emptyUpgrades(), unlockedCharacters: [], unlockedWeapons: [], unlockedStages: [], maxStage1Level: 0, loaded: false }),
 }))

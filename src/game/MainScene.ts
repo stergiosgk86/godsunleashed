@@ -101,6 +101,7 @@ export class MainScene extends Phaser.Scene {
     this.effects = new EffectsSystem(this)
     const charType = useCharacterStore.getState().selectedCharacter
     this.charType = charType
+    useGameStore.setState({ isMeleeChar: charType === 'ares' })
     const charDef = CHARACTER_DEFS[charType]
     const username = useAuthStore.getState().username ?? ''
     this.player = new Player(this, SPAWN_X, SPAWN_Y, charDef.spriteKey, username, charDef.scale, charDef.staticSprite ?? false)
@@ -149,6 +150,10 @@ export class MainScene extends Phaser.Scene {
         lightningTargets: savedRun.lightningTargets ?? 0,
         lightningCooldown: savedRun.lightningCooldown ?? 0,
         axe: savedRun.axe ?? false,
+        axeAmount: savedRun.axeAmount ?? 0,
+        axeDamage: savedRun.axeDamage ?? 0,
+        axePierce: savedRun.axePierce ?? 0,
+        axeEvolution: savedRun.axeEvolution ?? false,
         divineShield: savedRun.divineShield ?? false,
         armor: savedRun.armor ?? 0,
         hpRegen: savedRun.hpRegen,
@@ -172,6 +177,16 @@ export class MainScene extends Phaser.Scene {
         ravensCD: savedRun.ravensCD ?? 0,
         ravensPower: savedRun.ravensPower ?? 0,
         ravensCount: savedRun.ravensCount ?? 0,
+        spear: savedRun.spear ?? false,
+        spearCount: savedRun.spearCount ?? 0,
+        spearInterval: savedRun.spearInterval ?? 0,
+        spearPierce: savedRun.spearPierce ?? 0,
+        spearSpeed: savedRun.spearSpeed ?? 0,
+        spearStorm: savedRun.spearStorm ?? false,
+        meleeRange: savedRun.meleeRange ?? 0,
+        meleeArc: savedRun.meleeArc ?? 0,
+        meleeSpeed: savedRun.meleeSpeed ?? 0,
+        meleeDamage: savedRun.meleeDamage ?? 0,
       })
     }
 
@@ -394,7 +409,8 @@ export class MainScene extends Phaser.Scene {
       orbital: gs.orbital, wand: gs.wand, boomerang: gs.boomerang, flameTrail: gs.flameTrail,
       bloodNova: gs.bloodNova, bloodNovaCD: gs.bloodNovaCD, vampiric: gs.vampiric, lightning: gs.lightning,
       lightningTargets: gs.lightningTargets, lightningCooldown: gs.lightningCooldown,
-      axe: gs.axe, divineShield: gs.divineShield, armor: gs.armor, hpRegen: gs.hpRegen, lifeDrain: gs.lifeDrain,
+      axe: gs.axe, axeAmount: gs.axeAmount, axeDamage: gs.axeDamage, axePierce: gs.axePierce, axeEvolution: gs.axeEvolution,
+      divineShield: gs.divineShield, armor: gs.armor, hpRegen: gs.hpRegen, lifeDrain: gs.lifeDrain,
       sessionCoins: gs.sessionCoins,
       xpGain: gs.xpGain, magnetRange: gs.magnetRange,
       orbSpeed: gs.orbSpeed, orbPower: gs.orbPower, orbRange: gs.orbRange,
@@ -402,6 +418,10 @@ export class MainScene extends Phaser.Scene {
       dualGunDamage: gs.dualGunDamage, dualGunSpeed: gs.dualGunSpeed, dualGunExtra: gs.dualGunExtra,
       dualGunAttackInterval: gs.dualGunAttackInterval, echo: gs.echo,
       ravens: gs.ravens, ravensCD: gs.ravensCD, ravensPower: gs.ravensPower, ravensCount: gs.ravensCount,
+      spear: gs.spear,
+      spearCount: gs.spearCount, spearInterval: gs.spearInterval, spearPierce: gs.spearPierce,
+      spearSpeed: gs.spearSpeed, spearStorm: gs.spearStorm,
+      meleeRange: gs.meleeRange, meleeArc: gs.meleeArc, meleeSpeed: gs.meleeSpeed, meleeDamage: gs.meleeDamage,
     }
     if (activeNetClient) {
       return { ...base, nextBossAt: 0, warningFired: false, finalBossWarningFired: false, bossAlive: false, finalBossAlive: false, enemies: [] }
@@ -525,7 +545,7 @@ export class MainScene extends Phaser.Scene {
 
     // Surface unexpected disconnects so the game doesn't silently freeze
     net.onClose(() => {
-      if (shutdownStarted) return
+      if (shutdownStarted || net.closedGracefully) return
       if (!this.sys.displayList) return
       const gs = useGameStore.getState()
       if (!gs.isDead && !gs.isWon) {
@@ -640,6 +660,10 @@ export class MainScene extends Phaser.Scene {
       } else {
         useAuthStore.getState().showSystemToast('Your admin access has been revoked', '#ffaa44')
       }
+    })
+
+    net.on('playerOnline', (msg) => {
+      useAuthStore.getState().showSystemToast(`${msg.username} is online`, '#44aaff')
     })
 
     net.on('exploderExplode', (msg) => {

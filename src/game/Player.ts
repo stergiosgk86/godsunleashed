@@ -55,12 +55,12 @@ export class Player {
     this.spriteKey = spriteKey
     this.staticSprite = staticSprite
     this.idleFrames = spriteKey === 'char_zeus' ? ZEUS_IDLE_FRAMES
-      : (spriteKey === 'char_apollo' || spriteKey === 'char_hades' || spriteKey === 'char_chronos') ? APOLLO_IDLE_FRAMES
+      : (spriteKey === 'char_apollo' || spriteKey === 'char_hades' || spriteKey === 'char_chronos' || spriteKey === 'char_odin') ? APOLLO_IDLE_FRAMES
       : { down: 1, left: 4, right: 7, up: 10 }
     this.bounds = scene.physics.world.bounds
     this.graphic = scene.add.sprite(x, y, spriteKey).setDepth(4).setScale(scale)
     if (username) {
-      this.nameLabelOffsetY = this.graphic.displayHeight / 2 + 6
+      this.nameLabelOffsetY = this.graphic.displayHeight / 2 + 14
       this.nameLabel = scene.add.text(x, y - this.nameLabelOffsetY, username, {
         fontSize: '10px', color: '#ffffff', fontFamily: 'monospace',
         stroke: '#000000', strokeThickness: 3,

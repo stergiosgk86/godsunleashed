@@ -1,6 +1,5 @@
 import player      from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 01-1.png'
 import charFreyja  from '../assets/Sprites/Characters/freyja_sheet.png'
-import charWitch   from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Female/Female 03-1.png'
 import charShade from '../assets/PIPOYA FREE RPG Character Sprites 32x32/Male/Male 08-1.png'
 import charAres     from '../assets/Sprites/Characters/ares_sheet.png'
 import charZeus     from '../assets/Sprites/Characters/zeus_sheet.png'
@@ -48,7 +47,7 @@ import floorStage2 from '../assets/Sprites/Background/Floor_new stage 2.png'
 import wallStage2 from '../assets/Sprites/Background/Wall_new_stage 2.png'
 
 export const SPRITE_URLS = {
-  player, charFreyja, charWitch, charShade, charZeus, charAres, charPoseidon, charApollo, charHades, charChronos, charOdin, charHeimdall,
+  player, charFreyja, charShade, charZeus, charAres, charPoseidon, charApollo, charHades, charChronos, charOdin, charHeimdall,
   xpOrbSprite, healthPotionSprite, coinSprite,
   enemyBasic,
   enemySpeeder,

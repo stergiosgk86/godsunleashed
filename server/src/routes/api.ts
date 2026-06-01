@@ -4,6 +4,9 @@ import { requireAuth } from '../middleware/auth.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 import { db } from '../db.js'
 import { userSockets } from '../userSockets.js'
+import { ALL_WEAPON_UNLOCK_KEYS } from '../runSaver.js'
+
+const VALID_WEAPON_UNLOCK_KEYS = new Set<string>(ALL_WEAPON_UNLOCK_KEYS)
 
 // 60 reads/min per IP — prevents leaderboard/profile scraping
 const readRateLimit = rateLimit(60, 60_000)
@@ -41,7 +44,7 @@ const MAX_UPGRADE_RANK = 5
 const VALID_UPGRADE_KEYS = new Set(['maxHealth', 'recovery', 'magnet', 'might', 'luck', 'growth', 'moveSpeed', 'armor', 'attackSpeed'])
 
 // Characters that require coins to unlock (others are free)
-const CHARACTER_UNLOCK_COSTS: Record<string, number> = { rogue: 100, witch: 150, shade: 300, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500 }
+const CHARACTER_UNLOCK_COSTS: Record<string, number> = { freyja: 100, heimdall: 150, shade: 300, zeus: 1000, poseidon: 500, apollo: 750, chronos: 1500, odin: 2000 }
 // Characters unlocked automatically when a specific achievement is earned
 const ACHIEVEMENT_CHARACTER_UNLOCKS: Record<string, string> = { transcendent: 'hades' }
 const LOCKABLE_CHARACTERS = new Set([...Object.keys(CHARACTER_UNLOCK_COSTS), ...Object.values(ACHIEVEMENT_CHARACTER_UNLOCKS)])
@@ -66,7 +69,7 @@ function xpToReachLevel(level: number): number {
 
 apiRouter.get('/profile', readRateLimit, async (req: Request, res: Response) => {
   const result = await db.query(
-    `SELECT p.coins, p.upgrades, p.key_bindings, p.unlocked_characters, p.max_stage1_level, p.unlocked_stages, u.role
+    `SELECT p.coins, p.upgrades, p.key_bindings, p.unlocked_characters, p.unlocked_weapons, p.max_stage1_level, p.unlocked_stages, u.role
      FROM profiles p JOIN users u ON u.id = p.user_id
      WHERE p.user_id = $1`,
     [req.userId],
@@ -86,7 +89,11 @@ apiRouter.get('/profile', readRateLimit, async (req: Request, res: Response) => 
   const rawUnlocked = Array.isArray(row.unlocked_characters) ? row.unlocked_characters : []
   const unlockedCharacters = rawUnlocked.filter((id: unknown) => typeof id === 'string' && LOCKABLE_CHARACTERS.has(id))
 
-  res.json({ ...row, upgrades: sanitizedUpgrades, unlocked_characters: unlockedCharacters })
+  // Sanitize unlocked_weapons: only keep known weapon group keys
+  const rawWeapons = Array.isArray(row.unlocked_weapons) ? row.unlocked_weapons : []
+  const unlockedWeapons = rawWeapons.filter((k: unknown) => typeof k === 'string' && VALID_WEAPON_UNLOCK_KEYS.has(k))
+
+  res.json({ ...row, upgrades: sanitizedUpgrades, unlocked_characters: unlockedCharacters, unlocked_weapons: unlockedWeapons })
 })
 
 // ── Character unlocks ─────────────────────────────────────────────────────────
@@ -367,6 +374,43 @@ apiRouter.post('/admin/players/:id/reset', async (req: Request, res: Response) =
   }
 })
 
+apiRouter.post('/admin/players/:id/full-reset', async (req: Request, res: Response) => {
+  try {
+    const userRes = await db.query('SELECT role FROM users WHERE id = $1', [req.userId])
+    if (userRes.rows[0]?.role !== 'super_admin') {
+      res.status(403).json({ error: 'Forbidden' }); return
+    }
+    const targetId = parseInt(req.params.id, 10)
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      res.status(400).json({ error: 'Invalid user id' }); return
+    }
+    const emptyUpgrades: Record<string, number> = {}
+    for (const key of VALID_UPGRADE_KEYS) emptyUpgrades[key] = 0
+    await Promise.all([
+      db.query(
+        `UPDATE profiles SET
+           coins = 0,
+           upgrades = $1::jsonb,
+           unlocked_characters = '{}',
+           unlocked_stages = '{}',
+           unlocked_weapons = '{}',
+           max_stage1_level = 0,
+           run_snapshot = NULL,
+           active_run_token = NULL,
+           updated_at = NOW()
+         WHERE user_id = $2`,
+        [JSON.stringify(emptyUpgrades), targetId],
+      ),
+      db.query('DELETE FROM user_achievements WHERE user_id = $1', [targetId]),
+      db.query('DELETE FROM runs WHERE user_id = $1', [targetId]),
+    ])
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Admin full-reset error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 apiRouter.post('/admin/players/:id/coins', async (req: Request, res: Response) => {
   try {
     const userRes = await db.query('SELECT role FROM users WHERE id = $1', [req.userId])
@@ -475,7 +519,7 @@ apiRouter.post('/runs', writeRateLimit, async (req: Request, res: Response) => {
   const {
     runToken, score, kills, timeSurvived, coins, won, multiplayer,
     bossKills, level, damageDealt, weaponCount, tookDamage, finalHp, maxHp,
-    stage,
+    stage, characterType,
   } = req.body ?? {}
 
   if (!isFiniteNumber(score) || score < 0) {
@@ -595,6 +639,12 @@ apiRouter.post('/runs', writeRateLimit, async (req: Request, res: Response) => {
   }
   // Multiplayer
   if (safeMulti && (safeWon || safeKills > 0))            earned.push('team_player')
+  // Character survival
+  const CHAR_30_MIN_SET = new Set(['poseidon', 'apollo', 'zeus', 'chronos', 'odin', 'hades'])
+  const safeChar = VALID_CHARACTER_TYPES.has(characterType) ? characterType : ''
+  if (safeChar && safeTime >= 5  * 60 * 1000) earned.push(`char_${safeChar}_5`)
+  if (safeChar && safeTime >= 15 * 60 * 1000) earned.push(`char_${safeChar}_15`)
+  if (safeChar && CHAR_30_MIN_SET.has(safeChar) && safeTime >= 30 * 60 * 1000) earned.push(`char_${safeChar}_30`)
 
   const user = await db.query('SELECT username FROM users WHERE id = $1', [req.userId])
 

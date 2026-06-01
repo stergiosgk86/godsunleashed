@@ -55,7 +55,7 @@ export type S2CMessage =
   | { type: 'bossProjectile'; enemyId: number; x: number; y: number; vx: number; vy: number }
   | { type: 'levelUp'; level: number; xp: number; xpToNext: number; choices: string[] }
   | { type: 'xpGrant'; xp: number; xpToNext: number }
-  | { type: 'runSaved'; kills: number; timeSurvived: number; coins: number; won: boolean; newAchievements: string[] }
+  | { type: 'runSaved'; kills: number; timeSurvived: number; coins: number; won: boolean; newAchievements: string[]; newWeaponUnlocks: string[] }
   | { type: 'surge'; enemyType: string }
   | { type: 'bossInvuln'; bossId: number; invulnerable: boolean }
   | { type: 'exploderExplode'; x: number; y: number }
@@ -64,3 +64,4 @@ export type S2CMessage =
   | { type: 'adminSetUpgrade'; upgradeId: string; level: number }
   | { type: 'adminClearUpgrades' }
   | { type: 'roleChanged'; role: string }
+  | { type: 'playerOnline'; username: string }

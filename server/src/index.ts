@@ -14,7 +14,7 @@ import { db } from './db.js'
 import { userSockets } from './userSockets.js'
 import type { C2SMessage } from './protocol.js'
 
-const VALID_CHARACTER_TYPES = new Set(['ares', 'freyja', 'witch', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin', 'heimdall'])
+const VALID_CHARACTER_TYPES = new Set(['ares', 'freyja', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin', 'heimdall'])
 
 const SECRET = process.env.JWT_SECRET!
 
@@ -112,7 +112,8 @@ function attachGameEndHandler(room: GameRoom) {
             timeSurvived: result.timeSurvived,
             coins: result.coins,
             won: result.won,
-            newAchievements,
+            newAchievements: newAchievements.achievements,
+            newWeaponUnlocks: newAchievements.weapons,
           })
         })
         .catch(err => console.error(`[runSaver] failed to save run for ${result.username}:`, err))
@@ -135,9 +136,25 @@ wss.on('connection', (ws) => {
   userSockets.set(authed.userId, ws as unknown as import('ws').WebSocket)
   console.log(`[${label}] connected`)
 
+  // Notify connected super_admins that a player came online
+  if (authed.username) {
+    const connectedIds = [...userSockets.keys()].filter(id => id !== authed.userId)
+    if (connectedIds.length > 0) {
+      db.query(`SELECT id FROM users WHERE id = ANY($1) AND role = 'super_admin'`, [connectedIds])
+        .then(res => {
+          const payload = JSON.stringify({ type: 'playerOnline', username: authed.username })
+          for (const row of res.rows) {
+            const sock = userSockets.get(row.id)
+            if (sock && sock.readyState === 1) sock.send(payload)
+          }
+        })
+        .catch(() => {})
+    }
+  }
+
   ws.on('error', (err) => console.error(`[${label}] ws error:`, err))
 
-  ws.on('message', (raw) => {
+  ws.on('message', async (raw) => {
     // Per-connection rate limit: close the socket if the client floods messages
     const now = Date.now()
     if (now - wsMsgWindowStart >= 1000) { wsMsgCount = 0; wsMsgWindowStart = now }
@@ -155,6 +172,10 @@ wss.on('connection', (ws) => {
       const startX = 2000 + (Math.random() - 0.5) * 200
       const startY = 2000 + (Math.random() - 0.5) * 200
 
+      // Fetch which weapon groups this player has unlocked so the server can filter the level-up pool
+      const wpRow = await db.query('SELECT unlocked_weapons FROM profiles WHERE user_id = $1', [authed.userId]).catch(() => null)
+      const unlockedWeapons: string[] = wpRow?.rows[0]?.unlocked_weapons ?? []
+
       if (msg.solo) {
         // Solo: dedicated room that starts immediately; not shared with other players
         const soloRoom = new GameRoom(true)
@@ -168,7 +189,7 @@ wss.on('connection', (ws) => {
         room = openRoom
       }
 
-      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY, msg.viewportW ?? 1280, msg.viewportH ?? 720, msg.resumeLevel ?? 1, msg.resumeXp ?? 0, msg.resumeElapsed ?? 0, msg.stage ?? 1)
+      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY, msg.viewportW ?? 1280, msg.viewportH ?? 720, msg.resumeLevel ?? 1, msg.resumeXp ?? 0, msg.resumeElapsed ?? 0, msg.stage ?? 1, unlockedWeapons)
 
       if (!msg.solo && (room.isFull || room.isStarted)) {
         console.log(`[${label}] room full → game starting`)

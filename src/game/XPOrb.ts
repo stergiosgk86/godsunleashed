@@ -2,9 +2,9 @@ import Phaser from 'phaser'
 
 export type OrbTier = 'green' | 'blue' | 'gold'
 
-const BASE_ATTRACT_RADIUS = 80
+const BASE_ATTRACT_RADIUS = 100
 const ATTRACT_SPEED = 320
-const COLLECT_RADIUS = 40
+const COLLECT_RADIUS = 52
 const UNCOLLECTABLE_MS = 350
 const SPAWN_ANIM_MS = 220
 const NUDGE_DURATION = 260

@@ -1,4 +1,4 @@
-export type CharacterType = 'ares' | 'freyja' | 'witch' | 'shade' | 'zeus' | 'poseidon' | 'apollo' | 'hades' | 'chronos' | 'odin' | 'heimdall'
+export type CharacterType = 'ares' | 'freyja' | 'shade' | 'zeus' | 'poseidon' | 'apollo' | 'hades' | 'chronos' | 'odin' | 'heimdall'
 
 export interface CharacterDef {
   id: CharacterType
@@ -75,22 +75,6 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: false,
     scale: 0.75,
     menuFrame: { fw: 96, fh: 96, sw: 288, sh: 384 },
-  },
-  witch: {
-    id: 'witch', name: 'Witch', trait: 'Arcane Mastery',
-    description: 'Begins with an Aura that pulses damage to all nearby enemies. Slower.',
-    spriteKey: 'char_witch', color: '#cc44ff',
-    statLines: [
-      { label: 'Weapon: Aura',         positive: true  },
-      { label: '+10% Might',           positive: true  },
-      { label: '-30 Move Speed',       positive: false },
-      { label: '-15 Max HP',           positive: false },
-    ],
-    bonusMaxHp: -15, baseArmor: 0, mightMult: 1.1, bonusMoveSpeed: -30,
-    attackIntervalMult: 1.0, dashCooldownMult: 1.0, bonusDashDistance: 0,
-    bonusHpRegen: 0, startAura: 1, lifeDrain: 0, startLightning: false, startBoomerang: false,
-    startFlameTrail: false, startOrbital: 0, startWand: false, startEquinox: false, startSolstice: false, startRavens: false, startSpear: false, frontArcOnly: false,
-    scale: 1.5,
   },
   shade: {
     id: 'shade', name: 'Shade', trait: 'Cursed Ground',
@@ -243,4 +227,4 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   },
 }
 
-export const ALL_CHARACTERS: CharacterType[] = ['ares', 'freyja', 'witch', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin', 'heimdall']
+export const ALL_CHARACTERS: CharacterType[] = ['ares', 'freyja', 'heimdall', 'shade', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin']
