@@ -48,7 +48,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'lightningCooldown',label: 'Thunderhaste',      description: 'Thunder Strike fires 1s faster (stackable, up to 2×)' },
   { id: 'might',     label: 'Power',            description: '+10% weapon damage (stackable)' },
   { id: 'axe',         label: 'War Axe',      description: 'Hurls a spinning axe in an arc — hits on the way up and again on the way down' },
-  { id: 'axeAmount',   label: 'Double Axe',   description: '+1 axe per volley — two axes arc simultaneously through enemy formations' },
+  { id: 'axeAmount',   label: 'Double Axe',   description: '+1 axe per throw (stackable ×2) — axes arc one after another through enemy formations' },
   { id: 'axeDamage',   label: 'Axe Mastery',  description: '+50% axe damage — each throw cleaves harder through armored foes' },
   { id: 'axePierce',   label: 'Broad Edge',   description: 'Axes grow larger (+50% hit radius), cleaving through wider enemy formations' },
   { id: 'axeEvolution',label: "Berserker's Ring", description: "Evolution — transforms the War Axe into a ring of 6 orbiting axes that shred every enemy in their path. Requires all 3 axe upgrades." },
@@ -188,7 +188,7 @@ function pickChoices(state: PickState, unlockedWeapons: Set<string>): Upgrade[] 
     if (u.id === 'might'      && state.mightPicks >= 5)  return false
     if (u.id === 'axe'          && state.axe)                          return false
     if (u.id === 'axeAmount'    && !state.axe)                         return false
-    if (u.id === 'axeAmount'    && state.axeAmount >= 1)               return false
+    if (u.id === 'axeAmount'    && state.axeAmount >= 2)               return false
     if (u.id === 'axeDamage'    && !state.axe)                         return false
     if (u.id === 'axeDamage'    && state.axeDamage >= 1)               return false
     if (u.id === 'axePierce'    && !state.axe)                         return false
@@ -536,7 +536,7 @@ export const useGameStore = create<GameState>()(
           upgrade = { might: baseMight + safeLevel * 0.1, mightPicks: safeLevel }; break
         }
         case 'axe':                upgrade = { axe: level >= 1 }; break
-        case 'axeAmount':          upgrade = { axeAmount: Math.min(1, Math.max(0, level)) }; break
+        case 'axeAmount':          upgrade = { axeAmount: Math.min(2, Math.max(0, level)) }; break
         case 'axeDamage':          upgrade = { axeDamage: Math.min(1, Math.max(0, level)) }; break
         case 'axePierce':          upgrade = { axePierce: Math.min(1, Math.max(0, level)) }; break
         case 'axeEvolution':       upgrade = { axeEvolution: level >= 1 }; break
@@ -705,7 +705,7 @@ export const useGameStore = create<GameState>()(
           case 'lightningTargets':  upgrade = { lightningTargets: Math.min(2, s.lightningTargets + 1) }; break
           case 'lightningCooldown': upgrade = { lightningCooldown: Math.min(2, s.lightningCooldown + 1) }; break
           case 'axe':          upgrade = { axe: true }; break
-          case 'axeAmount':    upgrade = { axeAmount: Math.min(1, s.axeAmount + 1) }; break
+          case 'axeAmount':    upgrade = { axeAmount: Math.min(2, s.axeAmount + 1) }; break
           case 'axeDamage':    upgrade = { axeDamage: Math.min(1, s.axeDamage + 1) }; break
           case 'axePierce':    upgrade = { axePierce: Math.min(1, s.axePierce + 1) }; break
           case 'axeEvolution': upgrade = { axeEvolution: true }; break
@@ -775,7 +775,7 @@ export function getValidatedCombatState() {
     spearPierce:        Math.min(2, Math.max(0, Math.floor(s.spearPierce ?? 0))),
     spearSpeed:         Math.min(5, Math.max(0, Math.floor(s.spearSpeed ?? 0))),
     spearStorm:         !!s.spearStorm,
-    axeAmount:          Math.min(1, Math.max(0, Math.floor(s.axeAmount ?? 0))),
+    axeAmount:          Math.min(2, Math.max(0, Math.floor(s.axeAmount ?? 0))),
     axeDamage:          Math.min(1, Math.max(0, Math.floor(s.axeDamage ?? 0))),
     axePierce:          Math.min(1, Math.max(0, Math.floor(s.axePierce ?? 0))),
     axeEvolution:       !!s.axeEvolution,

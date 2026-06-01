@@ -25,6 +25,7 @@ const BOOMERANG_INTERVAL = 3000
 const SPEAR_BASE_CD = 700         // ms base cooldown between volleys
 const SPEAR_STORM_INTERVAL = 60   // ms per spear in Thousand Spears mode
 const WEAPON_STAGGER = 65         // ms between adjacent projectiles in a staggered volley
+const AXE_STAGGER   = 200        // ms between axes in a throw — matches VS (0.2s interval)
 const SPEAR_PERP_GAP = 15         // px perpendicular spacing between spears
 const SPEAR_SPEED = 680
 const SPEAR_HIT_R = 12
@@ -993,7 +994,7 @@ export class CombatSystem {
           ;[yOffs[i], yOffs[j]] = [yOffs[j], yOffs[i]]
         }
         yOffs.forEach((yOff, s) =>
-          this.axeQueue.push({ delay: s * WEAPON_STAGGER, yOff, dirX })
+          this.axeQueue.push({ delay: s * AXE_STAGGER, yOff, dirX })
         )
       }
       for (let q = this.axeQueue.length - 1; q >= 0; q--) {

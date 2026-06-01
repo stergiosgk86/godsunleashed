@@ -151,7 +151,7 @@ interface PlayerUpgrades {
   spearPierce: number    // 0–2, base 3 pierce + 1 per level
   spearSpeed: number     // 0–5, each +10% projectile speed (Bracer)
   spearStorm: boolean    // Thousand Spears evolution
-  axeAmount: number      // 0–1, +1 axe per volley
+  axeAmount: number      // 0–2, +1 axe per throw (stackable ×2)
   axeDamage: number      // 0–1, +50% damage
   axePierce: number      // 0–1, +50% hit radius
   axeEvolution: boolean  // Death Spiral
@@ -229,7 +229,7 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean, unlockedWeapons
     if (id === 'might'       && u.mightPicks >= 5)   return false
     if (id === 'axe'          && u.axe)                        return false
     if (id === 'axeAmount'    && !u.axe)                       return false
-    if (id === 'axeAmount'    && u.axeAmount >= 1)             return false
+    if (id === 'axeAmount'    && u.axeAmount >= 2)             return false
     if (id === 'axeDamage'    && !u.axe)                       return false
     if (id === 'axeDamage'    && u.axeDamage >= 1)             return false
     if (id === 'axePierce'    && !u.axe)                       return false
@@ -543,7 +543,7 @@ export class GameRoom {
       case 'lightningCooldown': u.lightningCooldown = Math.min(2, u.lightningCooldown + 1); break
       case 'might':       u.mightPicks = Math.min(5, u.mightPicks + 1); break
       case 'axe':         u.axe = true; break
-      case 'axeAmount':   u.axeAmount = Math.min(1, u.axeAmount + 1); break
+      case 'axeAmount':   u.axeAmount = Math.min(2, u.axeAmount + 1); break
       case 'axeDamage':   u.axeDamage = Math.min(1, u.axeDamage + 1); break
       case 'axePierce':   u.axePierce = Math.min(1, u.axePierce + 1); break
       case 'axeEvolution':u.axeEvolution = true; break
@@ -696,7 +696,7 @@ export class GameRoom {
       case 'lightningCooldown':  u.lightningCooldown = Math.min(2, level); break
       case 'might':              u.mightPicks = Math.min(5, level); break
       case 'axe':                u.axe = level >= 1; break
-      case 'axeAmount':          u.axeAmount = Math.min(1, level); break
+      case 'axeAmount':          u.axeAmount = Math.min(2, level); break
       case 'axeDamage':          u.axeDamage = Math.min(1, level); break
       case 'axePierce':          u.axePierce = Math.min(1, level); break
       case 'axeEvolution':       u.axeEvolution = level >= 1; break

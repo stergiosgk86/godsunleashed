@@ -162,7 +162,7 @@ const ADMIN_UPGRADE_GROUPS: { label: string; color: string; items: UpgradeDef[] 
       { id: 'ravensCD', label: 'Ravens CD', max: 3 },
       { id: 'ravensPower', label: 'Ravens Pwr', max: 3 },
       { id: 'ravensCount', label: 'Ravens Cnt', max: 2 },
-      { id: 'axeAmount',    label: 'Axe Amt',        max: 1 },
+      { id: 'axeAmount',    label: 'Axe Amt',        max: 2 },
       { id: 'axeDamage',    label: 'Axe Dmg',        max: 1 },
       { id: 'axePierce',    label: 'Axe Prc',        max: 1 },
       { id: 'axeEvolution', label: "Berserker's Ring", max: 1 },
