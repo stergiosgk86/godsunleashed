@@ -634,7 +634,7 @@ export class GameRoom {
     if (!this.started || this.finished) return
     const requester = this.players.find(p => p.id === requesterId)
     if (!requester) return
-    const positions = this.players.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH }))
+    const positions = this.players.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH, aura: p.aura, auraRange: p.upgrades.auraRange, level: p.level }))
     const ITEM_DIST = 220 + Math.random() * 80
     const angle = Math.random() * Math.PI * 2
     const ix = requester.x + Math.cos(angle) * ITEM_DIST
@@ -763,7 +763,7 @@ export class GameRoom {
   get isStarted(): boolean { return this.started }
   get waitingUsernames(): string[] { return this.players.map(p => p.username) }
 
-  sendRunSaved(userId: number, msg: { kills: number; timeSurvived: number; coins: number; won: boolean; newAchievements: string[] }) {
+  sendRunSaved(userId: number, msg: { kills: number; timeSurvived: number; coins: number; won: boolean; newAchievements: string[]; newWeaponUnlocks: string[] }) {
     const p = this.players.find(p => p.userId === userId)
     if (p) this.send(p.ws, { type: 'runSaved', ...msg })
   }

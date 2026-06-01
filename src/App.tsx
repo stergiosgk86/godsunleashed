@@ -20,6 +20,7 @@ import { useCharacterStore } from './store/characterStore'
 import { clearRun, loadRun } from './game/runSave'
 import { setPendingRunRestore, peekPendingRunRestore } from './game/pendingRunRestore'
 import { CHARACTER_DEFS } from './game/characters'
+import type { CharacterType } from './game/characters'
 import { setNetClient, activeNetClient } from './net/netState'
 import { NetClient } from './net/NetClient'
 import { runData } from './game/runData'
@@ -203,6 +204,7 @@ function App() {
           if (snap) {
             setPendingRunRestore(snap)
             if (snap.stage) useStageStore.getState().setStage(snap.stage)
+            if (snap.character) useCharacterStore.getState().setCharacter(snap.character as CharacterType)
             await handlePlay(true)
           }
         }

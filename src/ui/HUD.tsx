@@ -148,8 +148,10 @@ const WEAPON_SLOT_DEFS = [
   { id: 'bloodNova',  label: 'NOV', color: '#ff3333' },
   { id: 'equinox',    label: 'EQN', color: '#44aaff' },
   { id: 'solstice',   label: 'SOL', color: '#ffbb22' },
-  { id: 'ravens',     label: 'RVN', color: '#bb77ff' },
-  { id: 'spear',      label: 'SPR', color: '#00ddff' },
+  { id: 'ravens',      label: 'RVN', color: '#bb77ff' },
+  { id: 'spear',       label: 'SPR', color: '#00ddff' },
+  { id: 'vampiric',    label: 'DRN', color: '#cc3355' },
+  { id: 'divineShield',label: 'SHD', color: '#44ccff' },
 ] as const
 
 function WeaponSlots() {
@@ -164,8 +166,10 @@ function WeaponSlots() {
   const bloodNova  = useGameStore(s => s.bloodNova)
   const equinox    = useGameStore(s => s.equinox)
   const solstice   = useGameStore(s => s.solstice)
-  const ravens     = useGameStore(s => s.ravens)
-  const spear      = useGameStore(s => s.spear)
+  const ravens        = useGameStore(s => s.ravens)
+  const spear         = useGameStore(s => s.spear)
+  const vampiric      = useGameStore(s => s.vampiric)
+  const divineShield  = useGameStore(s => s.divineShield)
 
   const ownedMap: Record<string, boolean> = {
     melee: !!isMeleeChar,
@@ -173,6 +177,7 @@ function WeaponSlots() {
     aura: aura > 0, orbital: orbital > 0, boomerang: !!boomerang,
     flameTrail: !!flameTrail, bloodNova: !!bloodNova,
     equinox: !!equinox, solstice: !!solstice, ravens: !!ravens, spear: !!spear,
+    vampiric: !!vampiric, divineShield: !!divineShield,
   }
 
   const owned = WEAPON_SLOT_DEFS.filter(w => ownedMap[w.id])
@@ -262,11 +267,14 @@ function LeftPanel() {
   const spear2         = useGameStore(s => s.spear)
   const spearStormHud  = useGameStore(s => s.spearStorm)
   const spearCountHud  = useGameStore(s => s.spearCount)
+  const vampiricHud    = useGameStore(s => s.vampiric)
+  const divineShieldHud = useGameStore(s => s.divineShield)
+  const echoHud        = useGameStore(s => s.echo)
 
   const dmg = Math.floor(weaponBaseDamage(level) * might)
   const aps = (1000 / attackInterval).toFixed(2)
 
-  const hasWeapons = wand || multiShot > 0 || piercing || aura > 0 || orbital > 0 || boomerang || flameTrail || bloodNova || lightning || axe || equinox || solstice || ravens || spear2
+  const hasWeapons = wand || multiShot > 0 || piercing || aura > 0 || orbital > 0 || boomerang || flameTrail || bloodNova || lightning || axe || equinox || solstice || ravens || spear2 || vampiricHud || divineShieldHud || echoHud > 0
 
   return (
     <div style={{
@@ -322,6 +330,9 @@ function LeftPanel() {
           {solstice          && <WeaponChip label="SOLSTICE"                                         color="#ffbb22" />}
           {ravens            && <WeaponChip label="ODIN'S RAVENS"                                    color="#bb77ff" />}
           {spear2            && <WeaponChip label={spearStormHud ? "THOUSAND SPEARS" : "BIFROST SPEAR"} detail={!spearStormHud && spearCountHud > 0 ? `×${1 + spearCountHud}` : undefined} color="#00ddff" />}
+          {vampiricHud       && <WeaponChip label="SOUL DRAIN"                                         color="#cc3355" />}
+          {divineShieldHud   && <WeaponChip label="DIVINE SHIELD"                                      color="#44ccff" />}
+          {echoHud > 0       && <WeaponChip label="ECHO"           detail={`×${echoHud}`}              color="#aaddff" />}
         </>
       )}
       <WeaponSlots />

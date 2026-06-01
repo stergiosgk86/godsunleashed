@@ -53,6 +53,12 @@ const CONFIGS: Record<EnemyKind, Cfg> = {
   golem:     { speed: 48,   maxHp: 100, xpValue: 13, isBoss: false },
   knight:    { speed: 90,   maxHp: 180, xpValue: 20, isBoss: false },
   archfiend: { speed: 118,  maxHp: 300, xpValue: 30, isBoss: false },
+  // Client-only fallback types — server never spawns these
+  veteran:  { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
+  brute:    { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
+  revenant: { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
+  warlord:  { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
+  titan:    { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
 }
 
 let _nextId = 1
@@ -77,7 +83,7 @@ export class ServerEnemy {
   private bossTimer  = 0
   private bossChargeVx = 0
   private bossChargeVy = 0
-  private bossChargeTimer: number
+  private bossChargeTimer = 0
   private shootTimer  = 1500
   private ringTimer   = 9000 * 0.6
 

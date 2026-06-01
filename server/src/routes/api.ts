@@ -7,6 +7,7 @@ import { userSockets, notifySuperAdmins } from '../userSockets.js'
 import { ALL_WEAPON_UNLOCK_KEYS } from '../runSaver.js'
 
 const VALID_WEAPON_UNLOCK_KEYS = new Set<string>(ALL_WEAPON_UNLOCK_KEYS)
+const VALID_CHARACTER_TYPES = new Set(['ares', 'freyja', 'zeus', 'poseidon', 'apollo', 'hades', 'chronos', 'odin', 'heimdall', 'thor'])
 
 // 60 reads/min per IP — prevents leaderboard/profile scraping
 const readRateLimit = rateLimit(60, 60_000)
@@ -341,7 +342,7 @@ apiRouter.post('/admin/players/:id/role', async (req: Request, res: Response) =>
     if (userRes.rows[0]?.role !== 'super_admin') {
       res.status(403).json({ error: 'Forbidden' }); return
     }
-    const targetId = parseInt(req.params.id, 10)
+    const targetId = parseInt(String(req.params.id), 10)
     if (!Number.isInteger(targetId) || targetId <= 0) {
       res.status(400).json({ error: 'Invalid user id' }); return
     }
@@ -377,7 +378,7 @@ apiRouter.post('/admin/players/:id/reset', async (req: Request, res: Response) =
     if (userRes.rows[0]?.role !== 'super_admin') {
       res.status(403).json({ error: 'Forbidden' }); return
     }
-    const targetId = parseInt(req.params.id, 10)
+    const targetId = parseInt(String(req.params.id), 10)
     if (!Number.isInteger(targetId) || targetId <= 0) {
       res.status(400).json({ error: 'Invalid user id' }); return
     }
@@ -401,7 +402,7 @@ apiRouter.post('/admin/players/:id/full-reset', async (req: Request, res: Respon
     if (userRes.rows[0]?.role !== 'super_admin') {
       res.status(403).json({ error: 'Forbidden' }); return
     }
-    const targetId = parseInt(req.params.id, 10)
+    const targetId = parseInt(String(req.params.id), 10)
     if (!Number.isInteger(targetId) || targetId <= 0) {
       res.status(400).json({ error: 'Invalid user id' }); return
     }
@@ -439,7 +440,7 @@ apiRouter.post('/admin/players/:id/coins', async (req: Request, res: Response) =
     if (userRes.rows[0]?.role !== 'super_admin') {
       res.status(403).json({ error: 'Forbidden' }); return
     }
-    const targetId = parseInt(req.params.id, 10)
+    const targetId = parseInt(String(req.params.id), 10)
     if (!Number.isInteger(targetId) || targetId <= 0) {
       res.status(400).json({ error: 'Invalid user id' }); return
     }
@@ -467,7 +468,7 @@ apiRouter.delete('/admin/players/:id/runs', async (req: Request, res: Response) 
     if (userRes.rows[0]?.role !== 'super_admin') {
       res.status(403).json({ error: 'Forbidden' }); return
     }
-    const targetId = parseInt(req.params.id, 10)
+    const targetId = parseInt(String(req.params.id), 10)
     if (!Number.isInteger(targetId) || targetId <= 0) {
       res.status(400).json({ error: 'Invalid user id' }); return
     }
@@ -485,7 +486,7 @@ apiRouter.post('/admin/players/:id/stages', async (req: Request, res: Response) 
     if (userRes.rows[0]?.role !== 'super_admin') {
       res.status(403).json({ error: 'Forbidden' }); return
     }
-    const targetId = parseInt(req.params.id, 10)
+    const targetId = parseInt(String(req.params.id), 10)
     if (!Number.isInteger(targetId) || targetId <= 0) {
       res.status(400).json({ error: 'Invalid user id' }); return
     }

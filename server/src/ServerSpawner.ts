@@ -431,7 +431,7 @@ export class ServerSpawner {
   }
 
   private nearestPlayerTo(ex: number, ey: number, players: SpawnerPlayer[]): SpawnerPlayer {
-    if (players.length === 0) return { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H }
+    if (players.length === 0) return { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H, aura: 0, auraRange: 0, level: 1 }
     let nearest = players[0]
     let minD2   = Infinity
     for (const p of players) {
