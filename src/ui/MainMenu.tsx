@@ -256,8 +256,8 @@ function MenuBackground() {
           to   { background-position: 0 6px; }
         }
         @keyframes icon-pulse {
-          0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 14px rgba(220,80,20,0.65)); }
-          50%       { transform: scale(1.07); filter: drop-shadow(0 0 26px rgba(240,110,20,0.90)); }
+          0%, 100% { transform: scale(1);    filter: drop-shadow(-10px 0 16px rgba(50,80,220,0.75)) drop-shadow(10px 0 16px rgba(220,40,20,0.75)); }
+          50%       { transform: scale(1.07); filter: drop-shadow(-14px 0 24px rgba(70,110,255,0.95)) drop-shadow(14px 0 24px rgba(240,60,20,0.95)); }
         }
       `}</style>
 
