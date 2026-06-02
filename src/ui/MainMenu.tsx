@@ -919,14 +919,15 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const mob = useIsMobile()
 
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-  const [installPrompt, setInstallPrompt] = useState<any>(null)
+  const [installPrompt, setInstallPrompt] = useState<any>(() => (window as any).__pwaPrompt ?? null)
   useEffect(() => {
     const onPrompt = (e: Event) => {
       if (window.innerWidth > 600) return  // let Chrome handle its own UI on desktop
       e.preventDefault()
+      ;(window as any).__pwaPrompt = e
       setInstallPrompt(e)
     }
-    const onInstalled = () => setInstallPrompt(null)
+    const onInstalled = () => { (window as any).__pwaPrompt = null; setInstallPrompt(null) }
     window.addEventListener('beforeinstallprompt', onPrompt)
     window.addEventListener('appinstalled', onInstalled)
     return () => {

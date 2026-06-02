@@ -21,6 +21,13 @@
       if (p === '/' || p === '' || p.startsWith('/game')) {
         history.pushState(null, '', window.location.href);
       }
+
+      // Capture beforeinstallprompt immediately — it can fire before React mounts.
+      window.addEventListener('beforeinstallprompt', function(e) {
+        if (window.innerWidth > 600) return;
+        e.preventDefault();
+        window.__pwaPrompt = e;
+      });
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
