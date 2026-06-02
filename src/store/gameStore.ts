@@ -71,7 +71,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'ravensCD',    label: "Raven's Fury",   description: 'Ravens bomb 500ms faster (stackable, up to 3×, down to 2s)' },
   { id: 'ravensPower', label: "Raven's Curse",  description: 'Each feather deals 20% more damage (stackable, up to 3×)' },
   { id: 'ravensCount', label: 'Murder of Crows', description: '+2 feathers per bomb set (stackable, up to 2×)' },
-  { id: 'meleeRange',  label: 'Iron Reach',     description: 'Melee arc extends 25% further (stackable, up to ×4)' },
+  { id: 'meleeRange',  label: 'Iron Reach',     description: 'Melee arc extends 15% further (stackable, up to ×4)' },
   { id: 'meleeSpeed',  label: 'Battle Fury',    description: 'Melee strikes 15% faster (stackable, up to ×4)' },
   { id: 'meleeDamage', label: 'Blade Mastery',  description: '+20% melee arc damage (stackable, up to ×4)' },
 ]

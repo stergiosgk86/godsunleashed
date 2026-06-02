@@ -506,7 +506,7 @@ function UpgradesView({ onBack }: { onBack: () => void }) {
 
         const half = Math.ceil(WEAPON_UPGRADE_GROUPS.length / 2)
         return mob ? (
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 5, overflowY: 'auto', maxHeight: 'calc(100dvh - 220px)' }}>
             {WEAPON_UPGRADE_GROUPS.map(renderGroup)}
           </div>
         ) : (
@@ -524,10 +524,12 @@ function UpgradesView({ onBack }: { onBack: () => void }) {
       <button
         onClick={onBack}
         style={{
-          width: 'calc((100% - 12px) / 3)', padding: '7px 0', fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold',
+          width: mob ? '100%' : 'calc((100% - 12px) / 3)',
+          padding: mob ? '12px 0' : '7px 0',
+          fontSize: mob ? 14 : 12, fontFamily: 'monospace', fontWeight: 'bold',
           border: '1px solid #4444cc', borderRadius: 6, cursor: 'pointer', letterSpacing: 2,
           color: '#aaaaff', background: '#0d0d1f', boxShadow: 'none', marginTop: 4,
-          position: 'sticky', bottom: 0,
+          flexShrink: 0,
         }}
         onMouseEnter={e => (e.currentTarget.style.background = '#111133')}
         onMouseLeave={e => (e.currentTarget.style.background = '#0d0d1f')}

@@ -214,7 +214,7 @@ export class CombatSystem {
 
   private fireSwordSwing(px: number, py: number, damage: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
     const { meleeRange, meleeArc, meleeDamage } = getValidatedCombatState()
-    const slashRange = CombatSystem.SLASH_RANGE * (1 + meleeRange * 0.25)
+    const slashRange = CombatSystem.SLASH_RANGE * (1 + meleeRange * 0.15)
     const halfspan = Math.PI * 5 / 12  // 150° total arc
     const meleeDmg = Math.floor(damage * (1 + meleeDamage * 0.2))
     const fx = this.facingVx, fy = this.facingVy
@@ -333,7 +333,7 @@ export class CombatSystem {
     this.arcGraphic.clear()
     if (!this.isMeleeActive) return
     const { meleeRange, meleeArc } = getValidatedCombatState()
-    const R = CombatSystem.SLASH_RANGE * (1 + meleeRange * 0.25)
+    const R = CombatSystem.SLASH_RANGE * (1 + meleeRange * 0.15)
     const halfSpan = Math.PI * 5 / 12
     const innerR = R * 0.18
     const steps = 24
