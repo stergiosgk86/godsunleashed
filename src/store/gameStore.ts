@@ -4,7 +4,7 @@ import { useProfileStore } from './profileStore'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'axeAmount' | 'axeDamage' | 'axePierce' | 'axeEvolution' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo' | 'ravens' | 'ravensCD' | 'ravensPower' | 'ravensCount' | 'spear' | 'spearCount' | 'spearInterval' | 'spearPierce' | 'spearSpeed' | 'spearStorm' | 'meleeRange' | 'meleeSpeed' | 'meleeDamage'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'axeAmount' | 'axeDamage' | 'axePierce' | 'axeEvolution' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo' | 'ravens' | 'ravensCD' | 'ravensPower' | 'ravensCount' | 'spear' | 'spearCount' | 'spearInterval' | 'spearPierce' | 'spearSpeed' | 'spearStorm' | 'meleeRange' | 'meleeSpeed' | 'meleeDamage' | 'meleeArcWidth'
 
 export type AdminSpawnEntity =
   | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
@@ -71,9 +71,10 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'ravensCD',    label: "Raven's Fury",   description: 'Ravens bomb 500ms faster (stackable, up to 3×, down to 2s)' },
   { id: 'ravensPower', label: "Raven's Curse",  description: 'Each feather deals 20% more damage (stackable, up to 3×)' },
   { id: 'ravensCount', label: 'Murder of Crows', description: '+2 feathers per bomb set (stackable, up to 2×)' },
-  { id: 'meleeRange',  label: 'Iron Reach',     description: 'Melee arc extends 15% further (stackable, up to ×4)' },
-  { id: 'meleeSpeed',  label: 'Battle Fury',    description: 'Melee strikes 15% faster (stackable, up to ×4)' },
-  { id: 'meleeDamage', label: 'Blade Mastery',  description: '+20% melee arc damage (stackable, up to ×4)' },
+  { id: 'meleeRange',    label: 'Iron Reach',   description: 'Melee arc extends 15% further (stackable, up to ×4)' },
+  { id: 'meleeSpeed',    label: 'Battle Fury',  description: 'Melee strikes 15% faster (stackable, up to ×4)' },
+  { id: 'meleeDamage',   label: 'Blade Mastery', description: '+20% melee arc damage (stackable, up to ×4)' },
+  { id: 'meleeArcWidth', label: 'Wide Sweep',   description: '+20° to melee arc width (stackable, up to ×3, from 90° to 150°)' },
 ]
 
 // XP curve: L1=30, L2=55, L3=80 (+25/level), spikes at L20/L40
@@ -87,9 +88,9 @@ function xpNeeded(level: number): number {
 const DASH_IDS = new Set<UpgradeId>(['dashCooldown', 'dashDistance'])
 const SPEAR_BURST_IDS = new Set<UpgradeId>(['spearCount', 'spearInterval', 'spearPierce'])
 const AXE_UPGRADE_IDS = new Set<UpgradeId>(['axeAmount', 'axeDamage', 'axePierce', 'axeEvolution'])
-const MELEE_UPGRADE_IDS = new Set<UpgradeId>(['meleeRange', 'meleeSpeed', 'meleeDamage'])
+const MELEE_UPGRADE_IDS = new Set<UpgradeId>(['meleeRange', 'meleeSpeed', 'meleeDamage', 'meleeArcWidth'])
 
-type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; mightPicks: number; axe: boolean; axeAmount: number; axeDamage: number; axePierce: number; axeEvolution: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number; dashCooldown: number; dashDistance: number; ravens: boolean; ravensCD: number; ravensPower: number; ravensCount: number; spear: boolean; spearCount: number; spearInterval: number; spearPierce: number; spearSpeed: number; spearStorm: boolean; meleeRange: number; meleeArc: number; meleeSpeed: number; meleeDamage: number; isMeleeChar: boolean }
+type PickState = { wand: boolean; multiShot: number; piercing: boolean; orbital: number; orbSpeed: number; orbPower: number; orbRange: number; boomerang: boolean; flameTrail: boolean; bloodNova: boolean; bloodNovaCD: number; vampiric: boolean; lightning: boolean; lightningTargets: number; lightningCooldown: number; might: number; mightPicks: number; axe: boolean; axeAmount: number; axeDamage: number; axePierce: number; axeEvolution: boolean; aura: number; auraTick: number; auraRange: number; divineShield: boolean; xpGain: number; magnetRange: number; equinox: boolean; solstice: boolean; dualGunDamage: number; dualGunSpeed: number; dualGunExtra: number; echo: number; dashCooldown: number; dashDistance: number; ravens: boolean; ravensCD: number; ravensPower: number; ravensCount: number; spear: boolean; spearCount: number; spearInterval: number; spearPierce: number; spearSpeed: number; spearStorm: boolean; meleeRange: number; meleeArc: number; meleeSpeed: number; meleeDamage: number; meleeArcWidth: number; isMeleeChar: boolean }
 
 function upgradeWeight(id: UpgradeId, s: PickState): number {
   if ((id === 'multiShot' || id === 'piercing') && s.wand) return 10
@@ -101,7 +102,7 @@ function upgradeWeight(id: UpgradeId, s: PickState): number {
   if ((id === 'axeAmount' || id === 'axeDamage' || id === 'axePierce' || id === 'axeEvolution') && s.axe) return 10
   if ((id === 'ravensCD' || id === 'ravensPower' || id === 'ravensCount') && s.ravens) return 10
   if ((id === 'spearCount' || id === 'spearInterval' || id === 'spearPierce' || id === 'spearSpeed' || id === 'spearStorm') && s.spear) return 10
-  if ((id === 'meleeRange' || id === 'meleeSpeed' || id === 'meleeDamage') && s.isMeleeChar) return 10
+  if ((id === 'meleeRange' || id === 'meleeSpeed' || id === 'meleeDamage' || id === 'meleeArcWidth') && s.isMeleeChar) return 10
   if (id === 'orbital' && s.orbital > 0) return 8
   if ((id === 'orbSpeed' || id === 'orbPower' || id === 'orbRange') && s.orbital > 0) return 10
   if (id === 'might' || id === 'dashCooldown' || id === 'dashDistance') return 4
@@ -193,6 +194,7 @@ function pickChoices(state: PickState, unlockedWeapons: Set<string>): Upgrade[] 
     if (u.id === 'axeDamage'    && state.axeDamage >= 1)               return false
     if (u.id === 'axePierce'    && !state.axe)                         return false
     if (u.id === 'axePierce'    && state.axePierce >= 1)               return false
+    if (u.id === 'axeEvolution' && !unlockedWeapons.has('axeEvolution'))  return false
     if (u.id === 'axeEvolution' && !state.axe)                         return false
     if (u.id === 'axeEvolution' && state.axeAmount < 1)                return false
     if (u.id === 'axeEvolution' && state.axeDamage < 1)                return false
@@ -231,14 +233,16 @@ function pickChoices(state: PickState, unlockedWeapons: Set<string>): Upgrade[] 
     if (u.id === 'spearPierce'    && state.spearPierce >= 2)            return false
     if (u.id === 'spearSpeed'     && !state.spear)                      return false
     if (u.id === 'spearSpeed'     && state.spearSpeed >= 5)             return false
+    if (u.id === 'spearStorm'     && !unlockedWeapons.has('spearStorm')) return false
     if (u.id === 'spearStorm'     && !state.spear)                      return false
     if (u.id === 'spearStorm'     && state.spearCount < 5)              return false
     if (u.id === 'spearStorm'     && state.spearSpeed < 3)              return false
     if (u.id === 'spearStorm'     && state.spearStorm)                  return false
-    if ((u.id === 'meleeRange' || u.id === 'meleeSpeed' || u.id === 'meleeDamage') && !state.isMeleeChar) return false
+    if ((u.id === 'meleeRange' || u.id === 'meleeSpeed' || u.id === 'meleeDamage' || u.id === 'meleeArcWidth') && !state.isMeleeChar) return false
     if (u.id === 'meleeRange'     && state.meleeRange >= 4)             return false
     if (u.id === 'meleeSpeed'     && state.meleeSpeed >= 4)             return false
     if (u.id === 'meleeDamage'    && state.meleeDamage >= 4)            return false
+    if (u.id === 'meleeArcWidth'  && state.meleeArcWidth >= 3)          return false
     return true
   })
 
@@ -356,6 +360,7 @@ interface GameState {
   meleeArc: number
   meleeSpeed: number
   meleeDamage: number
+  meleeArcWidth: number
   isMeleeChar: boolean
   divineShield: boolean
   divineShieldActive: boolean
@@ -480,6 +485,7 @@ export const useGameStore = create<GameState>()(
     meleeArc: 0,
     meleeSpeed: 0,
     meleeDamage: 0,
+    meleeArcWidth: 0,
     isMeleeChar: false,
     divineShield: false,
     divineShieldActive: false,
@@ -564,6 +570,7 @@ export const useGameStore = create<GameState>()(
         case 'meleeRange':         upgrade = { meleeRange: Math.min(4, Math.max(0, level)) }; break
         case 'meleeSpeed':         upgrade = { meleeSpeed: Math.min(4, Math.max(0, level)), attackInterval: Math.max(250, Math.floor(950 * Math.pow(0.85, level))) }; break
         case 'meleeDamage':        upgrade = { meleeDamage: Math.min(4, Math.max(0, level)) }; break
+        case 'meleeArcWidth':      upgrade = { meleeArcWidth: Math.min(3, Math.max(0, level)) }; break
       }
       set(upgrade)
     },
@@ -582,7 +589,7 @@ export const useGameStore = create<GameState>()(
       echo: 0, dashCooldown: DASH_COOLDOWN_MS, dashDistance: 1,
       ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
       spear: false, spearCount: 0, spearInterval: 0, spearPierce: 0, spearSpeed: 0, spearStorm: false,
-      meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0, attackInterval: 950,
+      meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0, meleeArcWidth: 0, attackInterval: 950,
     }),
 
     setServerDrivenLeveling: (value) => set({ serverDrivenLeveling: value }),
@@ -674,7 +681,7 @@ export const useGameStore = create<GameState>()(
       equinox: false, solstice: false, dualGunDamage: 0, dualGunSpeed: 0, dualGunExtra: 0, dualGunAttackInterval: 1400, echo: 0,
       ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
       spear: false, spearCount: 0, spearInterval: 0, spearPierce: 0, spearSpeed: 0, spearStorm: false,
-      meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0,
+      meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0, meleeArcWidth: 0,
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null, timeSurvived: 0,
     }),
@@ -729,9 +736,10 @@ export const useGameStore = create<GameState>()(
           case 'spearPierce':   upgrade = { spearPierce: Math.min(2, s.spearPierce + 1) }; break
           case 'spearSpeed':    upgrade = { spearSpeed: Math.min(5, s.spearSpeed + 1) }; break
           case 'spearStorm':    upgrade = { spearStorm: true }; break
-          case 'meleeRange':   upgrade = { meleeRange: Math.min(4, s.meleeRange + 1) }; break
-          case 'meleeSpeed':   upgrade = { meleeSpeed: Math.min(4, s.meleeSpeed + 1), attackInterval: Math.max(250, Math.floor(950 * Math.pow(0.85, s.meleeSpeed + 1))) }; break
-          case 'meleeDamage':  upgrade = { meleeDamage: Math.min(4, s.meleeDamage + 1) }; break
+          case 'meleeRange':    upgrade = { meleeRange: Math.min(4, s.meleeRange + 1) }; break
+          case 'meleeSpeed':    upgrade = { meleeSpeed: Math.min(4, s.meleeSpeed + 1), attackInterval: Math.max(250, Math.floor(950 * Math.pow(0.85, s.meleeSpeed + 1))) }; break
+          case 'meleeDamage':   upgrade = { meleeDamage: Math.min(4, s.meleeDamage + 1) }; break
+          case 'meleeArcWidth': upgrade = { meleeArcWidth: Math.min(3, s.meleeArcWidth + 1) }; break
           default:             upgrade = {}
         }
         return { ...upgrade, isLevelUpPending: false, chosenUpgrade: id }
@@ -783,5 +791,6 @@ export function getValidatedCombatState() {
     meleeArc:           Math.min(1, Math.max(0, Math.floor(s.meleeArc ?? 0))),
     meleeSpeed:         Math.min(4, Math.max(0, Math.floor(s.meleeSpeed ?? 0))),
     meleeDamage:        Math.min(4, Math.max(0, Math.floor(s.meleeDamage ?? 0))),
+    meleeArcWidth:      Math.min(3, Math.max(0, Math.floor(s.meleeArcWidth ?? 0))),
   }
 }

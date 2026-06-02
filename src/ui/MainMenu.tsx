@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 function useIsMobile() {
   const [mob, setMob] = useState(() => window.innerWidth <= 600)
@@ -308,9 +309,10 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
     description: 'A devastating front arc slash. Default weapon of Ares.',
     unlockKey: null, unlockHint: null,
     upgrades: [
-      { id: 'meleeRange',  label: 'Iron Reach',   description: 'Melee arc extends 25% further (stackable, up to ×4)' },
-      { id: 'meleeSpeed',  label: 'Battle Fury',  description: 'Melee strikes 15% faster (stackable, up to ×4)' },
-      { id: 'meleeDamage', label: 'Blade Mastery', description: '+20% melee arc damage (stackable, up to ×4)' },
+      { id: 'meleeRange',    label: 'Iron Reach',   description: 'Melee arc extends 15% further (stackable, up to ×4)' },
+      { id: 'meleeSpeed',    label: 'Battle Fury',  description: 'Melee strikes 15% faster (stackable, up to ×4)' },
+      { id: 'meleeDamage',   label: 'Blade Mastery', description: '+20% melee arc damage (stackable, up to ×4)' },
+      { id: 'meleeArcWidth', label: 'Wide Sweep',   description: '+20° to melee arc width per level (base 90°, up to 150° at ×3)' },
     ],
   },
   {
@@ -375,11 +377,16 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
     description: 'Hurls the legendary Mjölnir in an arc — strikes enemies on the way up and again on the return',
     unlockKey: 'axe', unlockHint: 'Reach Level 20 in any run',
     upgrades: [
-      { id: 'axeAmount',    label: 'Double Throw',    description: '+1 Mjölnir per volley — two hammers arc simultaneously through enemy formations' },
-      { id: 'axeDamage',    label: 'Mjölnir Mastery', description: '+50% Mjölnir damage — each throw strikes harder through armored foes' },
-      { id: 'axePierce',    label: 'Broad Impact',    description: 'Mjölnir grows larger (+50% hit radius), cleaving through wider enemy formations' },
-      { id: 'axeEvolution', label: "Berserker's Ring", description: "Evolution — a ring of 6 orbiting axes shreds every enemy in their path. Requires all 3 axe upgrades." },
+      { id: 'axeAmount', label: 'Double Throw',    description: '+1 Mjölnir per volley — two hammers arc simultaneously through enemy formations' },
+      { id: 'axeDamage', label: 'Mjölnir Mastery', description: '+50% Mjölnir damage — each throw strikes harder through armored foes' },
+      { id: 'axePierce', label: 'Broad Impact',    description: 'Mjölnir grows larger (+50% hit radius), cleaving through wider enemy formations' },
     ],
+  },
+  {
+    id: 'axeEvolution', label: "Berserker's Ring", color: '#ff6622', icon: '⬡',
+    description: 'Evolution — transforms Mjölnir into a ring of 6 orbiting axes that shred every enemy in their path.',
+    unlockKey: 'axeEvolution', unlockHint: 'Max all 3 Mjölnir upgrades in a single run',
+    upgrades: [],
   },
   {
     id: 'divineShield', label: 'Divine Shield', color: '#ffee66', icon: '◈',
@@ -414,12 +421,17 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
     description: 'Hurls a glowing lance in the direction you move, piercing up to 3 enemies per throw',
     unlockKey: 'spear', unlockHint: 'Survive 12 min with Heimdall',
     upgrades: [
-      { id: 'spearCount',    label: 'Spear Barrage',  description: '+1 spear per burst — all fire in rapid succession (up to 6 total, stackable ×5)' },
-      { id: 'spearInterval', label: 'Spear Tempo',    description: 'Throws erupt faster and burst tighter (stackable ×3)' },
-      { id: 'spearPierce',   label: 'Spear Pierce',   description: '+1 enemy pierced per spear — from 3 up to 5 (stackable ×2)' },
-      { id: 'spearSpeed',    label: 'Bracer',          description: '+10% spear velocity (stackable ×5, required for Thousand Spears)' },
-      { id: 'spearStorm',    label: 'Thousand Spears', description: 'Evolution — transforms the burst into a never-ending torrent of lances. Requires max Barrage + Bracer ×3.' },
+      { id: 'spearCount',    label: 'Spear Barrage', description: '+1 spear per burst — all fire in rapid succession (up to 6 total, stackable ×5)' },
+      { id: 'spearInterval', label: 'Spear Tempo',   description: 'Throws erupt faster and burst tighter (stackable ×3)' },
+      { id: 'spearPierce',   label: 'Spear Pierce',  description: '+1 enemy pierced per spear — from 3 up to 5 (stackable ×2)' },
+      { id: 'spearSpeed',    label: 'Bracer',         description: '+10% spear velocity (stackable ×5)' },
     ],
+  },
+  {
+    id: 'spearStorm', label: 'Thousand Spears', color: '#00ffcc', icon: '◈',
+    description: 'Evolution — transforms the burst into a never-ending torrent of piercing lances.',
+    unlockKey: 'spearStorm', unlockHint: 'Reach max Spear Barrage (×5) and Bracer (×3) in a single run',
+    upgrades: [],
   },
 ]
 
@@ -879,15 +891,25 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const isSelectedLocked = (unlockCostOfSelected !== undefined || CHARACTER_ACHIEVEMENT_REQUIRED[_selectedCharacter] !== undefined) && !unlockedCharacters.includes(_selectedCharacter)
   const selectedCharacter = isSelectedLocked ? 'ares' : _selectedCharacter
   type MenuView = 'home' | 'shop' | 'characters' | 'stageSelect' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds' | 'collection'
-  const VALID_VIEWS = new Set<string>(['home', 'shop', 'characters', 'stageSelect', 'statistics', 'leaderboard', 'achievements', 'admin', 'settings', 'controls', 'sounds', 'collection'])
-  const [view, setViewRaw] = useState<MenuView>(() => {
-    const saved = sessionStorage.getItem('gods_menu_view')
-    return (saved && VALID_VIEWS.has(saved) ? saved : 'home') as MenuView
-  })
-  function setView(v: MenuView) {
-    sessionStorage.setItem('gods_menu_view', v)
-    setViewRaw(v)
+  const PATH_TO_VIEW: Record<string, MenuView> = {
+    '/': 'home', '/shop': 'shop', '/characters': 'characters',
+    '/stage-select': 'stageSelect', '/statistics': 'statistics',
+    '/leaderboard': 'leaderboard', '/achievements': 'achievements',
+    '/admin': 'admin', '/settings': 'settings', '/controls': 'controls',
+    '/sounds': 'sounds', '/collection': 'collection',
   }
+  const VIEW_TO_PATH: Record<MenuView, string> = {
+    home: '/', shop: '/shop', characters: '/characters',
+    stageSelect: '/stage-select', statistics: '/statistics',
+    leaderboard: '/leaderboard', achievements: '/achievements',
+    admin: '/admin', settings: '/settings', controls: '/controls',
+    sounds: '/sounds', collection: '/collection',
+  }
+  const navigate = useNavigate()
+  const location = useLocation()
+  const view: MenuView = PATH_TO_VIEW[location.pathname] ?? 'home'
+  function setView(v: MenuView) { navigate(VIEW_TO_PATH[v]) }
+  function setViewRaw(v: MenuView) { navigate(VIEW_TO_PATH[v], { replace: true }) }
   const [confirmRefundAll, setConfirmRefundAll] = useState(false)
   const [confirmRefund, setConfirmRefund] = useState<keyof MetaUpgrades | null>(null)
   const [confirmUnlock, setConfirmUnlock] = useState<string | null>(null)
@@ -903,6 +925,16 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
     stageSelect: 'characters',
   }
 
+  // Prevent back-button / Android edge-swipe from leaving the app while on home.
+  // useLayoutEffect fires before paint so the sentinel exists before the user can interact.
+  useLayoutEffect(() => {
+    if (view !== 'home') return
+    window.history.pushState(null, '', '/')
+    function onPopState() { window.history.pushState(null, '', '/') }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [view])
+
   useEffect(() => {
     function onEsc(e: KeyboardEvent) {
       if (e.key !== 'Escape') return
@@ -911,7 +943,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
       if (confirmRefund)    { setConfirmRefund(null);        return }
       if (view === 'characters') setPlayAfterSelect(false)
       const parent = VIEW_PARENT[view]
-      if (parent) setView(parent)
+      if (parent) navigate(-1)
     }
     window.addEventListener('keydown', onEsc)
     return () => window.removeEventListener('keydown', onEsc)
@@ -1019,7 +1051,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
       ) : view === 'stageSelect' ? (
         <>
           <ViewHeader color="#8888ff">SELECT STAGE</ViewHeader>
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0, userSelect: 'none', WebkitUserSelect: 'none' }}>
 
             {/* Stage 1 — available */}
             <div
@@ -1034,6 +1066,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                 boxShadow: '0 0 20px rgba(80,50,200,0.3)',
                 transition: 'all 0.18s ease',
                 display: 'flex', flexDirection: 'column', gap: 6,
+                userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation',
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(25,20,90,0.98) 0%, rgba(50,20,110,0.98) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 32px rgba(100,70,255,0.45)' }}
               onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(15,15,60,0.95) 0%, rgba(30,10,70,0.95) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 20px rgba(80,50,200,0.3)' }}
@@ -1076,6 +1109,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                     boxShadow: '0 0 20px rgba(150,30,20,0.3)',
                     transition: 'all 0.18s ease',
                     display: 'flex', flexDirection: 'column', gap: 6,
+                    userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation',
                   }}
                   onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(60,15,15,0.98) 0%, rgba(90,20,20,0.98) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 32px rgba(200,50,30,0.45)' }}
                   onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(40,10,10,0.95) 0%, rgba(70,15,15,0.95) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 20px rgba(150,30,20,0.3)' }}

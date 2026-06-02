@@ -29,7 +29,7 @@ const ALL_UPGRADE_IDS = [
   'echo',
   'ravens', 'ravensCD', 'ravensPower', 'ravensCount',
   'spear', 'spearCount', 'spearInterval', 'spearPierce', 'spearSpeed', 'spearStorm',
-  'meleeRange', 'meleeSpeed', 'meleeDamage',
+  'meleeRange', 'meleeSpeed', 'meleeDamage', 'meleeArcWidth',
 ] as const
 type UpgradeId = typeof ALL_UPGRADE_IDS[number]
 const VALID_UPGRADE_SET = new Set<string>(ALL_UPGRADE_IDS)
@@ -45,7 +45,7 @@ const WEAPON_FAMILIES: Record<string, readonly string[]> = {
   spear:     ['spearCount', 'spearInterval', 'spearPierce'],
   dash:      ['dashCooldown', 'dashDistance'],
   dualGun:   ['dualGunDamage', 'dualGunSpeed', 'dualGunExtra'],
-  melee:     ['meleeRange', 'meleeSpeed', 'meleeDamage'],
+  melee:     ['meleeRange', 'meleeSpeed', 'meleeDamage', 'meleeArcWidth'],
 }
 const UPGRADE_FAMILY: Record<string, string> = {}
 for (const [family, ids] of Object.entries(WEAPON_FAMILIES)) {
@@ -159,6 +159,7 @@ interface PlayerUpgrades {
   meleeArc: number       // 0–1, adds rear strike 100ms after front
   meleeSpeed: number     // 0–4, each -15% attack interval
   meleeDamage: number    // 0–4, each +20% melee damage
+  meleeArcWidth: number  // 0–3, each +20° arc width (base 90°)
 }
 
 function emptyUpgrades(): PlayerUpgrades {
@@ -172,7 +173,7 @@ function emptyUpgrades(): PlayerUpgrades {
     ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
     spear: false, spearCount: 0, spearInterval: 0, spearPierce: 0, spearSpeed: 0, spearStorm: false,
     axeAmount: 0, axeDamage: 0, axePierce: 0, axeEvolution: false,
-    meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0,
+    meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0, meleeArcWidth: 0,
   }
 }
 
@@ -274,14 +275,17 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean, unlockedWeapons
     if (id === 'spearPierce'    && u.spearPierce >= 2)         return false
     if (id === 'spearSpeed'     && !u.spear)                   return false
     if (id === 'spearSpeed'     && u.spearSpeed >= 5)          return false
+    if (id === 'spearStorm'     && !unlockedWeapons.has('spearStorm')) return false
     if (id === 'spearStorm'     && !u.spear)                   return false
     if (id === 'spearStorm'     && u.spearCount < 5)           return false
     if (id === 'spearStorm'     && u.spearSpeed < 3)           return false
     if (id === 'spearStorm'     && u.spearStorm)               return false
-    if ((id === 'meleeRange' || id === 'meleeSpeed' || id === 'meleeDamage') && !isMelee) return false
+    if (id === 'axeEvolution'   && !unlockedWeapons.has('axeEvolution')) return false
+    if ((id === 'meleeRange' || id === 'meleeSpeed' || id === 'meleeDamage' || id === 'meleeArcWidth') && !isMelee) return false
     if (id === 'meleeRange'     && u.meleeRange >= 4)          return false
     if (id === 'meleeSpeed'     && u.meleeSpeed >= 4)          return false
     if (id === 'meleeDamage'    && u.meleeDamage >= 4)         return false
+    if (id === 'meleeArcWidth'  && u.meleeArcWidth >= 3)       return false
     return true
   })
 
@@ -574,6 +578,7 @@ export class GameRoom {
       case 'meleeRange':    u.meleeRange = Math.min(4, u.meleeRange + 1); break
       case 'meleeSpeed':    u.meleeSpeed = Math.min(4, u.meleeSpeed + 1); break
       case 'meleeDamage':   u.meleeDamage = Math.min(4, u.meleeDamage + 1); break
+      case 'meleeArcWidth': u.meleeArcWidth = Math.min(3, u.meleeArcWidth + 1); break
 
     }
 
@@ -727,6 +732,7 @@ export class GameRoom {
       case 'meleeRange':         u.meleeRange = Math.min(4, level); break
       case 'meleeSpeed':         u.meleeSpeed = Math.min(4, level); break
       case 'meleeDamage':        u.meleeDamage = Math.min(4, level); break
+      case 'meleeArcWidth':      u.meleeArcWidth = Math.min(3, level); break
     }
 
     this.send(requester.ws, { type: 'adminSetUpgrade', upgradeId, level })
@@ -831,6 +837,8 @@ export class GameRoom {
         damageDealt: p.damageDealt,
         stage: this.spawner.stage2Mode ? 2 : 1,
         characterType: p.characterType,
+        spearEvolutionReady: u.spear && u.spearCount >= 5 && u.spearSpeed >= 3,
+        axeEvolutionReady:   u.axe   && u.axeAmount  >= 1 && u.axeDamage >= 1 && u.axePierce >= 1,
       }
     })
     for (const p of this.players) {

@@ -23,14 +23,19 @@ export interface PlayerRunData {
   damageDealt: number
   stage: number
   characterType?: string
+  // Evolution readiness flags — set by GameRoom when all in-run prerequisites are met
+  spearEvolutionReady?: boolean  // spear + spearCount>=5 + spearSpeed>=3
+  axeEvolutionReady?: boolean    // axe + axeAmount>=1 + axeDamage>=1 + axePierce>=1
 }
 
 // Keys for weapon groups that can be unlocked. Each key gates the entire group in the level-up pool.
 // 'melee' and 'wand' are always available and not listed here.
+// Evolution keys ('spearStorm', 'axeEvolution') gate only the evolution upgrade within their group.
 export const ALL_WEAPON_UNLOCK_KEYS = [
   'orbital', 'boomerang', 'flameTrail', 'bloodNova', 'lightning',
   'axe', 'aura', 'equinox', 'ravens', 'spear',
   'vampiric', 'divineShield', 'echo',
+  'spearStorm', 'axeEvolution',
 ] as const
 export type WeaponUnlockKey = typeof ALL_WEAPON_UNLOCK_KEYS[number]
 
@@ -55,6 +60,10 @@ function computeNewWeaponUnlocks(data: PlayerRunData, already: Set<string>): str
   if (char === 'heimdall' && t >= 12 * 60_000) add('spear')
   if (char === 'chronos'  && t >= 15 * 60_000) add('equinox')
   if (char === 'odin'     && t >= 15 * 60_000) add('ravens')
+
+  // Weapon evolutions — unlocked when in-run prerequisites are fully met in any run
+  if (data.spearEvolutionReady) add('spearStorm')
+  if (data.axeEvolutionReady)   add('axeEvolution')
 
   return earned
 }
@@ -133,6 +142,9 @@ export async function saveRunRecord(data: PlayerRunData): Promise<{ achievements
   if (safeWeapons   >= 3)              earned.push('weapon_hoarder')
   if (safeWeapons   >= 5)              earned.push('arsenal')
   if (safeWeapons   >= 8)              earned.push('all_weapons')
+  // Evolutions — fires exactly once, the run the player first meets all prerequisites
+  if (newWeapons.includes('spearStorm'))   earned.push('evolution_spear')
+  if (newWeapons.includes('axeEvolution')) earned.push('evolution_axe')
   // Win conditions
   if (safeWon) {
     earned.push('god_slayer')

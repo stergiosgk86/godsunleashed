@@ -50,9 +50,11 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'transcendent',   name: 'Transcendent',    description: 'Reach level 20 in one run',               icon: '△' },
   { id: 'legendary',      name: 'Legendary',       description: 'Reach level 30 in one run',               icon: '✪' },
   // Weapons & Build
-  { id: 'weapon_hoarder', name: 'Armed',           description: 'Have 3 or more weapons active',           icon: '⊙' },
-  { id: 'arsenal',        name: 'Arsenal',         description: 'Have 5 or more weapons active',           icon: '⊕' },
-  { id: 'all_weapons',    name: 'Omniarmed',       description: 'Have all 8 weapons active simultaneously', icon: '⬢' },
+  { id: 'weapon_hoarder',  name: 'Armed',              description: 'Have 3 or more weapons active',                                   icon: '⊙' },
+  { id: 'arsenal',         name: 'Arsenal',            description: 'Have 5 or more weapons active',                                   icon: '⊕' },
+  { id: 'all_weapons',     name: 'Omniarmed',          description: 'Have all 8 weapons active simultaneously',                        icon: '⬢' },
+  { id: 'evolution_spear', name: 'Thousand Spears',    description: 'Max the Bifrost Spear tree in a single run to unlock the evolution', icon: '◆' },
+  { id: 'evolution_axe',   name: "Berserker's Ring",   description: "Max the Mjölnir tree in a single run to unlock the evolution",    icon: '🪓' },
   // Win conditions
   { id: 'full_health',    name: 'Unscathed',       description: 'Win a run with full HP remaining',        icon: '◍' },
   { id: 'untouchable',    name: 'Untouchable',     description: 'Win a full run without taking damage',    icon: '○' },
@@ -99,7 +101,7 @@ export const ACHIEVEMENT_CATEGORIES: AchievementCategory[] = [
   { label: 'DAMAGE',      color: '#ff4466', ids: ['damage_1k', 'destroyer', 'damage_50k', 'berserker', 'damage_500k', 'juggernaut'] },
   { label: 'COINS',       color: '#ffcc22', ids: ['coin_collector', 'wealthy', 'coin_250', 'coin_hoarder'] },
   { label: 'LEVELING',    color: '#44dd88', ids: ['level_3', 'quick_learner', 'ascendant', 'transcendent', 'legendary'] },
-  { label: 'WEAPONS',     color: '#88aaff', ids: ['weapon_hoarder', 'arsenal', 'all_weapons'] },
+  { label: 'WEAPONS',     color: '#88aaff', ids: ['weapon_hoarder', 'arsenal', 'all_weapons', 'evolution_spear', 'evolution_axe'] },
   { label: 'WIN',         color: '#ffee44', ids: ['full_health', 'untouchable', 'glass_cannon'] },
   { label: 'MULTIPLAYER', color: '#aa66ff', ids: ['team_player', 'champions'] },
   {
