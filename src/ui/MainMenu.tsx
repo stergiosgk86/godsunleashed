@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import godsIcon from '../assets/Godsunleashed_icon.png'
 
 function useIsMobile() {
   const [mob, setMob] = useState(() => window.innerWidth <= 600)
@@ -253,6 +254,10 @@ function MenuBackground() {
         @keyframes menu-scanlines {
           from { background-position: 0 0; }
           to   { background-position: 0 6px; }
+        }
+        @keyframes icon-pulse {
+          0%, 100% { transform: scale(1);    filter: drop-shadow(0 0 14px rgba(220,80,20,0.65)); }
+          50%       { transform: scale(1.07); filter: drop-shadow(0 0 26px rgba(240,110,20,0.90)); }
         }
       `}</style>
 
@@ -984,6 +989,14 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
       }}>
         v{__APP_VERSION__}
       </div>
+
+      {/* Game icon — home view only */}
+      {view === 'home' && <img src={godsIcon} alt="Gods Unleashed" style={{
+        width: mob ? 110 : 160, height: mob ? 110 : 160,
+        marginBottom: mob ? 10 : 16,
+        imageRendering: 'pixelated',
+        animation: 'icon-pulse 3s ease-in-out infinite',
+      }} />}
 
       {/* Title */}
       <div style={{
