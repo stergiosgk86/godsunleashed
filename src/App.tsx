@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Phaser from 'phaser'
 import { PreloadScene } from './game/PreloadScene'
 import { MainScene } from './game/MainScene'
@@ -115,6 +116,7 @@ function GameView({ onQuit, onPlayAgain }: { onQuit: () => void; onPlayAgain: ()
 }
 
 function App() {
+  const navigate = useNavigate()
   const [inGame, setInGame] = useState(false)
   const [inLobby, setInLobby] = useState(false)
   const [runKey, setRunKey] = useState(0)
@@ -128,6 +130,21 @@ function App() {
   const token = useAuthStore(s => s.token)
   const setAuth = useAuthStore(s => s.setAuth)
   const fetchProfile = useProfileStore(s => s.fetchProfile)
+
+  // Prevent back-button / Android swipe from leaving the app while in-game or in-lobby.
+  // Back navigation within /game/* (pause sub-views) is allowed; only leaving /game entirely is blocked.
+  // useLayoutEffect fires before paint so the sentinel is in place before any interaction.
+  useLayoutEffect(() => {
+    if (!inGame && !inLobby) return
+    window.history.pushState(null, '', '/game')
+    function onPopState() {
+      if (!window.location.pathname.startsWith('/game')) {
+        navigate('/game', { replace: true })
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [inGame, inLobby])
 
   function startRun() {
     const rawUpgrades = useProfileStore.getState().upgrades
@@ -384,10 +401,12 @@ function App() {
       })
     }
     sessionStorage.setItem('gods_in_game', '1')
+    navigate('/game')
     setInGame(true)
   }
 
   function handleMultiplayer() {
+    navigate('/game')
     setInLobby(true)
   }
 
@@ -411,8 +430,8 @@ function App() {
     activeNetClient?.close()
     setNetClient(null)
     useGameStore.getState().resetRun()
-    sessionStorage.removeItem('gods_menu_view')
     sessionStorage.removeItem('gods_in_game')
+    navigate('/')
     setInGame(false)
     // Sync profile after server has had time to process the WS close and save the run.
     setTimeout(() => useProfileStore.getState().fetchProfile(), 2000)
@@ -439,8 +458,8 @@ function App() {
   function handleLogout() {
     useAuthStore.getState().clearAuth()
     useProfileStore.getState().reset()
-    sessionStorage.removeItem('gods_menu_view')
     sessionStorage.removeItem('gods_in_game')
+    navigate('/')
     setInGame(false)
     setInLobby(false)
   }

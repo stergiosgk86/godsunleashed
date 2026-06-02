@@ -187,6 +187,7 @@ export class MainScene extends Phaser.Scene {
         meleeArc: savedRun.meleeArc ?? 0,
         meleeSpeed: savedRun.meleeSpeed ?? 0,
         meleeDamage: savedRun.meleeDamage ?? 0,
+        meleeArcWidth: savedRun.meleeArcWidth ?? 0,
       })
     }
 
@@ -421,7 +422,7 @@ export class MainScene extends Phaser.Scene {
       spear: gs.spear,
       spearCount: gs.spearCount, spearInterval: gs.spearInterval, spearPierce: gs.spearPierce,
       spearSpeed: gs.spearSpeed, spearStorm: gs.spearStorm,
-      meleeRange: gs.meleeRange, meleeArc: gs.meleeArc, meleeSpeed: gs.meleeSpeed, meleeDamage: gs.meleeDamage,
+      meleeRange: gs.meleeRange, meleeArc: gs.meleeArc, meleeSpeed: gs.meleeSpeed, meleeDamage: gs.meleeDamage, meleeArcWidth: gs.meleeArcWidth,
     }
     if (activeNetClient) {
       return { ...base, nextBossAt: 0, warningFired: false, finalBossWarningFired: false, bossAlive: false, finalBossAlive: false, enemies: [] }

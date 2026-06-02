@@ -53,6 +53,26 @@ function upgradeLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getState>
     case 'dualGunSpeed':     return { current: s.dualGunSpeed,         max: 2 }
     case 'dualGunExtra':     return { current: s.dualGunExtra,         max: 2 }
     case 'echo':             return { current: s.echo,                 max: 2 }
+    case 'axeAmount':        return { current: s.axeAmount ?? 0,       max: 2 }
+    case 'axeDamage':        return { current: s.axeDamage ?? 0,       max: 1 }
+    case 'axePierce':        return { current: s.axePierce ?? 0,       max: 1 }
+    case 'axeEvolution':     return { current: s.axeEvolution ? 1 : 0, max: 1 }
+    case 'ravens':           return { current: s.ravens ? 1 : 0,       max: 1 }
+    case 'ravensCD':         return { current: s.ravensCD ?? 0,        max: 3 }
+    case 'ravensPower':      return { current: s.ravensPower ?? 0,     max: 3 }
+    case 'ravensCount':      return { current: s.ravensCount ?? 0,     max: 2 }
+    case 'spear':            return { current: s.spear ? 1 : 0,        max: 1 }
+    case 'spearCount':       return { current: s.spearCount ?? 0,      max: 5 }
+    case 'spearInterval':    return { current: s.spearInterval ?? 0,   max: 3 }
+    case 'spearPierce':      return { current: s.spearPierce ?? 0,     max: 2 }
+    case 'spearSpeed':       return { current: s.spearSpeed ?? 0,      max: 5 }
+    case 'spearStorm':       return { current: s.spearStorm ? 1 : 0,   max: 1 }
+    case 'dashCooldown':     return { current: Math.round(Math.log((s.dashCooldown ?? 5000) / 5000) / Math.log(0.75)), max: 4 }
+    case 'dashDistance':     return { current: Math.round(((s.dashDistance ?? 1) - 1) / 0.4), max: 3 }
+    case 'meleeRange':       return { current: s.meleeRange ?? 0,      max: 4 }
+    case 'meleeSpeed':       return { current: s.meleeSpeed ?? 0,      max: 4 }
+    case 'meleeDamage':      return { current: s.meleeDamage ?? 0,     max: 4 }
+    case 'meleeArcWidth':    return { current: s.meleeArcWidth ?? 0,   max: 3 }
     default:                 return { current: 0,                      max: 0 }
   }
 }

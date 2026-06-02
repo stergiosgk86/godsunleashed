@@ -51,7 +51,7 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'axeAmount',   label: 'Double Throw',      description: '+1 Mjölnir per throw (stackable ×2) — two hammers arc one after another through enemy formations' },
   { id: 'axeDamage',   label: 'Mjölnir Mastery',   description: '+50% Mjölnir damage — each throw strikes harder through armored foes' },
   { id: 'axePierce',   label: 'Broad Impact',      description: 'Mjölnir grows larger (+50% hit radius), cleaving through wider enemy formations' },
-  { id: 'axeEvolution',label: "Berserker's Ring", description: "Evolution — transforms Mjölnir into a ring of 6 orbiting axes that shred every enemy in their path. Requires all 3 axe upgrades." },
+  { id: 'axeEvolution',label: "Mjölnir's Fury", description: "Evolution — unleashes a Death Spiral of 8 Mjölnirs firing in a full 360° burst, then repeating. Requires all 3 Mjölnir upgrades." },
   { id: 'divineShield', label: 'Divine Shield', description: 'Grants periodic invincibility — active for 3s, then recharges for 9s. While active, all damage is blocked.' },
   { id: 'xpGain',       label: 'Gilded Soul',   description: '+8% XP gained from all sources (stackable, up to 5×)' },
   { id: 'magnetRange',  label: 'Astral Pull',   description: 'XP orbs are attracted from 50% further away (stackable, up to 3×)' },

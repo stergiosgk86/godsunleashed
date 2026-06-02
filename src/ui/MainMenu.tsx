@@ -383,8 +383,8 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
     ],
   },
   {
-    id: 'axeEvolution', label: "Berserker's Ring", color: '#ff6622', icon: '⬡',
-    description: 'Evolution — transforms Mjölnir into a ring of 6 orbiting axes that shred every enemy in their path.',
+    id: 'axeEvolution', label: "Mjölnir's Fury", color: '#ff6622', icon: '⬡',
+    description: "Evolution — unleashes a Death Spiral of 8 Mjölnirs firing in a full 360° burst, then repeating.",
     unlockKey: 'axeEvolution', unlockHint: 'Max all 3 Mjölnir upgrades in a single run',
     upgrades: [],
   },

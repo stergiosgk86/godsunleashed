@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 function useIsMobile() {
   const [mob, setMob] = useState(() => window.innerWidth <= 768)
@@ -175,7 +176,7 @@ const WEAPON_UPGRADE_GROUPS: WeaponGroup[] = [
       { id: 'axeAmount',    label: 'Amount',           max: 2 },
       { id: 'axeDamage',    label: 'Damage',           max: 1 },
       { id: 'axePierce',    label: 'Pierce',           max: 1 },
-      { id: 'axeEvolution', label: "Berserker's Ring", max: 1 },
+      { id: 'axeEvolution', label: "Mjölnir's Fury", max: 1 },
     ],
   },
   {
@@ -245,9 +246,10 @@ const WEAPON_UPGRADE_GROUPS: WeaponGroup[] = [
   {
     label: 'MELEE (ARES)', color: '#ff8844',
     items: [
-      { id: 'meleeDamage', label: 'Blade Mastery', max: 4 },
-      { id: 'meleeRange',  label: 'Iron Reach',    max: 4 },
-      { id: 'meleeSpeed',  label: 'Battle Fury',   max: 4 },
+      { id: 'meleeDamage',   label: 'Blade Mastery', max: 4 },
+      { id: 'meleeRange',    label: 'Iron Reach',    max: 4 },
+      { id: 'meleeSpeed',    label: 'Battle Fury',   max: 4 },
+      { id: 'meleeArcWidth', label: 'Wide Sweep',    max: 3 },
     ],
   },
 ]
@@ -302,6 +304,7 @@ function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getSta
     case 'meleeRange':        return s.meleeRange ?? 0
     case 'meleeSpeed':        return s.meleeSpeed ?? 0
     case 'meleeDamage':       return s.meleeDamage ?? 0
+    case 'meleeArcWidth':     return s.meleeArcWidth ?? 0
     default:                  return 0
   }
 }
@@ -718,14 +721,19 @@ export function PauseMenu({ onQuit, hidden = false }: { onQuit: () => void; hidd
   const togglePause = useGameStore(s => s.togglePause)
   const role = useAuthStore(s => s.role)
   const isAdmin = role === 'super_admin' || role === 'admin'
-  const [view, setView] = useState<'main' | 'settings' | 'controls' | 'stats' | 'sounds' | 'admin'>('main')
+  const navigate = useNavigate()
+  const location = useLocation()
+  const PAUSE_VIEWS = { '/game': 'main', '/game/settings': 'settings', '/game/controls': 'controls', '/game/sounds': 'sounds', '/game/stats': 'stats', '/game/admin': 'admin' } as const
+  type PauseView = 'main' | 'settings' | 'controls' | 'stats' | 'sounds' | 'admin'
+  const view: PauseView = (PAUSE_VIEWS as Record<string, PauseView>)[location.pathname] ?? 'main'
+  function setView(v: PauseView) { navigate(v === 'main' ? '/game' : `/game/${v}`) }
   const [adminSubView, setAdminSubView] = useState<'main' | 'players' | 'spawn' | 'upgrades'>('main')
   function handleQuit() {
     onQuit()
   }
 
   const mob = useIsMobile()
-  useEffect(() => { if (!isPaused) { setView('main'); setAdminSubView('main') } }, [isPaused])
+  useEffect(() => { if (!isPaused) { navigate('/game', { replace: true }); setAdminSubView('main') } }, [isPaused])
 
 
   if (hidden || !isPaused || isLevelUpPending || isDead || isWon) return null
@@ -872,7 +880,7 @@ export function PauseMenu({ onQuit, hidden = false }: { onQuit: () => void; hidd
         background: 'rgba(0, 0, 0, 0.65)',
         zIndex: 50,
       }}
-      onClick={e => { if (e.target === e.currentTarget) { setView('main'); togglePause() } }}
+      onClick={e => { if (e.target === e.currentTarget) { togglePause() } }}
     >
       {panel}
     </div>

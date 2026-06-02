@@ -83,6 +83,7 @@ export interface RunSnapshot {
   meleeArc?: number
   meleeSpeed?: number
   meleeDamage?: number
+  meleeArcWidth?: number
 }
 
 function authHeader(): HeadersInit {

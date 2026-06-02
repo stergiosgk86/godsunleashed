@@ -5,9 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Gods Unleashed</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#07070f" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Gods Unleashed" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Push a sentinel before React loads so back-swipe can't escape the app
+      // even on slow devices/connections where JS takes time to boot.
+      var p = window.location.pathname;
+      if (p === '/' || p === '' || p.startsWith('/game')) {
+        history.pushState(null, '', window.location.href);
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
