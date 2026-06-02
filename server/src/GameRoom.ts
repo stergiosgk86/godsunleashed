@@ -160,6 +160,7 @@ interface PlayerUpgrades {
   meleeSpeed: number     // 0–4, each -15% attack interval
   meleeDamage: number    // 0–4, each +20% melee damage
   meleeArcWidth: number  // 0–3, each +20° arc width (base 90°)
+  isMeleeChar: boolean   // admin-granted Blade of Ares on non-Ares characters
 }
 
 function emptyUpgrades(): PlayerUpgrades {
@@ -173,7 +174,7 @@ function emptyUpgrades(): PlayerUpgrades {
     ravens: false, ravensCD: 0, ravensPower: 0, ravensCount: 0,
     spear: false, spearCount: 0, spearInterval: 0, spearPierce: 0, spearSpeed: 0, spearStorm: false,
     axeAmount: 0, axeDamage: 0, axePierce: 0, axeEvolution: false,
-    meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0, meleeArcWidth: 0,
+    meleeRange: 0, meleeArc: 0, meleeSpeed: 0, meleeDamage: 0, meleeArcWidth: 0, isMeleeChar: false,
   }
 }
 
@@ -281,7 +282,7 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean, unlockedWeapons
     if (id === 'spearStorm'     && u.spearSpeed < 3)           return false
     if (id === 'spearStorm'     && u.spearStorm)               return false
     if (id === 'axeEvolution'   && !unlockedWeapons.has('axeEvolution')) return false
-    if ((id === 'meleeRange' || id === 'meleeSpeed' || id === 'meleeDamage' || id === 'meleeArcWidth') && !isMelee) return false
+    if ((id === 'meleeRange' || id === 'meleeSpeed' || id === 'meleeDamage' || id === 'meleeArcWidth') && !isMelee && !u.isMeleeChar) return false
     if (id === 'meleeRange'     && u.meleeRange >= 4)          return false
     if (id === 'meleeSpeed'     && u.meleeSpeed >= 4)          return false
     if (id === 'meleeDamage'    && u.meleeDamage >= 4)         return false
@@ -663,6 +664,7 @@ export class GameRoom {
         case 'solstice':    u.solstice = true; break
         case 'ravens':      u.ravens = true; break
         case 'spear':       u.spear = true; break
+        case 'melee':       u.isMeleeChar = true; break
       }
       this.send(requester.ws, { type: 'adminGrantUpgrade', upgradeId })
     } else {

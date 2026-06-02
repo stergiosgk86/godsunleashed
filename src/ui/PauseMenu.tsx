@@ -120,6 +120,7 @@ const SPAWN_GROUPS: { label: string; color: string; items: { label: string; enti
       { label: 'Bifrost Spear', entity: 'weapon:spear' },
       { label: 'Equinox',       entity: 'weapon:equinox' },
       { label: 'Solstice',      entity: 'weapon:solstice' },
+      { label: 'Blade of Ares', entity: 'weapon:melee' },
     ],
   },
 ]
@@ -244,8 +245,9 @@ const WEAPON_UPGRADE_GROUPS: WeaponGroup[] = [
     ],
   },
   {
-    label: 'MELEE (ARES)', color: '#ff8844',
+    label: 'MELEE (ARES)', color: '#ff8844', statusId: 'melee',
     items: [
+      { id: 'melee',         label: 'Blade of Ares', max: 1 },
       { id: 'meleeDamage',   label: 'Blade Mastery', max: 4 },
       { id: 'meleeRange',    label: 'Iron Reach',    max: 4 },
       { id: 'meleeSpeed',    label: 'Battle Fury',   max: 4 },
@@ -301,6 +303,7 @@ function getCurrentLevel(id: UpgradeId, s: ReturnType<typeof useGameStore.getSta
     case 'spearStorm':        return s.spearStorm ? 1 : 0
     case 'dashCooldown':      return Math.round(Math.log(s.dashCooldown / DASH_COOLDOWN_MS) / Math.log(0.75))
     case 'dashDistance':      return Math.round((s.dashDistance - 1) / 0.4)
+    case 'melee':             return s.isMeleeChar ? 1 : 0
     case 'meleeRange':        return s.meleeRange ?? 0
     case 'meleeSpeed':        return s.meleeSpeed ?? 0
     case 'meleeDamage':       return s.meleeDamage ?? 0

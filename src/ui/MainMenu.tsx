@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react'
+import { useState, useEffect, useLayoutEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import godsIcon from '../assets/Godsunleashed_icon.png'
 
@@ -122,134 +122,50 @@ const SHOP_UPGRADES: Array<{ id: keyof MetaUpgrades; label: string }> = [
   { id: 'attackSpeed', label: 'Attack Speed' },
 ]
 
-const RAINDROPS = Array.from({ length: 90 }, (_, i) => ({
-  id: i,
-  left:     -5 + Math.random() * 110,
-  duration: 0.45 + Math.random() * 0.55,
-  delay:    -(Math.random() * 2.5),
-  length:   12 + Math.random() * 22,
-  opacity:  0.12 + Math.random() * 0.28,
-}))
+// ── Option A: Volcanic / Hellfire ────────────────────────────────────────────
 
-function RainEffect() {
-  return (
-    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-      <style>{`
-        @keyframes rain-fall {
-          from { transform: translateY(-30px) translateX(0px); }
-          to   { transform: translateY(110vh)  translateX(18px); }
-        }
-      `}</style>
-      {RAINDROPS.map(d => (
-        <div key={d.id} style={{
-          position: 'absolute',
-          left: `${d.left}%`,
-          top: 0,
-          width: 1,
-          height: d.length,
-          background: `linear-gradient(to bottom, transparent, rgba(160,200,255,${d.opacity}))`,
-          borderRadius: 1,
-          animation: `rain-fall ${d.duration}s ${d.delay}s linear infinite`,
-        }} />
-      ))}
-    </div>
-  )
-}
-
-function makeBoltPath(): string {
-  let cx = 15 + Math.random() * 70
-  const segs = 10 + Math.floor(Math.random() * 7)
-  const pts = [`M ${cx.toFixed(1)} 0`]
-  for (let i = 1; i <= segs; i++) {
-    cx = Math.max(10, Math.min(90, cx + (Math.random() - 0.5) * 6))
-    pts.push(`L ${cx.toFixed(1)} ${((100 * i) / segs).toFixed(1)}`)
-  }
-  return pts.join(' ')
-}
-
-function LightningEffect() {
-  const [flashOpacity, setFlashOpacity] = useState(0)
-  const [bolts, setBolts] = useState<string[]>([])
-  const flashTimers = useRef<number[]>([])
-  const scheduleTimer = useRef<number | undefined>(undefined)
-
-  const strike = useCallback(() => {
-    flashTimers.current.forEach(clearTimeout)
-    const boltCount = Math.random() < 0.4 ? 2 : 1
-    setBolts(Array.from({ length: boltCount }, makeBoltPath))
-    setFlashOpacity(0.12)
-    flashTimers.current = [
-      window.setTimeout(() => setFlashOpacity(0.04),  70),
-      window.setTimeout(() => setFlashOpacity(0.09),  130),
-      window.setTimeout(() => setFlashOpacity(0.02),  200),
-      window.setTimeout(() => { setFlashOpacity(0); setBolts([]) }, 420),
-    ]
-    scheduleTimer.current = window.setTimeout(strike, 3000 + Math.random() * 8000)
-  }, [])
-
-  useEffect(() => {
-    scheduleTimer.current = window.setTimeout(strike, 800 + Math.random() * 2500)
-    return () => {
-      clearTimeout(scheduleTimer.current)
-      flashTimers.current.forEach(clearTimeout)
-    }
-  }, [strike])
-
-  return (
-    <>
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: 'linear-gradient(to bottom, rgba(200,220,255,1) 0%, rgba(180,210,255,0.3) 50%, transparent 100%)',
-        opacity: flashOpacity,
-        transition: flashOpacity > 0 ? 'none' : 'opacity 0.4s ease-out',
-      }} />
-      {bolts.length > 0 && (
-        <svg
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-          viewBox="0 0 100 100" preserveAspectRatio="none"
-        >
-          {bolts.map((bolt, i) => (
-            <g key={i}>
-              <path d={bolt} stroke="rgba(160,190,255,0.18)" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              <path d={bolt} stroke="rgba(210,230,255,0.45)" strokeWidth="0.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-              <path d={bolt} stroke="rgba(240,250,255,0.85)" strokeWidth="0.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </g>
-          ))}
-        </svg>
-      )}
-    </>
-  )
-}
-
-const PARTICLES = Array.from({ length: 35 }, (_, i) => ({
+const EMBERS = Array.from({ length: 70 }, (_, i) => ({
   id: i,
   left:     Math.random() * 100,
-  startTop: 20 + Math.random() * 90,
-  size:     1.2 + Math.random() * 2.4,
-  duration: 9 + Math.random() * 13,
-  delay:    -(Math.random() * 22),
-  color:    Math.random() > 0.55 ? '#cc2233' : '#7722bb',
-  swayDur:  3 + Math.random() * 4,
-  swayDel:  -(Math.random() * 6),
+  startTop: 60 + Math.random() * 50,
+  size:     1 + Math.random() * 2.5,
+  duration: 5 + Math.random() * 9,
+  delay:    -(Math.random() * 14),
+  color:    Math.random() > 0.5 ? '#ff6600' : (Math.random() > 0.5 ? '#ffcc00' : '#ff2200'),
+  swayDur:  2 + Math.random() * 3,
+  swayDel:  -(Math.random() * 5),
+}))
+
+const SPARKS = Array.from({ length: 18 }, (_, i) => ({
+  id: i,
+  left:  10 + Math.random() * 80,
+  delay: -(Math.random() * 6),
+  dur:   0.4 + Math.random() * 0.5,
 }))
 
 function MenuBackground() {
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: -1 }}>
       <style>{`
-        @keyframes menu-glow-pulse {
-          0%, 100% { opacity: 0.45; transform: scale(1); }
-          50%       { opacity: 0.75; transform: scale(1.08); }
-        }
-        @keyframes particle-rise {
+        @keyframes ember-rise {
           from { transform: translateY(0);      opacity: 0; }
           8%   { opacity: 1; }
-          88%  { opacity: 1; }
-          to   { transform: translateY(-105vh); opacity: 0; }
+          85%  { opacity: 0.8; }
+          to   { transform: translateY(-110vh); opacity: 0; }
         }
-        @keyframes particle-sway {
-          0%, 100% { margin-left: 0px;  }
-          50%       { margin-left: 18px; }
+        @keyframes ember-sway {
+          0%, 100% { margin-left: 0px; }
+          33%       { margin-left: 14px; }
+          66%       { margin-left: -8px; }
+        }
+        @keyframes spark-burst {
+          0%   { transform: translateY(0)     scaleY(1);   opacity: 0.9; }
+          60%  { transform: translateY(-28px) scaleY(2.5); opacity: 0.6; }
+          100% { transform: translateY(-55px) scaleY(0.5); opacity: 0; }
+        }
+        @keyframes lava-pulse {
+          0%, 100% { opacity: 0.55; transform: scaleX(1); }
+          50%       { opacity: 0.80; transform: scaleX(1.04); }
         }
         @keyframes menu-scanlines {
           from { background-position: 0 0; }
@@ -261,22 +177,28 @@ function MenuBackground() {
         }
       `}</style>
 
+      {/* Deep red/orange lava glow at the bottom */}
       <div style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at 50% 60%, #44000066 0%, transparent 65%)',
-        animation: 'menu-glow-pulse 5s ease-in-out infinite',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%',
+        background: 'radial-gradient(ellipse at 50% 100%, #ff330055 0%, #aa110033 45%, transparent 75%)',
+        animation: 'lava-pulse 4s ease-in-out infinite',
       }} />
 
+      {/* Secondary lava hotspot */}
       <div style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at 30% 40%, #22004433 0%, transparent 55%)',
-        animation: 'menu-glow-pulse 7s ease-in-out 1.5s infinite',
+        position: 'absolute', bottom: 0, left: 0, right: 0, height: '30%',
+        background: 'radial-gradient(ellipse at 35% 100%, #ff660033 0%, transparent 60%)',
+        animation: 'lava-pulse 6s ease-in-out 1.5s infinite',
       }} />
 
-      <RainEffect />
-      <LightningEffect />
+      {/* Dark vignette top */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse at 50% 0%, #00000088 0%, transparent 60%)',
+      }} />
 
-      {PARTICLES.map(p => (
+      {/* Embers rising */}
+      {EMBERS.map(p => (
         <div key={p.id} style={{
           position: 'absolute',
           left: `${p.left}%`,
@@ -284,14 +206,29 @@ function MenuBackground() {
           width: p.size, height: p.size,
           borderRadius: '50%',
           background: p.color,
-          boxShadow: `0 0 ${p.size * 3}px ${p.color}`,
+          boxShadow: `0 0 ${p.size * 4}px ${p.color}`,
           animation: [
-            `particle-rise ${p.duration}s ${p.delay}s linear infinite`,
-            `particle-sway ${p.swayDur}s ${p.swayDel}s ease-in-out infinite`,
+            `ember-rise ${p.duration}s ${p.delay}s linear infinite`,
+            `ember-sway ${p.swayDur}s ${p.swayDel}s ease-in-out infinite`,
           ].join(', '),
         }} />
       ))}
 
+      {/* Spark streaks at the bottom */}
+      {SPARKS.map(s => (
+        <div key={s.id} style={{
+          position: 'absolute',
+          left: `${s.left}%`,
+          bottom: '5%',
+          width: 1.5,
+          height: 10,
+          background: 'linear-gradient(to top, #ffaa00, transparent)',
+          borderRadius: 2,
+          animation: `spark-burst ${s.dur}s ${s.delay}s ease-out infinite`,
+        }} />
+      ))}
+
+      {/* Scanlines */}
       <div style={{
         position: 'absolute', inset: 0,
         backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 5px, rgba(0,0,0,0.07) 5px, rgba(0,0,0,0.07) 6px)',
@@ -310,14 +247,14 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
   upgrades: ReadonlyArray<{ id: string; label: string; description: string }>
 }> = [
   {
-    id: 'melee', label: 'Melee Arc', color: '#dd3311', icon: '⚔',
+    id: 'melee', label: 'Blade of Ares', color: '#dd3311', icon: '⚔',
     description: 'A devastating front arc slash. Default weapon of Ares.',
     unlockKey: null, unlockHint: null,
     upgrades: [
-      { id: 'meleeRange',    label: 'Iron Reach',   description: 'Melee arc extends 15% further (stackable, up to ×4)' },
-      { id: 'meleeSpeed',    label: 'Battle Fury',  description: 'Melee strikes 15% faster (stackable, up to ×4)' },
-      { id: 'meleeDamage',   label: 'Blade Mastery', description: '+20% melee arc damage (stackable, up to ×4)' },
-      { id: 'meleeArcWidth', label: 'Wide Sweep',   description: '+20° to melee arc width per level (base 90°, up to 150° at ×3)' },
+      { id: 'meleeRange',    label: 'Iron Reach',   description: 'Blade of Ares extends 15% further (stackable, up to ×4)' },
+      { id: 'meleeSpeed',    label: 'Battle Fury',  description: 'Blade of Ares strikes 15% faster (stackable, up to ×4)' },
+      { id: 'meleeDamage',   label: 'Blade Mastery', description: '+20% Blade of Ares damage (stackable, up to ×4)' },
+      { id: 'meleeArcWidth', label: 'Wide Sweep',   description: '+20° to Blade of Ares arc width per level (base 90°, up to 150° at ×3)' },
     ],
   },
   {

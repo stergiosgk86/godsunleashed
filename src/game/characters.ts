@@ -47,7 +47,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
     description: 'God of War. Devastating frontal power — but can only strike enemies ahead.',
     spriteKey: 'char_ares', color: '#dd3311',
     statLines: [
-      { label: 'Weapon: Melee Arc',    positive: true  },
+      { label: 'Weapon: Blade of Ares', positive: true  },
       { label: '+50% Might',           positive: true  },
       { label: '1 Armor',              positive: true  },
       { label: '+30 Move Speed',       positive: true  },

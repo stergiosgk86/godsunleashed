@@ -190,7 +190,7 @@ export class CombatSystem {
   private get isMeleeActive(): boolean {
     if (this.frontArcOnly) return true
     const s = useGameStore.getState()
-    return (s.meleeRange ?? 0) > 0 || (s.meleeArc ?? 0) > 0 || (s.meleeSpeed ?? 0) > 0 || (s.meleeDamage ?? 0) > 0
+    return s.isMeleeChar || (s.meleeRange ?? 0) > 0 || (s.meleeArc ?? 0) > 0 || (s.meleeSpeed ?? 0) > 0 || (s.meleeDamage ?? 0) > 0
   }
 
   // Strike a cone in the given direction (fx, fy must be unit vector)

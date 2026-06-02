@@ -4,7 +4,7 @@ import { useProfileStore } from './profileStore'
 
 export const DASH_COOLDOWN_MS = 5000
 
-export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'axeAmount' | 'axeDamage' | 'axePierce' | 'axeEvolution' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo' | 'ravens' | 'ravensCD' | 'ravensPower' | 'ravensCount' | 'spear' | 'spearCount' | 'spearInterval' | 'spearPierce' | 'spearSpeed' | 'spearStorm' | 'meleeRange' | 'meleeSpeed' | 'meleeDamage' | 'meleeArcWidth'
+export type UpgradeId = 'moveSpeed' | 'dashCooldown' | 'dashDistance' | 'wand' | 'multiShot' | 'piercing' | 'aura' | 'auraTick' | 'auraRange' | 'orbital' | 'orbSpeed' | 'orbPower' | 'orbRange' | 'boomerang' | 'flameTrail' | 'bloodNova' | 'bloodNovaCD' | 'vampiric' | 'lightning' | 'lightningTargets' | 'lightningCooldown' | 'might' | 'axe' | 'axeAmount' | 'axeDamage' | 'axePierce' | 'axeEvolution' | 'divineShield' | 'xpGain' | 'magnetRange' | 'equinox' | 'solstice' | 'dualGunDamage' | 'dualGunSpeed' | 'dualGunExtra' | 'echo' | 'ravens' | 'ravensCD' | 'ravensPower' | 'ravensCount' | 'spear' | 'spearCount' | 'spearInterval' | 'spearPierce' | 'spearSpeed' | 'spearStorm' | 'melee' | 'meleeRange' | 'meleeSpeed' | 'meleeDamage' | 'meleeArcWidth'
 
 export type AdminSpawnEntity =
   | 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer'
@@ -13,7 +13,7 @@ export type AdminSpawnEntity =
   | 'potion' | 'xporb' | 'coin'
   | 'weapon:wand' | 'weapon:boomerang' | 'weapon:flameTrail' | 'weapon:bloodNova'
   | 'weapon:lightning' | 'weapon:axe' | 'weapon:aura' | 'weapon:orbital'
-  | 'weapon:equinox' | 'weapon:solstice' | 'weapon:ravens' | 'weapon:spear'
+  | 'weapon:equinox' | 'weapon:solstice' | 'weapon:ravens' | 'weapon:spear' | 'weapon:melee'
 
 export function weaponBaseDamage(level: number): number {
   return 8 + Math.floor(level * 0.7)
@@ -71,10 +71,10 @@ export const UPGRADE_POOL: Upgrade[] = [
   { id: 'ravensCD',    label: "Raven's Fury",   description: 'Ravens bomb 500ms faster (stackable, up to 3×, down to 2s)' },
   { id: 'ravensPower', label: "Raven's Curse",  description: 'Each feather deals 20% more damage (stackable, up to 3×)' },
   { id: 'ravensCount', label: 'Murder of Crows', description: '+2 feathers per bomb set (stackable, up to 2×)' },
-  { id: 'meleeRange',    label: 'Iron Reach',   description: 'Melee arc extends 15% further (stackable, up to ×4)' },
-  { id: 'meleeSpeed',    label: 'Battle Fury',  description: 'Melee strikes 15% faster (stackable, up to ×4)' },
-  { id: 'meleeDamage',   label: 'Blade Mastery', description: '+20% melee arc damage (stackable, up to ×4)' },
-  { id: 'meleeArcWidth', label: 'Wide Sweep',   description: '+20° to melee arc width (stackable, up to ×3, from 90° to 150°)' },
+  { id: 'meleeRange',    label: 'Iron Reach',   description: 'Blade of Ares extends 15% further (stackable, up to ×4)' },
+  { id: 'meleeSpeed',    label: 'Battle Fury',  description: 'Blade of Ares strikes 15% faster (stackable, up to ×4)' },
+  { id: 'meleeDamage',   label: 'Blade Mastery', description: '+20% Blade of Ares damage (stackable, up to ×4)' },
+  { id: 'meleeArcWidth', label: 'Wide Sweep',   description: '+20° to Blade of Ares arc width (stackable, up to ×3, from 90° to 150°)' },
 ]
 
 // XP curve: L1=30, L2=55, L3=80 (+25/level), spikes at L20/L40
@@ -567,6 +567,7 @@ export const useGameStore = create<GameState>()(
         case 'spearStorm':         upgrade = { spearStorm: level >= 1 }; break
         case 'dashCooldown':       upgrade = { dashCooldown: Math.max(400, Math.floor(DASH_COOLDOWN_MS * Math.pow(0.75, level))) }; break
         case 'dashDistance':       upgrade = { dashDistance: 1 + level * 0.4 }; break
+        case 'melee':              upgrade = { isMeleeChar: level >= 1 }; break
         case 'meleeRange':         upgrade = { meleeRange: Math.min(4, Math.max(0, level)) }; break
         case 'meleeSpeed':         upgrade = { meleeSpeed: Math.min(4, Math.max(0, level)), attackInterval: Math.max(250, Math.floor(950 * Math.pow(0.85, level))) }; break
         case 'meleeDamage':        upgrade = { meleeDamage: Math.min(4, Math.max(0, level)) }; break
@@ -736,6 +737,7 @@ export const useGameStore = create<GameState>()(
           case 'spearPierce':   upgrade = { spearPierce: Math.min(2, s.spearPierce + 1) }; break
           case 'spearSpeed':    upgrade = { spearSpeed: Math.min(5, s.spearSpeed + 1) }; break
           case 'spearStorm':    upgrade = { spearStorm: true }; break
+          case 'melee':         upgrade = { isMeleeChar: true }; break
           case 'meleeRange':    upgrade = { meleeRange: Math.min(4, s.meleeRange + 1) }; break
           case 'meleeSpeed':    upgrade = { meleeSpeed: Math.min(4, s.meleeSpeed + 1), attackInterval: Math.max(250, Math.floor(950 * Math.pow(0.85, s.meleeSpeed + 1))) }; break
           case 'meleeDamage':   upgrade = { meleeDamage: Math.min(4, s.meleeDamage + 1) }; break
