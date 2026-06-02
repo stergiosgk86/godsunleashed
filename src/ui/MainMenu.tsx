@@ -918,6 +918,23 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const [playAfterSelect, setPlayAfterSelect] = useState(false)
   const mob = useIsMobile()
 
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  const [installPrompt, setInstallPrompt] = useState<any>(null)
+  useEffect(() => {
+    const onPrompt = (e: Event) => {
+      if (window.innerWidth > 600) return  // let Chrome handle its own UI on desktop
+      e.preventDefault()
+      setInstallPrompt(e)
+    }
+    const onInstalled = () => setInstallPrompt(null)
+    window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+
   const VIEW_PARENT: Partial<Record<MenuView, MenuView>> = {
     characters: 'home', shop: 'home', settings: 'home', statistics: 'home', admin: 'home', collection: 'home',
     leaderboard: 'statistics', achievements: 'statistics',
@@ -999,7 +1016,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         height: (!mob && view === 'characters') ? 'calc(100vh - 180px)' : undefined,
         width: (!mob && view === 'characters') ? 700 : undefined,
         boxSizing: 'border-box',
-        overflow: (mob && view === 'characters') ? 'auto' : 'hidden',
+        overflow: view === 'characters' ? 'auto' : 'hidden',
       }}>
 
       {view === 'settings' ? (
@@ -1490,78 +1507,83 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                 {(() => {
                   const def = CHARACTER_DEFS[selectedCharacter]
                   return (
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto', minHeight: 0 }}>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
 
-                      {/* Hero: big sprite + name + trait + description */}
-                      <div style={{
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-                        padding: '18px 14px 14px',
-                        background: `radial-gradient(ellipse at 50% 35%, ${def.color}1e 0%, transparent 68%)`,
-                        border: `1px solid ${def.color}30`,
-                        borderRadius: 12, flexShrink: 0,
-                      }}>
-                        <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} staticSprite={def.staticSprite} innerScale={selectedCharacter === 'poseidon' ? 1.3 : undefined} yOffset={selectedCharacter === 'poseidon' ? -1 : 0} />
-                        </div>
+                      {/* Scrollable content: hero + stats */}
+                      <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                        {/* Hero: big sprite + name + trait + description */}
                         <div style={{
-                          color: def.color, fontFamily: 'monospace', fontSize: 22, fontWeight: 'bold',
-                          letterSpacing: 4, textShadow: `0 0 18px ${def.color}66`,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                          padding: '18px 14px 14px',
+                          background: `radial-gradient(ellipse at 50% 35%, ${def.color}1e 0%, transparent 68%)`,
+                          border: `1px solid ${def.color}30`,
+                          borderRadius: 12, flexShrink: 0,
                         }}>
-                          {def.name.toUpperCase()}
-                        </div>
-                        <div style={{ color: def.color + 'aa', fontFamily: 'monospace', fontSize: 11, fontStyle: 'italic', letterSpacing: 1 }}>
-                          {def.trait}
-                        </div>
-                        <div style={{ color: '#6666aa', fontFamily: 'monospace', fontSize: 10, lineHeight: 1.55, textAlign: 'center', minHeight: 48 }}>
-                          {def.description}
-                        </div>
-                      </div>
-
-                      {/* Stat lines */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
-                        {def.statLines.map(line => (
-                          <div key={line.label} style={{
-                            display: 'flex', alignItems: 'center', gap: 8,
-                            padding: '5px 10px',
-                            background: line.positive ? 'rgba(20,60,30,0.2)' : 'rgba(60,20,20,0.2)',
-                            border: `1px solid ${line.positive ? 'rgba(40,120,60,0.2)' : 'rgba(120,40,40,0.2)'}`,
-                            borderRadius: 6, fontFamily: 'monospace', fontSize: 11,
-                          }}>
-                            <span style={{ color: line.positive ? '#44cc66' : '#cc4444', fontSize: 9 }}>
-                              {line.positive ? '▲' : '▼'}
-                            </span>
-                            <span style={{ color: line.positive ? '#55bb77' : '#bb5555' }}>
-                              {line.label}
-                            </span>
+                          <div style={{ height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <CharSprite spriteKey={def.spriteKey} color={def.color} menuFrame={def.menuFrame} menuRow={def.menuRow} staticSprite={def.staticSprite} innerScale={selectedCharacter === 'poseidon' ? 1.3 : undefined} yOffset={selectedCharacter === 'poseidon' ? -1 : 0} />
                           </div>
-                        ))}
+                          <div style={{
+                            color: def.color, fontFamily: 'monospace', fontSize: 22, fontWeight: 'bold',
+                            letterSpacing: 4, textShadow: `0 0 18px ${def.color}66`,
+                          }}>
+                            {def.name.toUpperCase()}
+                          </div>
+                          <div style={{ color: def.color + 'aa', fontFamily: 'monospace', fontSize: 11, fontStyle: 'italic', letterSpacing: 1 }}>
+                            {def.trait}
+                          </div>
+                          <div style={{ color: '#6666aa', fontFamily: 'monospace', fontSize: 10, lineHeight: 1.55, textAlign: 'center', minHeight: 48 }}>
+                            {def.description}
+                          </div>
+                        </div>
+
+                        {/* Stat lines */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                          {def.statLines.map(line => (
+                            <div key={line.label} style={{
+                              display: 'flex', alignItems: 'center', gap: 8,
+                              padding: '5px 10px',
+                              background: line.positive ? 'rgba(20,60,30,0.2)' : 'rgba(60,20,20,0.2)',
+                              border: `1px solid ${line.positive ? 'rgba(40,120,60,0.2)' : 'rgba(120,40,40,0.2)'}`,
+                              borderRadius: 6, fontFamily: 'monospace', fontSize: 11,
+                            }}>
+                              <span style={{ color: line.positive ? '#44cc66' : '#cc4444', fontSize: 9 }}>
+                                {line.positive ? '▲' : '▼'}
+                              </span>
+                              <span style={{ color: line.positive ? '#55bb77' : '#bb5555' }}>
+                                {line.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
                       </div>
 
-                      {/* SELECT STAGE */}
-                      {playAfterSelect && (
-                        <button
-                          type="button"
-                          onClick={() => setViewRaw('stageSelect')}
-                          style={{
-                            marginTop: 'auto',
-                            width: '100%', padding: '13px 0', fontSize: 15,
-                            fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 2,
-                            border: '1px solid rgba(100,80,220,0.5)', borderRadius: 10, cursor: 'pointer',
-                            color: '#ffffff',
-                            background: 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)',
-                            boxShadow: '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
-                            transition: 'all 0.18s ease',
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(30,30,160,0.95) 0%, rgba(70,30,140,0.95) 100%)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(70,40,200,0.55), inset 0 1px 0 rgba(255,255,255,0.1)' }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)' }}
-                        >
-                          SELECT STAGE
-                        </button>
-                      )}
                     </div>
                   )
                 })()}
               </div>
+
+              {playAfterSelect && (
+                <button
+                  type="button"
+                  onClick={() => setViewRaw('stageSelect')}
+                  style={{
+                    alignSelf: 'center',
+                    width: 320, padding: '13px 0', fontSize: 15,
+                    fontFamily: 'monospace', fontWeight: 'bold', letterSpacing: 2,
+                    border: '1px solid rgba(100,80,220,0.5)', borderRadius: 10, cursor: 'pointer',
+                    color: '#ffffff',
+                    background: 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)',
+                    boxShadow: '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+                    transition: 'all 0.18s ease',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(30,30,160,0.95) 0%, rgba(70,30,140,0.95) 100%)'; e.currentTarget.style.boxShadow = '0 0 30px rgba(70,40,200,0.55), inset 0 1px 0 rgba(255,255,255,0.1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(20,20,120,0.9) 0%, rgba(50,20,100,0.9) 100%)'; e.currentTarget.style.boxShadow = '0 0 20px rgba(50,30,160,0.4), inset 0 1px 0 rgba(255,255,255,0.08)' }}
+                >
+                  SELECT STAGE
+                </button>
+              )}
 
               <BackButton onBack={() => { setPlayAfterSelect(false); setView('home') }} />
             </>
@@ -1934,6 +1956,26 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
           >
             SETTINGS
           </button>
+
+          {installPrompt && !isStandalone && mob && (
+            <button
+              type="button"
+              onClick={async () => {
+                installPrompt.prompt()
+                const { outcome } = await installPrompt.userChoice
+                if (outcome === 'accepted') setInstallPrompt(null)
+              }}
+              style={{
+                ...btnBase, fontSize: 13,
+                color: '#44ccff', background: 'rgba(0,30,50,0.5)',
+                borderColor: 'rgba(0,120,200,0.5)', boxShadow: '0 0 12px rgba(0,150,255,0.2)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,50,80,0.7)'; e.currentTarget.style.color = '#88eeff' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,30,50,0.5)'; e.currentTarget.style.color = '#44ccff' }}
+            >
+              ⬇ INSTALL APP
+            </button>
+          )}
 
           <div style={divider} />
 
