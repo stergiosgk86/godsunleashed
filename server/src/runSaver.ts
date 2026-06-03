@@ -49,7 +49,7 @@ function computeNewWeaponUnlocks(data: PlayerRunData, already: Set<string>): str
   if (t >= 10 * 60_000) add('divineShield')
   if (t >= 15 * 60_000) { add('aura'); add('flameTrail') }
   if (t >= 25 * 60_000) add('bloodNova')
-  if (data.level >= 20)      add('axe')
+  if (data.level >= 60)      add('axe')
   if (data.kills >= 500)     add('vampiric')
   if (data.weaponCount >= 4) add('echo')
 

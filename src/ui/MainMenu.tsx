@@ -317,7 +317,7 @@ const POWERS_WEAPONS: ReadonlyArray<{
   {
     id: 'axe', label: 'Mjölnir', color: '#dd8844', icon: '🪓',
     description: 'Hurls the legendary Mjölnir in an arc — strikes enemies on the way up and again on the return',
-    unlockKey: 'axe', unlockHint: 'Reach Level 20 in any run',
+    unlockKey: 'axe', unlockHint: 'Reach Level 60 in any run',
     upgrades: [
       { id: 'axeAmount', label: 'Double Throw',    description: '+1 Mjölnir per volley — two hammers arc simultaneously through enemy formations' },
       { id: 'axeDamage', label: 'Mjölnir Mastery', description: '+50% Mjölnir damage — each throw strikes harder through armored foes' },
