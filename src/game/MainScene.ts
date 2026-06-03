@@ -54,6 +54,7 @@ export class MainScene extends Phaser.Scene {
   // Multiplayer
   private clientEnemies = new Map<number, ClientEnemy>()
   private remotePlayers = new Map<string, RemotePlayer>()
+  private brazierSprites = new Map<number, { base: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; flicker: Phaser.Tweens.Tween; x: number; y: number }>()
   private remoteProjectiles: RemoteProjectile[] = []
   private netSendTimer = 0
   // Net wave-label state (mirrors EnemySpawner fields for multiplayer HUD)
@@ -683,6 +684,46 @@ export class MainScene extends Phaser.Scene {
       })
     })
 
+    net.on('brazierSpawn', (msg) => {
+      if (!this.sys.displayList) return
+      const glow = this.add.image(msg.x, msg.y, 'brazier_glow')
+        .setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.7)
+      const base = this.add.image(msg.x, msg.y, 'brazier').setDepth(1.6)
+      const flicker = this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.4, to: 0.9 },
+        scaleX: { from: 0.88, to: 1.12 },
+        scaleY: { from: 0.82, to: 1.18 },
+        duration: 280 + Math.random() * 180,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      })
+      this.brazierSprites.set(msg.id, { base, glow, flicker, x: msg.x, y: msg.y })
+    })
+
+    net.on('brazierHit', (msg) => {
+      const b = this.brazierSprites.get(msg.id)
+      if (!b) return
+      b.base.setTint(0xffffff)
+      this.time.delayedCall(80, () => { if (b.base.active) b.base.clearTint() })
+    })
+
+    net.on('brazierDestroy', (msg) => {
+      const b = this.brazierSprites.get(msg.id)
+      if (b) {
+        b.flicker.remove()
+        b.base.destroy()
+        b.glow.destroy()
+        this.brazierSprites.delete(msg.id)
+        this.effects.showDeathBurst(msg.x, msg.y)
+      }
+      if (msg.drop !== null) {
+        this.combat.spawnBrazierDrop(msg.drop, msg.x, msg.y)
+        if (msg.drop === 'divineWrath') {
+          this.cameras.main.flash(350, 255, 220, 100)
+        }
+      }
+    })
+
     net.on('exploderExplode', (msg) => {
       const dx = msg.x - this.player.x
       const dy = msg.y - this.player.y
@@ -827,6 +868,11 @@ export class MainScene extends Phaser.Scene {
         net.send({ type: 'input', x: this.player.x, y: this.player.y, aura, orbital })
       }
       const allClientEnemies = Array.from(this.clientEnemies.values())
+      // Pass current brazier positions to combat for hit detection
+      const brazierPositions = new Map(
+        [...this.brazierSprites.entries()].map(([id, b]) => [id, { x: b.x, y: b.y }])
+      )
+      this.combat.updateBraziers(brazierPositions)
       if (!novaPaused) {
         for (const ce of allClientEnemies) ce.update(0, 0, delta)
         for (const e of this.spawner.all) e.update(this.player.x, this.player.y, delta)
@@ -923,8 +969,9 @@ export class MainScene extends Phaser.Scene {
     const allEnemies = net
       ? Array.from(this.clientEnemies.values())
       : this.spawner.all
-    minimapData.enemies = allEnemies
-      .filter(e => e.active)
-      .map(e => ({ x: e.x, y: e.y, isBoss: !!e.isBoss }))
+    minimapData.enemies.length = 0
+    for (const e of allEnemies) {
+      if (e.active) minimapData.enemies.push({ x: e.x, y: e.y, isBoss: !!e.isBoss })
+    }
   }
 }

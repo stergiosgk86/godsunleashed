@@ -18,6 +18,15 @@ import { minimapData } from './minimapData'
 
 const MAX_ORBS = 300
 
+function compact<T extends { active: boolean }>(arr: T[]): void {
+  let i = 0
+  while (i < arr.length) {
+    if (arr[i].active) { i++; continue }
+    arr[i] = arr[arr.length - 1]
+    arr.pop()
+  }
+}
+
 const CONTACT_RADIUS = 28
 const CONTACT_ENEMY_COOLDOWN = 240   // ms — matches VS post-hit immunity window
 const BULLET_HIT_RADIUS = 15
@@ -135,6 +144,7 @@ export class CombatSystem {
   // Blood Nova
   private bloodNovaTimer = 0
   public novaPaused = false
+  private frameDamage = 0   // accumulates damage dealt this frame; flushed once via addDamage
   // Lightning
   private lightningTimer = 0
   private frontArcOnly: boolean
@@ -161,6 +171,9 @@ export class CombatSystem {
   private ravensGraphic: Phaser.GameObjects.Graphics
   private ravenSpriteA: Phaser.GameObjects.Image
   private ravenSpriteB: Phaser.GameObjects.Image
+  private brazierTargets: Map<number, { x: number; y: number }> = new Map()
+  private brazierAuraCooldowns: Map<number, number> = new Map()
+  private orbMagnetTimer = 0
 
   constructor(scene: Phaser.Scene, effects: EffectsSystem, frontArcOnly = false) {
     this.frontArcOnly = frontArcOnly
@@ -173,6 +186,10 @@ export class CombatSystem {
     this.ravensGraphic = scene.add.graphics().setDepth(4.5)
     this.ravenSpriteA = scene.add.image(0, 0, 'raven').setDepth(4.6).setScale(0.15).setTint(0x66ffbb).setVisible(false)
     this.ravenSpriteB = scene.add.image(0, 0, 'raven').setFlipX(true).setDepth(4.6).setScale(0.15).setTint(0x66ffbb).setVisible(false)
+  }
+
+  updateBraziers(braziers: Map<number, { x: number; y: number }>) {
+    this.brazierTargets = braziers
   }
 
   setFacing(vx: number, vy: number) {
@@ -195,17 +212,28 @@ export class CombatSystem {
 
   // Strike a cone in the given direction (fx, fy must be unit vector)
   private fireSwordSwingDir(px: number, py: number, damage: number, fx: number, fy: number, slashRange: number, halfspan: number, enemies: AnyEnemy[], coinDropChance: number, lifeDrain: number, vampiric: boolean) {
-    const r2 = slashRange * slashRange
-    const cosH = Math.cos(halfspan)
     let hit = false
     for (const e of enemies) {
       if (!e.active) continue
       const dx = e.x - px, dy = e.y - py
-      if (dx * dx + dy * dy > r2) continue
-      const dist = Math.sqrt(dx * dx + dy * dy) || 1
+      const dist2 = dx * dx + dy * dy
+      const effectiveRange = slashRange + e.hitRadius
+      if (dist2 > effectiveRange * effectiveRange) continue
+      const dist = Math.sqrt(dist2) || 1
+      const cosH = Math.cos(halfspan + Math.asin(Math.min(1, e.hitRadius / dist)))
       if ((dx / dist) * fx + (dy / dist) * fy <= cosH) continue
       this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
       hit = true
+    }
+    // Melee also hits braziers
+    for (const [bId, b] of this.brazierTargets) {
+      const dx = b.x - px, dy = b.y - py
+      const dist2 = dx * dx + dy * dy
+      if (dist2 > (slashRange + 14) ** 2) continue
+      const dist = Math.sqrt(dist2) || 1
+      const cosH = Math.cos(halfspan)
+      if ((dx / dist) * fx + (dy / dist) * fy <= cosH) continue
+      activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(damage) })
     }
     soundSystem.shootMelee()
     if (hit) soundSystem.enemyHit()
@@ -224,7 +252,7 @@ export class CombatSystem {
     // Rear strike (VS Whip Amount-style): fires 100ms after front, opposite direction
     if (meleeArc >= 1) {
       this.scene.time.delayedCall(100, () => {
-        this.fireSwordSwingDir(px, py, meleeDmg, -fx, -fy, slashRange, halfspan, enemies.filter(e => e.active), coinDropChance, lifeDrain, vampiric)
+        this.fireSwordSwingDir(px, py, meleeDmg, -fx, -fy, slashRange, halfspan, enemies, coinDropChance, lifeDrain, vampiric)
       })
     }
   }
@@ -367,6 +395,7 @@ export class CombatSystem {
     this.playerY = playerY
     const { might, level, attackInterval, wandAttackInterval, addXP, takeDamage, takeContactDamage, addSessionCoins, aura, auraTick, auraRange, orbital, orbSpeed, orbPower, orbRange, lifeDrain, wand, boomerang, spear, flameTrail, bloodNova, bloodNovaCD, vampiric, lightning, lightningTargets, lightningCooldown, axe, axeAmount, axeDamage, axePierce, axeEvolution, divineShield, setDivineShield, multiShot, piercing: isPiercing, magnetRange, equinox, solstice, dualGunDamage, dualGunAttackInterval, dualGunExtra, echo, ravens, ravensCD, ravensPower, ravensCount, spearCount, spearInterval, spearPierce, spearSpeed, spearStorm } = getValidatedCombatState()
     const damage = Math.floor(weaponBaseDamage(level) * might)
+    const now = Date.now()
 
     const { upgrades } = useProfileStore.getState()
     const luckRank = upgrades.luck
@@ -465,7 +494,7 @@ export class CombatSystem {
         }
       }
     }
-    this.sunBeams = this.sunBeams.filter(b => b.active)
+    compact(this.sunBeams)
 
     // Move player projectiles + check enemy hits
     const camWV = this.scene.cameras.main.worldView
@@ -502,13 +531,26 @@ export class CombatSystem {
           }
         }
       }
+      // Braziers — projectiles pass through (no deactivation)
+      if (p.active) {
+        for (const [bId, b] of this.brazierTargets) {
+          if (p.hitTargets.has(bId as any)) continue
+          const dx = p.x - b.x, dy = p.y - b.y
+          if (dx * dx + dy * dy < (p.hitRadius + 14) ** 2) {
+            p.hitTargets.add(bId as any)
+            activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(damage) })
+          }
+        }
+      }
     }
 
     // Collect XP orbs
+    if (this.orbMagnetTimer > 0) this.orbMagnetTimer -= delta
+    const effectiveMagnetRange = this.orbMagnetTimer > 0 ? 100_000 : magnetRange
     let xpGained = 0
     for (const orb of this.orbs) {
       if (!orb.active) continue
-      const collected = orb.update(playerX, playerY, delta, magnetRange)
+      const collected = orb.update(playerX, playerY, delta, effectiveMagnetRange)
       if (collected > 0) {
         this.effects.showXPCollect(orb.x, orb.y)
         soundSystem.xpCollect()
@@ -518,7 +560,7 @@ export class CombatSystem {
     // Accumulator orb (gold heap that fills when cap is reached)
     if (this.accumulatorOrb) {
       if (this.accumulatorOrb.active) {
-        const collected = this.accumulatorOrb.update(playerX, playerY, delta, magnetRange)
+        const collected = this.accumulatorOrb.update(playerX, playerY, delta, effectiveMagnetRange)
         if (collected > 0) {
           this.effects.showXPCollect(this.accumulatorOrb.x, this.accumulatorOrb.y)
           soundSystem.xpCollect()
@@ -559,11 +601,10 @@ export class CombatSystem {
         this.effects.showItemCollect(playerX, playerY, `+${POTION_HEAL} HP`, 0x44ff66, 20)
       }
     }
-    this.potions = this.potions.filter(p => p.active)
+    compact(this.potions)
 
     // Enemy contact damage — per-enemy cooldown so hordes deal proportional damage
     {
-      const now = Date.now()
       for (const e of enemies) {
         if (!e.active) continue
         const dx = e.x - playerX
@@ -596,9 +637,9 @@ export class CombatSystem {
       }
     }
 
-    this.projectiles = this.projectiles.filter(p => p.active)
-    this.orbs = this.orbs.filter(o => o.active)
-    this.coins = this.coins.filter(c => c.active)
+    compact(this.projectiles)
+    compact(this.orbs)
+    compact(this.coins)
 
     // Aura (Garlic-style: always-visible field + knockback on damage pulse)
     this.auraGraphic.clear()
@@ -609,27 +650,38 @@ export class CombatSystem {
       // VS Garlic-style: per-enemy cooldown — immediate hit on first contact, re-hit only after interval
       const auraDmg = damage * aura
       const tickInterval = 700 - auraTick * 80
-      const nowAura = Date.now()
       for (const e of enemies) {
         if (!e.active || !this.isOnScreen(e.x, e.y)) continue
         const dx = e.x - playerX
         const dy = e.y - playerY
         if (dx * dx + dy * dy >= radius * radius) continue
         const lastHit = this.auraHitCooldowns.get(e) ?? 0
-        if (nowAura - lastHit >= tickInterval) {
+        if (now - lastHit >= tickInterval) {
           const dist = Math.sqrt(dx * dx + dy * dy) || 1
           if ('knockbackDx' in e) {
             (e as any).knockbackDx = dx / dist
             ;(e as any).knockbackDy = dy / dist
           }
           this.applyAuraHit(e, auraDmg, playerX, playerY, coinDropChance, lifeDrain, vampiric)
-          this.auraHitCooldowns.set(e, nowAura)
+          this.auraHitCooldowns.set(e, now)
           this.auraFlashTimer = 0
         }
       }
       // Prune dead enemies from cooldown map
       for (const [e] of this.auraHitCooldowns) {
         if (!e.active) this.auraHitCooldowns.delete(e)
+      }
+
+      // Aura hits braziers
+      for (const [bId, b] of this.brazierTargets) {
+        const dx = b.x - playerX, dy = b.y - playerY
+        if (dx * dx + dy * dy < radius * radius) {
+          const lastHit = this.brazierAuraCooldowns.get(bId) ?? 0
+          if (now - lastHit >= tickInterval) {
+            this.brazierAuraCooldowns.set(bId, now)
+            activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(auraDmg) })
+          }
+        }
       }
 
       // Always-visible base: soft pulsing field
@@ -751,7 +803,6 @@ export class CombatSystem {
       this.orbCenterY += (playerY - this.orbCenterY) * lag
 
       const orbCount = orbital + echo
-      const now = Date.now()
       for (let i = 0; i < orbCount; i++) {
         const angle = this.orbAngle + (i / orbCount) * Math.PI * 2
         const ox = this.orbCenterX + Math.cos(angle) * ORBIT_RADIUS
@@ -838,7 +889,7 @@ export class CombatSystem {
           }
         }
       }
-      this.boomerangs = this.boomerangs.filter(b => b.active)
+      compact(this.boomerangs)
     }
 
     // === Bifrost Spear ===
@@ -920,7 +971,7 @@ export class CombatSystem {
           }
         }
       }
-      this.spearProjectiles = this.spearProjectiles.filter(p => p.active)
+      compact(this.spearProjectiles)
     }
 
     // === Flame Trail ===
@@ -950,7 +1001,10 @@ export class CombatSystem {
         }
         if (f.timer <= 0) f.emitter.destroy()
       }
-      this.flamePools = this.flamePools.filter(f => f.timer > 0)
+      let _fi = 0; while (_fi < this.flamePools.length) {
+        if (this.flamePools[_fi].timer > 0) { _fi++; continue }
+        this.flamePools[_fi] = this.flamePools[this.flamePools.length - 1]; this.flamePools.pop()
+      }
     }
 
     // === Blood Nova ===
@@ -1022,7 +1076,7 @@ export class CombatSystem {
           }
         }
       }
-      this.axes = this.axes.filter(a => a.active)
+      compact(this.axes)
     } else {
       if (this.berserkerRing) {
         this.berserkerRing.destroy()
@@ -1159,7 +1213,10 @@ export class CombatSystem {
           }
         }
       }
-      this.ravensBombs = this.ravensBombs.filter(b => b.age < b.maxAge)
+      let _ri = 0; while (_ri < this.ravensBombs.length) {
+        if (this.ravensBombs[_ri].age < this.ravensBombs[_ri].maxAge) { _ri++; continue }
+        this.ravensBombs[_ri] = this.ravensBombs[this.ravensBombs.length - 1]; this.ravensBombs.pop()
+      }
 
       // --- Zone circle visual ---
       const chargeFrac = !this.ravensBurstActive
@@ -1326,6 +1383,11 @@ export class CombatSystem {
           this.divineGraphic.strokePath()
         }
       }
+    }
+
+    if (this.frameDamage > 0) {
+      useGameStore.getState().addDamage(this.frameDamage)
+      this.frameDamage = 0
     }
   }
 
@@ -1513,7 +1575,7 @@ export class CombatSystem {
   private applyAuraHit(e: AnyEnemy, damage: number, playerX: number, playerY: number, coinDropChance: number, lifeDrain: number, vampiric: boolean) {
     const net = activeNetClient
     const actual = this.jitter(damage)
-    useGameStore.getState().addDamage(actual)
+    this.frameDamage += actual
     this.effects.showDamageNumber(e.x, e.y, actual)
     soundSystem.enemyHit()
     if (vampiric) {
@@ -1544,7 +1606,7 @@ export class CombatSystem {
   private applyHit(e: AnyEnemy, damage: number, coinDropChance: number, lifeDrain: number, vampiric: boolean) {
     const net = activeNetClient
     const actual = this.jitter(damage)
-    useGameStore.getState().addDamage(actual)
+    this.frameDamage += actual
     this.effects.showDamageNumber(e.x, e.y, actual)
     soundSystem.enemyHit()
     if (vampiric) {
@@ -1581,6 +1643,35 @@ export class CombatSystem {
 
   private jitter(dmg: number): number {
     return Math.max(1, dmg + Math.floor(Math.random() * 3) - 1)
+  }
+
+  spawnBrazierDrop(drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'divineWrath', x: number, y: number) {
+    switch (drop) {
+      case 'coin':
+        this.coins.push(new CoinOrb(this.scene, x, y))
+        break
+      case 'coinBag':
+        for (let i = 0; i < 3; i++) {
+          const a = (i / 3) * Math.PI * 2
+          this.coins.push(new CoinOrb(this.scene, x + Math.cos(a) * 16, y + Math.sin(a) * 16))
+        }
+        break
+      case 'hp':
+        this.potions.push(new HealthPotion(this.scene, x, y))
+        break
+      case 'xp':
+        for (let i = 0; i < 4; i++) {
+          if (this.orbs.length >= MAX_ORBS) break
+          const a = (i / 4) * Math.PI * 2
+          this.orbs.push(new XPOrb(this.scene, x + Math.cos(a) * 20, y + Math.sin(a) * 20, 25))
+        }
+        break
+      case 'magnet':
+        this.orbMagnetTimer = 3000
+        break
+      case 'divineWrath':
+        break
+    }
   }
 
   adminSpawnItem(type: 'potion' | 'xporb' | 'coin', x: number, y: number): void {

@@ -640,6 +640,17 @@ export class ServerSpawner {
       : { x: p.x + halfW, y }
   }
 
+  killAllNonBoss(): { id: number; x: number; y: number }[] {
+    const dead: { id: number; x: number; y: number }[] = []
+    for (const e of this.enemies) {
+      if (!e.active || e.isBoss) continue
+      e.active = false
+      dead.push({ id: e.id, x: e.x, y: e.y })
+    }
+    this.enemies = this.enemies.filter(e => e.active)
+    return dead
+  }
+
   adminSpawnEnemy(kind: string, players: SpawnerPlayer[]): ServerEnemy | null {
     if (this.enemies.length >= MAX_ENEMIES) return null
     const hpMult = 1

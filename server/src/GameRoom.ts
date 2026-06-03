@@ -102,11 +102,11 @@ function countOwnedWeapons(u: PlayerUpgrades): number {
 }
 
 // VS-inspired 3-tier curve. Mirrors client xpNeeded in gameStore.ts.
-// T1 (L1–19): base 60, +40/level. T2 (L21–39): base 860, +55/level. T3 (L41+): base 2015, +75/level.
+// T1 (L1–19): base 35, +40/level. T2 (L21–39): base 835, +55/level. T3 (L41+): base 1990, +75/level.
 // Hard gates at L20 (+1000) and L40 (+3000).
 function xpNeeded(level: number): number {
   if (level <= 20) {
-    const base = 60 + (level - 1) * 40
+    const base = 35 + (level - 1) * 40
     return level === 20 ? base + 1000 : base
   }
   if (level <= 40) {
@@ -320,6 +320,25 @@ function pickUpgradeChoices(u: PlayerUpgrades, isMelee: boolean, unlockedWeapons
 // Per-player coin drop rate (2% per kill, no luck rank knowledge server-side)
 const COIN_DROP_CHANCE = 0.02
 
+// ── Brazier (Divine Brazier) system ──────────────────────────────────────────
+const BRAZIER_HP            = 12
+const BRAZIER_CAP           = 8
+const BRAZIER_SPAWN_MS      = 2000   // check every 2 s
+const BRAZIER_SPAWN_CHANCE  = 0.15   // 15% per check
+
+type BrazierDrop = 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'divineWrath'
+interface ServerBrazier { id: number; x: number; y: number; hp: number; spawnedAt: number }
+
+function rollBrazierDrop(): BrazierDrop {
+  const r = Math.random() * 100
+  if (r < 50)  return 'coin'
+  if (r < 62)  return 'hp'
+  if (r < 72)  return 'coinBag'
+  if (r < 88)  return 'xp'
+  if (r < 95)  return 'magnet'
+  return 'divineWrath'
+}
+
 interface Player {
   id: string
   userId: number
@@ -359,6 +378,10 @@ export class GameRoom {
   private startMs = 0
   private readonly isSolo: boolean
   private resumeElapsed = 0
+
+  private braziers = new Map<number, ServerBrazier>()
+  private brazierIdCtr = 0
+  private brazierSpawnTimer = 0
 
   // Called once when the game ends (won or all dead). Set by the room creator.
   onGameEnd?: (results: PlayerRunData[]) => void
@@ -596,6 +619,79 @@ export class GameRoom {
     if (queuedXP > 0 || p.xp >= xpNeeded(p.level)) {
       this.grantXPToPlayer(p, queuedXP)
     }
+  }
+
+  handleHitBrazier(playerId: string, brazierId: number, damage: number) {
+    if (!this.started || this.finished) return
+    if (!Number.isInteger(brazierId) || brazierId < 0 || !isFinite(damage) || damage <= 0) return
+    const player = this.players.find(p => p.id === playerId)
+    if (!player || player.dead) return
+    const brazier = this.braziers.get(brazierId)
+    if (!brazier) return
+
+    const safeDamage = Math.min(Math.floor(damage), 100)
+    brazier.hp -= safeDamage
+
+    if (brazier.hp <= 0) {
+      this.braziers.delete(brazierId)
+      const drop = rollBrazierDrop()
+
+      if (drop === 'coin') {
+        player.coins += 1
+      } else if (drop === 'coinBag') {
+        player.coins += 3
+      } else if (drop === 'divineWrath') {
+        const killed = this.spawner.killAllNonBoss()
+        for (const d of killed) {
+          this.broadcast({ type: 'enemyDied', enemyId: d.id, x: d.x, y: d.y, xpValue: 0 })
+        }
+      }
+
+      this.broadcast({ type: 'brazierDestroy', id: brazierId, x: brazier.x, y: brazier.y, drop })
+    } else {
+      this.broadcast({ type: 'brazierHit', id: brazierId, hp: brazier.hp })
+    }
+  }
+
+  private tickBraziers(delta: number) {
+    if (this.finished) return
+    const players = this.players.filter(p => !p.dead)
+    if (players.length === 0) return
+
+    this.brazierSpawnTimer += delta
+    if (this.brazierSpawnTimer < BRAZIER_SPAWN_MS) return
+    this.brazierSpawnTimer -= BRAZIER_SPAWN_MS
+
+    if (Math.random() >= BRAZIER_SPAWN_CHANCE) return
+
+    // If at cap, despawn the oldest (closest to player gets priority — VS style)
+    if (this.braziers.size >= BRAZIER_CAP) {
+      let oldest: ServerBrazier | null = null
+      for (const b of this.braziers.values()) {
+        if (!oldest || b.spawnedAt < oldest.spawnedAt) oldest = b
+      }
+      if (oldest) {
+        this.broadcast({ type: 'brazierDestroy', id: oldest.id, x: oldest.x, y: oldest.y, drop: null })
+        this.braziers.delete(oldest.id)
+      }
+    }
+
+    const p = players[Math.floor(Math.random() * players.length)]
+    const zoom = p.viewW <= 768 ? 0.7 : 1.2
+    const halfW = (p.viewW / 2) / zoom + 80
+    const halfH = (p.viewH / 2) / zoom + 80
+    const edge = Math.floor(Math.random() * 4)
+    let bx: number, by: number
+    switch (edge) {
+      case 0: bx = p.x + (Math.random() * 2 - 1) * halfW; by = p.y - halfH; break
+      case 1: bx = p.x + (Math.random() * 2 - 1) * halfW; by = p.y + halfH; break
+      case 2: bx = p.x - halfW; by = p.y + (Math.random() * 2 - 1) * halfH; break
+      default: bx = p.x + halfW; by = p.y + (Math.random() * 2 - 1) * halfH; break
+    }
+
+    const id = ++this.brazierIdCtr
+    this.braziers.set(id, { id, x: bx, y: by, hp: BRAZIER_HP, spawnedAt: this.spawner.runElapsed })
+    this.broadcast({ type: 'brazierSpawn', id, x: bx, y: by, hp: BRAZIER_HP })
   }
 
   handleCollectXP(playerId: string, amount: number) {
@@ -879,6 +975,7 @@ export class GameRoom {
       const src = alivePlayers.length > 0 ? alivePlayers : this.players
       const positions = src.map(p => ({ x: p.x, y: p.y, viewW: p.viewW, viewH: p.viewH, aura: p.aura, auraRange: p.upgrades.auraRange, level: p.level }))
       this.spawner.update(positions, TICK_MS)
+      this.tickBraziers(TICK_MS)
 
       // Stage 2: survive-to-end win condition (no final boss in this stage)
       if (this.spawner.stage2Mode && this.spawner.isFinished && !this.finished) {

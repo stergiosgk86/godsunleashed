@@ -254,6 +254,8 @@ wss.on('connection', (ws) => {
       }
     } else if (msg.type === 'collectXP') {
       if (room) room.handleCollectXP(playerId, msg.amount)
+    } else if (msg.type === 'hitBrazier') {
+      if (room) room.handleHitBrazier(playerId, msg.brazierId, msg.damage)
     } else if (msg.type === 'adminClearUpgrades') {
       const r = room
       if (r) {
