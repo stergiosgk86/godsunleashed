@@ -9,7 +9,7 @@ const DEFAULT_VIEW_W   = 1280  // fallback if client didn't report viewport
 const DEFAULT_VIEW_H   = 720
 const MAX_ENEMIES      = 600
 const SPAWN_SCALE_DURATION = 10 * 60_000  // spawn rate peaks at 10 min, stays maxed after
-const FILL_INTERVAL_MS = 80               // ms per fill-spawn when alive < wave minimum
+const FILL_INTERVAL_MS = 300              // ms per fill-spawn when alive < wave minimum
 const BOSS_FIRST_SPAWN = 300_000
 const BOSS_REPEAT      = 240_000
 const BOSS_WARNING     = 5_000
@@ -40,7 +40,7 @@ function computeStage2HpScale(elapsed: number): number {
 // ── VS-style wave minimums — alive enemy floor per elapsed minute ─────────────
 // Fill-timer spawns extras whenever alive count drops below the current entry.
 const WAVE_MINIMUMS: readonly { minute: number; minimum: number }[] = [
-  { minute:  0, minimum:  20 },
+  { minute:  0, minimum:   8 },
   { minute:  1, minimum:  35 },
   { minute:  2, minimum:  50 },
   { minute:  3, minimum:  65 },
