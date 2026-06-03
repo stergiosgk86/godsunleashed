@@ -71,10 +71,23 @@ const VALID_ACHIEVEMENT_IDS = new Set([
 function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)) }
 function isFiniteNumber(v: unknown): v is number { return typeof v === 'number' && isFinite(v) }
 
-// Must mirror gameStore.ts xpNeeded — total XP required to reach `level` from level 1
+// Must mirror GameRoom.ts xpNeeded exactly
+function xpNeeded(level: number): number {
+  if (level <= 20) {
+    const base = 60 + (level - 1) * 40
+    return level === 20 ? base + 1000 : base
+  }
+  if (level <= 40) {
+    const base = 860 + (level - 21) * 55
+    return level === 40 ? base + 3000 : base
+  }
+  return 2015 + (level - 41) * 75
+}
+
+// Total XP required to reach `level` from level 1
 function xpToReachLevel(level: number): number {
   let total = 0
-  for (let i = 1; i < level; i++) total += Math.floor(i * (i + 4) * 2)
+  for (let i = 1; i < level; i++) total += xpNeeded(i)
   return total
 }
 

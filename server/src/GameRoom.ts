@@ -101,12 +101,19 @@ function countOwnedWeapons(u: PlayerUpgrades): number {
   ].filter(Boolean).length
 }
 
-// Mirrors client xpNeeded(level) in gameStore.ts — L1=30, L2=55, L3=80 (+25/level)
+// VS-inspired 3-tier curve. Mirrors client xpNeeded in gameStore.ts.
+// T1 (L1–19): base 60, +40/level. T2 (L21–39): base 860, +55/level. T3 (L41+): base 2015, +75/level.
+// Hard gates at L20 (+1000) and L40 (+3000).
 function xpNeeded(level: number): number {
-  const base = 30 + (level - 1) * 25
-  if (level === 20) return base + 600
-  if (level === 40) return base + 2400
-  return base
+  if (level <= 20) {
+    const base = 60 + (level - 1) * 40
+    return level === 20 ? base + 1000 : base
+  }
+  if (level <= 40) {
+    const base = 860 + (level - 21) * 55
+    return level === 40 ? base + 3000 : base
+  }
+  return 2015 + (level - 41) * 75
 }
 
 interface PlayerUpgrades {

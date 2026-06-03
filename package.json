@@ -1,7 +1,7 @@
 {
   "name": "gods-unleashed",
   "private": true,
-  "version": "0.9.04",
+  "version": "0.9.07",
   "type": "module",
   "scripts": {
     "dev": "vite",

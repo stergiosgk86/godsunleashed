@@ -238,10 +238,10 @@ function MenuBackground() {
   )
 }
 
-// ── Collection ────────────────────────────────────────────────────────────────
+// ── Powers ────────────────────────────────────────────────────────────────────
 
 // unlockKey: weapon group key from profileStore.unlockedWeapons; null = always available
-const COLLECTION_WEAPONS: ReadonlyArray<{
+const POWERS_WEAPONS: ReadonlyArray<{
   id: string; label: string; color: string; icon: string; description: string
   unlockKey: string | null; unlockHint: string | null
   upgrades: ReadonlyArray<{ id: string; label: string; description: string }>
@@ -377,7 +377,7 @@ const COLLECTION_WEAPONS: ReadonlyArray<{
   },
 ]
 
-const COLLECTION_PASSIVES: ReadonlyArray<{
+const POWERS_PASSIVES: ReadonlyArray<{
   id: string; label: string; color: string; icon: string; description: string
   unlockKey: string | null; unlockHint: string | null
 }> = [
@@ -390,16 +390,16 @@ const COLLECTION_PASSIVES: ReadonlyArray<{
   { id: 'dashDistance', label: 'Longer Dash',  color: '#88aaff', icon: '⟶', description: '40% further dash distance', unlockKey: null, unlockHint: null },
 ]
 
-function CollectionView({ onBack }: { onBack: () => void }) {
+function PowersView({ onBack }: { onBack: () => void }) {
   const { unlockedWeapons } = useProfileStore()
   const unlocked = new Set(unlockedWeapons)
 
-  const totalLockable = [...COLLECTION_WEAPONS, ...COLLECTION_PASSIVES].filter(e => e.unlockKey !== null).length
-  const totalUnlocked = [...COLLECTION_WEAPONS, ...COLLECTION_PASSIVES].filter(e => e.unlockKey !== null && unlocked.has(e.unlockKey)).length
+  const totalLockable = [...POWERS_WEAPONS, ...POWERS_PASSIVES].filter(e => e.unlockKey !== null).length
+  const totalUnlocked = [...POWERS_WEAPONS, ...POWERS_PASSIVES].filter(e => e.unlockKey !== null && unlocked.has(e.unlockKey)).length
 
   return (
     <>
-      <ViewHeader color="#44ccaa">COLLECTION</ViewHeader>
+      <ViewHeader color="#44ccaa">POWERS</ViewHeader>
       <div style={{ width: '100%', flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -412,7 +412,7 @@ function CollectionView({ onBack }: { onBack: () => void }) {
           </span>
         </div>
 
-        {COLLECTION_WEAPONS.map(w => {
+        {POWERS_WEAPONS.map(w => {
           const isLocked = w.unlockKey !== null && !unlocked.has(w.unlockKey)
           return (
             <div key={w.id} style={{
@@ -459,7 +459,7 @@ function CollectionView({ onBack }: { onBack: () => void }) {
           <div style={{ flex: 1, height: 1, background: 'linear-gradient(to right, #ffcc4444, transparent)' }} />
         </div>
 
-        {COLLECTION_PASSIVES.map(p => {
+        {POWERS_PASSIVES.map(p => {
           const isLocked = p.unlockKey !== null && !unlocked.has(p.unlockKey)
           return (
             <div key={p.id} style={{
@@ -832,20 +832,20 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   const unlockCostOfSelected = CHARACTER_UNLOCK_COSTS[_selectedCharacter]
   const isSelectedLocked = (unlockCostOfSelected !== undefined || CHARACTER_ACHIEVEMENT_REQUIRED[_selectedCharacter] !== undefined) && !unlockedCharacters.includes(_selectedCharacter)
   const selectedCharacter = isSelectedLocked ? 'ares' : _selectedCharacter
-  type MenuView = 'home' | 'shop' | 'characters' | 'stageSelect' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds' | 'collection'
+  type MenuView = 'home' | 'shop' | 'characters' | 'stageSelect' | 'statistics' | 'leaderboard' | 'achievements' | 'admin' | 'settings' | 'controls' | 'sounds' | 'powers'
   const PATH_TO_VIEW: Record<string, MenuView> = {
     '/': 'home', '/shop': 'shop', '/characters': 'characters',
     '/stage-select': 'stageSelect', '/statistics': 'statistics',
     '/leaderboard': 'leaderboard', '/achievements': 'achievements',
     '/admin': 'admin', '/settings': 'settings', '/controls': 'controls',
-    '/sounds': 'sounds', '/collection': 'collection',
+    '/sounds': 'sounds', '/powers': 'powers',
   }
   const VIEW_TO_PATH: Record<MenuView, string> = {
     home: '/', shop: '/shop', characters: '/characters',
     stageSelect: '/stage-select', statistics: '/statistics',
     leaderboard: '/leaderboard', achievements: '/achievements',
     admin: '/admin', settings: '/settings', controls: '/controls',
-    sounds: '/sounds', collection: '/collection',
+    sounds: '/sounds', powers: '/powers',
   }
   const navigate = useNavigate()
   const location = useLocation()
@@ -879,7 +879,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   }, [])
 
   const VIEW_PARENT: Partial<Record<MenuView, MenuView>> = {
-    characters: 'home', shop: 'home', settings: 'home', statistics: 'home', admin: 'home', collection: 'home',
+    characters: 'home', shop: 'home', settings: 'home', statistics: 'home', admin: 'home', powers: 'home',
     leaderboard: 'statistics', achievements: 'statistics',
     controls: 'settings', sounds: 'settings',
     stageSelect: 'characters',
@@ -910,7 +910,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   }, [view, confirmUnlock, confirmRefundAll, confirmRefund])
 
   useEffect(() => {
-    if (view === 'shop' || view === 'characters' || view === 'stageSelect' || view === 'collection') {
+    if (view === 'home' || view === 'shop' || view === 'characters' || view === 'stageSelect' || view === 'powers') {
       fetchProfile()
     }
   }, [view])
@@ -967,7 +967,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
       <div style={{
         ...panel,
         padding: mob ? '20px 16px' : '32px 48px',
-        minWidth: mob ? 'calc(100vw - 24px)' : (view === 'characters' ? 700 : ['shop', 'leaderboard', 'achievements', 'admin', 'collection'].includes(view) ? 520 : view === 'stageSelect' ? 480 : 420),
+        minWidth: mob ? 'calc(100vw - 24px)' : (view === 'characters' ? 700 : ['shop', 'leaderboard', 'achievements', 'admin', 'powers'].includes(view) ? 520 : view === 'stageSelect' ? 480 : 420),
         maxWidth: mob ? 'calc(100vw - 24px)' : undefined,
         maxHeight: 'calc(100vh - 180px)',
         height: (!mob && view === 'characters') ? 'calc(100vh - 180px)' : undefined,
@@ -1018,8 +1018,8 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         <ControlsView onBack={() => setView('settings')} />
       ) : view === 'sounds' ? (
         <SoundsView onBack={() => setView('settings')} />
-      ) : view === 'collection' ? (
-        <CollectionView onBack={() => setView('home')} />
+      ) : view === 'powers' ? (
+        <PowersView onBack={() => setView('home')} />
       ) : view === 'admin' ? (
         <AdminPlayersView onBack={() => setView('home')} />
       ) : view === 'stageSelect' ? (
@@ -1887,7 +1887,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
             </button>
             <button
               type="button"
-              onClick={() => setView('collection')}
+              onClick={() => setView('powers')}
               style={{
                 ...btnBase, flex: 1, fontSize: 13,
                 color: '#44ccaa', background: 'rgba(5,25,20,0.5)',
@@ -1896,7 +1896,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(8,40,30,0.7)'; e.currentTarget.style.color = '#66eebb' }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(5,25,20,0.5)'; e.currentTarget.style.color = '#44ccaa' }}
             >
-              COLLECTION
+              POWERS
             </button>
           </div>
 
