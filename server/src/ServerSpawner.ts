@@ -7,7 +7,7 @@ const SPAWN_MARGIN     = 250   // px beyond screen edge for boss/surge spawns (m
 const RECYCLE_EXTRA    = 300   // additional px past spawn edge before enemy is recycled (matches frontend)
 const DEFAULT_VIEW_W   = 1280  // fallback if client didn't report viewport
 const DEFAULT_VIEW_H   = 720
-const MAX_ENEMIES      = 600
+const MAX_ENEMIES      = 250
 const SPAWN_SCALE_DURATION = 10 * 60_000  // spawn rate peaks at 10 min, stays maxed after
 const FILL_INTERVAL_MS = 300              // ms per fill-spawn when alive < wave minimum
 const BOSS_FIRST_SPAWN = 300_000
@@ -59,7 +59,7 @@ const WAVE_MINIMUMS: readonly { minute: number; minimum: number }[] = [
 ]
 
 // ── Lane definitions (mirrors EnemySpawner.ts LANE_DEFS) ─────────────────────
-type SpawnKind = 'basic' | 'speeder' | 'tank' | 'exploder' | 'ghost' | 'ranged' | 'charger' | 'necromancer'
+type SpawnKind = 'basic' | 'speeder' | 'tank' | 'exploder' | 'ghost' | 'ranged' | 'charger' | 'necromancer' | 'veteran' | 'brute' | 'revenant' | 'warlord' | 'titan'
 type Stage2Kind = 'drifter' | 'scurrier' | 'lurker' | 'mummy' | 'jackal' | 'cultist' | 'golem' | 'knight' | 'archfiend'
 
 interface LaneDef {
@@ -109,14 +109,19 @@ const STAGE2_SURGE_EVENTS: SurgeDef[] = [
 ]
 
 const LANE_DEFS: LaneDef[] = [
-  { type: 'basic',       startTime: 0,        intervalStart: 1000,  intervalEnd: 250,  burstStart: 1, burstEnd: 8  },
-  { type: 'speeder',     startTime: 50_000,   intervalStart: 1800,  intervalEnd: 350,  burstStart: 2, burstEnd: 4  },
-  { type: 'tank',        startTime: 90_000,   intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
-  { type: 'exploder',    startTime: 120_000,  intervalStart: 3500,  intervalEnd: 900,  burstStart: 1, burstEnd: 2 },
-  { type: 'ghost',       startTime: 150_000,  intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
-  { type: 'ranged',      startTime: 210_000,  intervalStart: 2500,  intervalEnd: 600,  burstStart: 1, burstEnd: 2 },
-  { type: 'charger',     startTime: 480_000,  intervalStart: 4000,  intervalEnd: 1200, burstStart: 1, burstEnd: 2 },
-  { type: 'necromancer', startTime: 780_000,  intervalStart: 6000,  intervalEnd: 2000, burstStart: 1, burstEnd: 1 },
+  { type: 'basic',       startTime: 0,          intervalStart: 1000,  intervalEnd: 250,  burstStart: 1, burstEnd: 8 },
+  { type: 'speeder',     startTime: 50_000,     intervalStart: 1800,  intervalEnd: 350,  burstStart: 2, burstEnd: 4 },
+  { type: 'tank',        startTime: 90_000,     intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
+  { type: 'exploder',    startTime: 120_000,    intervalStart: 3500,  intervalEnd: 900,  burstStart: 1, burstEnd: 2 },
+  { type: 'ghost',       startTime: 150_000,    intervalStart: 3000,  intervalEnd: 800,  burstStart: 1, burstEnd: 2 },
+  { type: 'ranged',      startTime: 210_000,    intervalStart: 2500,  intervalEnd: 600,  burstStart: 1, burstEnd: 2 },
+  { type: 'veteran',     startTime: 300_000,    intervalStart: 2500,  intervalEnd: 500,  burstStart: 1, burstEnd: 4 },
+  { type: 'charger',     startTime: 480_000,    intervalStart: 4000,  intervalEnd: 1200, burstStart: 1, burstEnd: 2 },
+  { type: 'brute',       startTime: 600_000,    intervalStart: 4500,  intervalEnd: 1500, burstStart: 1, burstEnd: 2 },
+  { type: 'necromancer', startTime: 780_000,    intervalStart: 6000,  intervalEnd: 2000, burstStart: 1, burstEnd: 1 },
+  { type: 'revenant',    startTime: 900_000,    intervalStart: 3000,  intervalEnd: 750,  burstStart: 1, burstEnd: 3 },
+  { type: 'warlord',     startTime: 1_200_000,  intervalStart: 7000,  intervalEnd: 2500, burstStart: 1, burstEnd: 2 },
+  { type: 'titan',       startTime: 1_500_000,  intervalStart: 14000, intervalEnd: 6000, burstStart: 1, burstEnd: 1 },
 ]
 
 // ── Surge events (mirrors EnemySpawner.ts SURGE_EVENTS) ──────────────────────
@@ -146,7 +151,7 @@ interface ActiveSurge {
   remaining: number
   timer: number
   spawnInterval: number
-  angle: number  // fixed spawn direction so the whole surge comes from one side
+  nextEdge: number  // cycles 0→1→2→3→0 so the surge arrives from all sides
 }
 
 export class ServerSpawner {
@@ -156,6 +161,8 @@ export class ServerSpawner {
   private enemies: ServerEnemy[] = []
   private elapsed   = 0
   private laneTimers: number[] = LANE_DEFS.map(l => l.intervalStart)
+  private laneEdgeCtr: number[] = LANE_DEFS.map((_, i) => i % 4)  // staggered so lanes hit different edges
+  private fillEdgeCtr = 0
   private nextBossAt        = BOSS_FIRST_SPAWN
   private bossAlive         = false
   private firstBossSpawned  = false
@@ -232,7 +239,7 @@ export class ServerSpawner {
         this.fillTimer -= delta
         if (this.fillTimer <= 0) {
           this.fillTimer += FILL_INTERVAL_MS
-          const edge = Math.floor(Math.random() * 4)
+          const edge = this.fillEdgeCtr++ % 4
           const pos  = this.laneEdgePoint(players, edge)
           this.spawnEnemy('basic', pos.x, pos.y, hpMult, players)
         }
@@ -247,8 +254,8 @@ export class ServerSpawner {
       if (this.laneTimers[i] <= 0 && this.enemies.length < enemyCap) {
         this.laneTimers[i] = this.laneInterval(lane)
         const count = Math.min(this.laneBurst(lane), enemyCap - this.enemies.length)
-        // VS: whole burst comes from ONE edge, clustered near a random point
-        const burstEdge   = Math.floor(Math.random() * 4)
+        // Round-robin edge per burst so consecutive bursts come from different sides
+        const burstEdge   = this.laneEdgeCtr[i]++ % 4
         const burstCenter = (Math.random() * 2 - 1) * 0.6
         for (let j = 0; j < count; j++) {
           const pos = this.laneEdgePoint(players, burstEdge, burstCenter)
@@ -265,7 +272,7 @@ export class ServerSpawner {
         this.surgeQueue.push({
           type: surge.type, remaining: surge.count, timer: 0,
           spawnInterval: surge.spawnInterval,
-          angle: Math.random() * Math.PI * 2,
+          nextEdge: Math.floor(Math.random() * 4),  // random start, cycles through all 4
         })
       }
     }
@@ -273,7 +280,8 @@ export class ServerSpawner {
       surge.timer -= delta
       if (surge.timer <= 0 && surge.remaining > 0 && this.enemies.length < enemyCap + 200) {
         surge.timer += surge.spawnInterval
-        const pos = this.surgeEdgePoint(players, surge.angle)
+        const pos = this.surgeEdgePoint(players, surge.nextEdge)
+        surge.nextEdge = (surge.nextEdge + 1) % 4
         const e   = this.spawnEnemy(surge.type, pos.x, pos.y, hpMult, players)
         e.speedMult = SURGE_SPEED_MULT
         surge.remaining--
@@ -350,8 +358,9 @@ export class ServerSpawner {
     }
 
     // ── Separation: push overlapping enemies apart ────────────────────────────
-    const SEP_RADIUS = 32
-    const SEP_FORCE  = 0.9
+    const SEP_RADIUS = 40
+    const SEP_FORCE  = 1.0
+    const SEP_MAX    = 5
     const active = this.enemies.filter(e => e.active && !e.isBoss)
     for (let i = 0; i < active.length; i++) {
       for (let j = i + 1; j < active.length; j++) {
@@ -361,7 +370,7 @@ export class ServerSpawner {
         const d2 = dx * dx + dy * dy
         if (d2 < SEP_RADIUS * SEP_RADIUS && d2 > 0) {
           const d  = Math.sqrt(d2)
-          const push = (SEP_RADIUS - d) * SEP_FORCE
+          const push = Math.min((SEP_RADIUS - d) * SEP_FORCE, SEP_MAX)
           const nx = dx / d, ny = dy / d
           a.x += nx * push; a.y += ny * push
           b.x -= nx * push; b.y -= ny * push
@@ -475,20 +484,18 @@ export class ServerSpawner {
     }
   }
 
-  // Surge: all enemies from the edge corresponding to the fixed angle — matches frontend surgeEdgePoint.
-  private surgeEdgePoint(players: SpawnerPlayer[], angle: number): { x: number; y: number } {
+  // Surge: spawn just off the given edge (0=top 1=bottom 2=left 3=right) with SPAWN_MARGIN.
+  private surgeEdgePoint(players: SpawnerPlayer[], edge: number): { x: number; y: number } {
     const p    = players.length > 0 ? players[Math.floor(Math.random() * players.length)] : { x: 2000, y: 2000, viewW: DEFAULT_VIEW_W, viewH: DEFAULT_VIEW_H }
     const zoom = p.viewW <= 768 ? 0.7 : 1.2
     const halfW = (p.viewW / 2) / zoom + SPAWN_MARGIN
     const halfH = (p.viewH / 2) / zoom + SPAWN_MARGIN
     const along = (Math.random() * 2 - 1)
-    // Pick left/right edge if the angle is more horizontal, top/bottom if more vertical
-    if (Math.abs(Math.cos(angle)) >= Math.abs(Math.sin(angle))) {
-      const side = Math.cos(angle) >= 0 ? 1 : -1
-      return { x: p.x + side * halfW, y: p.y + along * halfH }
-    } else {
-      const side = Math.sin(angle) >= 0 ? 1 : -1
-      return { x: p.x + along * halfW, y: p.y + side * halfH }
+    switch (edge) {
+      case 0: return { x: p.x + along * halfW, y: p.y - halfH }
+      case 1: return { x: p.x + along * halfW, y: p.y + halfH }
+      case 2: return { x: p.x - halfW, y: p.y + along * halfH }
+      default: return { x: p.x + halfW, y: p.y + along * halfH }
     }
   }
 
@@ -583,7 +590,7 @@ export class ServerSpawner {
     }
 
     // Separation
-    const SEP_RADIUS = 32, SEP_FORCE = 0.9
+    const SEP_RADIUS = 40, SEP_FORCE = 1.0, SEP_MAX = 5
     const active = this.enemies.filter(e => e.active)
     for (let i = 0; i < active.length; i++) {
       for (let j = i + 1; j < active.length; j++) {
@@ -592,7 +599,7 @@ export class ServerSpawner {
         const d2 = dx * dx + dy * dy
         if (d2 < SEP_RADIUS * SEP_RADIUS && d2 > 0) {
           const d    = Math.sqrt(d2)
-          const push = (SEP_RADIUS - d) * SEP_FORCE
+          const push = Math.min((SEP_RADIUS - d) * SEP_FORCE, SEP_MAX)
           const nx = dx / d, ny = dy / d
           a.x += nx * push; a.y += ny * push
           b.x -= nx * push; b.y -= ny * push
@@ -660,7 +667,7 @@ export class ServerSpawner {
       this.enemies.push(e)
       return e
     }
-    const validKinds: SpawnKind[] = ['basic', 'speeder', 'tank', 'ranged', 'exploder', 'ghost', 'charger', 'necromancer']
+    const validKinds: SpawnKind[] = ['basic', 'speeder', 'tank', 'ranged', 'exploder', 'ghost', 'charger', 'necromancer', 'veteran', 'brute', 'revenant', 'warlord', 'titan']
     const safeKind: SpawnKind = validKinds.includes(kind as SpawnKind) ? (kind as SpawnKind) : 'basic'
     return this.spawnEnemy(safeKind, pos.x, pos.y, hpMult, players)
   }
