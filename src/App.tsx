@@ -352,6 +352,8 @@ function App() {
             coins: msg.coins, upgrades: msg.upgrades,
             last_active: msg.last_active, unlocked_stages: msg.unlocked_stages, role: msg.role,
           })
+        } else if (msg.type === 'profileSync') {
+          useProfileStore.getState().fetchProfile()
         }
       } catch {}
     }

@@ -12,3 +12,8 @@ export function notifySuperAdmins(payload: string) {
     if (sock && sock.readyState === 1) sock.send(payload)
   }
 }
+
+export function notifyUser(userId: number, payload: string) {
+  const sock = userSockets.get(userId)
+  if (sock && sock.readyState === 1) sock.send(payload)
+}

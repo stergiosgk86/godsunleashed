@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto'
 import { requireAuth } from '../middleware/auth.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 import { db } from '../db.js'
-import { userSockets, notifySuperAdmins } from '../userSockets.js'
+import { userSockets, notifySuperAdmins, notifyUser } from '../userSockets.js'
 import { ALL_WEAPON_UNLOCK_KEYS } from '../runSaver.js'
 
 const VALID_WEAPON_UNLOCK_KEYS = new Set<string>(ALL_WEAPON_UNLOCK_KEYS)
@@ -26,6 +26,7 @@ async function pushProfileUpdate(userId: number) {
   if (!r.rows[0]) return
   const row = r.rows[0]
   notifySuperAdmins(JSON.stringify({ type: 'playerProfileUpdate', userId, ...row }))
+  notifyUser(userId, JSON.stringify({ type: 'profileSync' }))
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -35,10 +36,10 @@ const MAX_PROFILE_COINS  = 5_000_000
 // Cap at 7,000 — blocks 10k submissions while allowing legitimate top runs.
 // Per-sec rate check can't distinguish legit from fake (legit peak ~6.25/s)
 // so keep it generous; the hard cap is the real gate.
-const MAX_RUN_SCORE      = 100_000
-const MAX_RUN_KILLS      = 7_000
+const MAX_RUN_SCORE      = Number.MAX_SAFE_INTEGER
+const MAX_RUN_KILLS      = Number.MAX_SAFE_INTEGER
 const MAX_RUN_TIME_MS    = 32 * 60 * 1000
-const MAX_SESSION_COINS  = 300    // ~3× observed best; real max is ~0.1 coins/sec
+const MAX_SESSION_COINS  = Number.MAX_SAFE_INTEGER
 const MAX_COINS_PER_SEC  = 0.5   // generous ceiling — 5× observed max rate
 const MIN_RUN_GAP_MS     = 10_000 // minimum 10 s between submissions
 const RUN_DURATION_MS    = 30 * 60 * 1000  // must match client runData.ts

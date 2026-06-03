@@ -68,3 +68,4 @@ export type S2CMessage =
   | { type: 'playerOffline'; userId: number }
   | { type: 'playerProfileUpdate'; userId: number; coins: number; upgrades: Record<string, number> | null; last_active: string | null; unlocked_stages: number[] | null; role: string | null }
   | { type: 'adminOnlineSnapshot'; onlineUserIds: number[] }
+  | { type: 'profileSync' }

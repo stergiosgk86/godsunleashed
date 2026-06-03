@@ -823,7 +823,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
   onMultiplayer: () => void
   onLogout: () => void
 }) {
-  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades, unlockedCharacters, unlockCharacter, maxStage1Level, unlockedStages } = useProfileStore()
+  const { coins, upgrades, purchaseUpgrade, refundUpgrade, refundAllUpgrades, unlockedCharacters, unlockCharacter, maxStage1Level, unlockedStages, fetchProfile } = useProfileStore()
   const username = useAuthStore(s => s.username)
   const role = useAuthStore(s => s.role)
   const isSuperAdmin = role === 'super_admin'
@@ -908,6 +908,12 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
     window.addEventListener('keydown', onEsc)
     return () => window.removeEventListener('keydown', onEsc)
   }, [view, confirmUnlock, confirmRefundAll, confirmRefund])
+
+  useEffect(() => {
+    if (view === 'shop' || view === 'characters' || view === 'stageSelect' || view === 'collection') {
+      fetchProfile()
+    }
+  }, [view])
 
   return (
     <div style={{
