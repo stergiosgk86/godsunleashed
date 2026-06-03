@@ -1066,10 +1066,10 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               </div>
             </div>
 
-            {/* Stage 2 — locked until level 25 in Stage 1 */}
+            {/* Stage 2 — locked until level 100 in Stage 1 */}
             {(() => {
-              const stage2Unlocked = maxStage1Level >= 60 || unlockedStages.includes(2)
-              const progress = Math.min(maxStage1Level, 60)
+              const stage2Unlocked = maxStage1Level >= 100 || unlockedStages.includes(2)
+              const progress = Math.min(maxStage1Level, 100)
               return stage2Unlocked ? (
                 <div
                   onClick={() => { setStage(2); onPlay() }}
@@ -1134,20 +1134,20 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                     Underworld Depths — Fight through the dark corridor
                   </div>
                   <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#885544', letterSpacing: 1 }}>
-                    Reach <span style={{ color: '#cc6644', fontWeight: 'bold' }}>Level 60</span> in Stage 1 to unlock
+                    Reach <span style={{ color: '#cc6644', fontWeight: 'bold' }}>Level 100</span> in Stage 1 to unlock
                   </div>
                   {/* Progress bar */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
                     <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(40,20,20,0.6)', overflow: 'hidden' }}>
                       <div style={{
                         height: '100%', borderRadius: 2,
-                        width: `${(progress / 60) * 100}%`,
+                        width: `${(progress / 100) * 100}%`,
                         background: 'linear-gradient(90deg, #661111, #cc3322)',
                         transition: 'width 0.4s ease',
                       }} />
                     </div>
                     <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#774444', flexShrink: 0 }}>
-                      Lv {progress} / 60
+                      Lv {progress} / 100
                     </span>
                   </div>
                   {isSuperAdmin && (
