@@ -8,6 +8,15 @@ import { ChargerEnemy } from './ChargerEnemy'
 import { NecromancerEnemy } from './NecromancerEnemy'
 import { WarlordEnemy } from './WarlordEnemy'
 import { BossEnemy } from './BossEnemy'
+
+function compact<T extends { active: boolean }>(arr: T[]): void {
+  let i = 0
+  while (i < arr.length) {
+    if (arr[i].active) { i++; continue }
+    arr[i] = arr[arr.length - 1]
+    arr.pop()
+  }
+}
 import { FinalBossEnemy } from './FinalBossEnemy'
 import { SummonerBoss } from './SummonerBoss'
 
@@ -92,6 +101,7 @@ export class EnemySpawner {
   private scene: Phaser.Scene
   private enemies: AnyEnemy[] = []
   private laneTimers: number[] = LANE_DEFS.map(l => l.intervalStart)
+  private laneEdgeCtr: number[] = LANE_DEFS.map((_, i) => i % 4)  // staggered so lanes hit different edges
   private elapsed = 0
   private initialFillDone = false
   private nextBossAt = BOSS_FIRST_SPAWN
@@ -102,6 +112,7 @@ export class EnemySpawner {
   private surgesFired = new Set<number>()
   private surgeQueue: ActiveSurge[] = []
   private surgeActive = false
+  private sepFrame = 0
 
   onBossWarning?: () => void
   onBossSpawn?: () => void
@@ -269,8 +280,9 @@ export class EnemySpawner {
       if (this.laneTimers[i] <= 0 && this.enemies.length < MAX_ENEMIES) {
         this.laneTimers[i] = this.laneInterval(lane)
         const count = Math.min(this.laneBurst(lane), MAX_ENEMIES - this.enemies.length)
+        const burstEdge = this.laneEdgeCtr[i]++ % 4
         for (let j = 0; j < count; j++) {
-          const { x, y } = this.laneEdgeSpawnPoint(playerX, playerY)
+          const { x, y } = this.laneEdgeSpawnPoint(playerX, playerY, burstEdge)
           this.spawnEnemy(x, y, playerX, playerY, lane.type)
         }
       }
@@ -294,12 +306,16 @@ export class EnemySpawner {
       if (surge.timer <= 0 && surge.remaining > 0 && this.enemies.length < MAX_ENEMIES + 200) {
         surge.timer += surge.spawnInterval
         const { x, y } = this.surgeEdgePoint(playerX, playerY, surge.edge)
+        surge.edge = (surge.edge + 1) % 4
         const e = this.spawnEnemy(x, y, playerX, playerY, surge.type)
         if (e instanceof Enemy) e.speedMultiplier = SURGE_SPEED_MULT
         surge.remaining--
       }
     }
-    this.surgeQueue = this.surgeQueue.filter(s => s.remaining > 0)
+    let _si = 0; while (_si < this.surgeQueue.length) {
+      if (this.surgeQueue[_si].remaining > 0) { _si++; continue }
+      this.surgeQueue[_si] = this.surgeQueue[this.surgeQueue.length - 1]; this.surgeQueue.pop()
+    }
 
     // Regular boss cycle (stops once we enter final phase lock)
     if (!inFinalPhase) {
@@ -343,13 +359,16 @@ export class EnemySpawner {
       }
     }
 
-    // Separation: push overlapping enemies apart so they don't stack into one sprite.
-    const SEP_RADIUS = 32
-    const SEP_FORCE  = 0.9
-    const active = this.enemies.filter(e => e.active && !e.isBoss)
-    for (let i = 0; i < active.length; i++) {
-      for (let j = i + 1; j < active.length; j++) {
-        const a = active[i], b = active[j]
+    // Separation: push overlapping enemies apart — runs every other frame to halve O(n²) cost.
+    this.sepFrame++
+    const SEP_RADIUS = 40
+    const SEP_FORCE  = 1.0
+    if (this.sepFrame % 2 === 0) for (let i = 0; i < this.enemies.length; i++) {
+      const a = this.enemies[i]
+      if (!a.active || a.isBoss) continue
+      for (let j = i + 1; j < this.enemies.length; j++) {
+        const b = this.enemies[j]
+        if (!b.active || b.isBoss) continue
         const dx = a.x - b.x
         const dy = a.y - b.y
         const dist2 = dx * dx + dy * dy
@@ -380,7 +399,7 @@ export class EnemySpawner {
       this.onFinalBossDefeated?.()
     }
 
-    this.enemies = this.enemies.filter(e => e.active)
+    compact(this.enemies)
   }
 
   private corridorY(yRange: number): number {
@@ -500,7 +519,7 @@ export class EnemySpawner {
   }
 
   cleanupDead(): void {
-    this.enemies = this.enemies.filter(e => e.active)
+    compact(this.enemies)
   }
 
   adminSpawnEnemy(type: string, playerX: number, playerY: number): void {

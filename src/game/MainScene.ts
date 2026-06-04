@@ -687,13 +687,13 @@ export class MainScene extends Phaser.Scene {
     net.on('brazierSpawn', (msg) => {
       if (!this.sys.displayList) return
       const glow = this.add.image(msg.x, msg.y, 'brazier_glow')
-        .setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.7)
-      const base = this.add.image(msg.x, msg.y, 'brazier').setDepth(1.6)
+        .setDepth(1.5).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.7).setScale(2.0)
+      const base = this.add.image(msg.x, msg.y, 'brazier').setDepth(1.6).setScale(2.0)
       const flicker = this.tweens.add({
         targets: glow,
         alpha: { from: 0.4, to: 0.9 },
-        scaleX: { from: 0.88, to: 1.12 },
-        scaleY: { from: 0.82, to: 1.18 },
+        scaleX: { from: 1.76, to: 2.24 },
+        scaleY: { from: 1.64, to: 2.36 },
         duration: 280 + Math.random() * 180,
         yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
       })
@@ -718,7 +718,9 @@ export class MainScene extends Phaser.Scene {
       }
       if (msg.drop !== null) {
         this.combat.spawnBrazierDrop(msg.drop, msg.x, msg.y)
-        if (msg.drop === 'divineWrath') {
+        if (msg.drop === 'freeze') {
+          this.cameras.main.flash(400, 100, 180, 255)
+        } else if (msg.drop === 'divineWrath') {
           this.cameras.main.flash(350, 255, 220, 100)
         }
       }

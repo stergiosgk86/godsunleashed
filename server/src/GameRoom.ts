@@ -326,16 +326,18 @@ const BRAZIER_CAP           = 8
 const BRAZIER_SPAWN_MS      = 2000   // check every 2 s
 const BRAZIER_SPAWN_CHANCE  = 0.15   // 15% per check
 
-type BrazierDrop = 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'divineWrath'
+type BrazierDrop = 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath'
 interface ServerBrazier { id: number; x: number; y: number; hp: number; spawnedAt: number }
 
 function rollBrazierDrop(): BrazierDrop {
-  const r = Math.random() * 100
-  if (r < 50)  return 'coin'
-  if (r < 62)  return 'hp'
-  if (r < 72)  return 'coinBag'
-  if (r < 88)  return 'xp'
-  if (r < 95)  return 'magnet'
+  // VS-style weights: coin=50 hp=12 coinBag=10 xp=8 magnet=2 freeze=2 killAll=1 (total 85)
+  const r = Math.random() * 85
+  if (r < 50) return 'coin'
+  if (r < 62) return 'hp'
+  if (r < 72) return 'coinBag'
+  if (r < 80) return 'xp'
+  if (r < 82) return 'magnet'
+  if (r < 84) return 'freeze'
   return 'divineWrath'
 }
 
@@ -640,6 +642,8 @@ export class GameRoom {
         player.coins += 1
       } else if (drop === 'coinBag') {
         player.coins += 3
+      } else if (drop === 'freeze') {
+        this.spawner.freeze(10_000)
       } else if (drop === 'divineWrath') {
         const killed = this.spawner.killAllNonBoss()
         for (const d of killed) {

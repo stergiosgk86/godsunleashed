@@ -172,6 +172,7 @@ export class ServerSpawner {
   private surgesFired       = new Set<number>()
   private surgeQueue: ActiveSurge[] = []
   private fillTimer         = 0
+  private freezeTimer       = 0
   // Stage 2 state
   private stage2LaneTimers: number[] = STAGE2_LANE_DEFS.map(l => l.intervalStart)
   private stage2SurgesFired = new Set<number>()
@@ -314,10 +315,12 @@ export class ServerSpawner {
     }
 
     // ── Move all enemies ──────────────────────────────────────────────────────
+    this.freezeTimer = Math.max(0, this.freezeTimer - delta)
+    const effectiveSpeed = this.freezeTimer > 0 ? 0 : speedMult
     for (const e of this.enemies) {
       if (!e.active) continue
       const nearest = this.nearestPlayerTo(e.x, e.y, players)
-      e.update(nearest.x, nearest.y, delta, speedMult)
+      e.update(nearest.x, nearest.y, delta, effectiveSpeed)
       if (this.corridorHalfY !== null) {
         if (e.y < -this.corridorHalfY) e.y = -this.corridorHalfY
         else if (e.y > this.corridorHalfY) e.y = this.corridorHalfY
@@ -558,10 +561,11 @@ export class ServerSpawner {
     this.stage2SurgeQueue = this.stage2SurgeQueue.filter(s => s.remaining > 0)
 
     // Move all enemies and clamp to corridor
+    this.freezeTimer = Math.max(0, this.freezeTimer - delta)
     for (const e of this.enemies) {
       if (!e.active) continue
       const nearest = this.nearestPlayerTo(e.x, e.y, players)
-      e.update(nearest.x, nearest.y, delta, 1)
+      e.update(nearest.x, nearest.y, delta, this.freezeTimer > 0 ? 0 : 1)
       if (this.corridorHalfY !== null) {
         if (e.y < -this.corridorHalfY) e.y = -this.corridorHalfY
         else if (e.y > this.corridorHalfY) e.y = this.corridorHalfY
@@ -638,6 +642,10 @@ export class ServerSpawner {
     return side === 0
       ? { x: p.x - halfW, y }
       : { x: p.x + halfW, y }
+  }
+
+  freeze(ms: number) {
+    this.freezeTimer = Math.max(this.freezeTimer, ms)
   }
 
   killAllNonBoss(): { id: number; x: number; y: number }[] {

@@ -71,4 +71,4 @@ export type S2CMessage =
   | { type: 'profileSync' }
   | { type: 'brazierSpawn'; id: number; x: number; y: number; hp: number }
   | { type: 'brazierHit'; id: number; hp: number }
-  | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'divineWrath' | null }
+  | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | null }

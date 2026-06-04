@@ -1,5 +1,17 @@
 import Phaser from 'phaser'
 
+function compact<T extends { active: boolean }>(arr: T[]): void {
+  let i = 0
+  while (i < arr.length) {
+    if (arr[i].active) { i++; continue }
+    arr[i] = arr[arr.length - 1]
+    arr.pop()
+  }
+}
+
+const MAX_NUMBERS  = 24
+const MAX_PARTICLES = 180
+
 class DamageNumber {
   text: Phaser.GameObjects.Text
   active = true
@@ -173,18 +185,23 @@ export class EffectsSystem {
   }
 
   showDamageNumber(x: number, y: number, amount: number) {
+    if (this.numbers.length >= MAX_NUMBERS) return
     this.numbers.push(new DamageNumber(this.scene, x, y, amount))
   }
 
   showDeathBurst(x: number, y: number) {
+    if (this.particles.length >= MAX_PARTICLES) return
     const colors = [0xff4444, 0xff8844, 0xffaa44, 0xff2222]
-    for (let i = 0; i < 10; i++) {
+    const count = Math.min(10, MAX_PARTICLES - this.particles.length)
+    for (let i = 0; i < count; i++) {
       this.particles.push(new Particle(this.scene, x, y, colors[i % colors.length]))
     }
   }
 
   showXPCollect(x: number, y: number) {
-    for (let i = 0; i < 5; i++) {
+    if (this.particles.length >= MAX_PARTICLES) return
+    const count = Math.min(5, MAX_PARTICLES - this.particles.length)
+    for (let i = 0; i < count; i++) {
       this.particles.push(new Particle(this.scene, x, y, 0x00ff88))
     }
   }
@@ -215,10 +232,10 @@ export class EffectsSystem {
     for (const g of this.ghosts) g.update(delta)
     for (const m of this.moveGhosts) m.update(delta)
     for (const l of this.labels) l.update(delta)
-    this.numbers = this.numbers.filter(n => n.active)
-    this.particles = this.particles.filter(p => p.active)
-    this.ghosts = this.ghosts.filter(g => g.active)
-    this.moveGhosts = this.moveGhosts.filter(m => m.active)
-    this.labels = this.labels.filter(l => l.active)
+    compact(this.numbers)
+    compact(this.particles)
+    compact(this.ghosts)
+    compact(this.moveGhosts)
+    compact(this.labels)
   }
 }

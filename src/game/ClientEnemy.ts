@@ -128,6 +128,10 @@ export class ClientEnemy implements AnyEnemy {
   private hitFlashTimer = 0
   private prevX: number
   private prevY: number
+  private targetX: number
+  private targetY: number
+  private lerpT = 0
+  private static readonly TICK_MS = 50
   private projectiles: BossProjectile[] = []
   knockbackDx = 0
   knockbackDy = 0
@@ -139,6 +143,8 @@ export class ClientEnemy implements AnyEnemy {
     this.y = snap.y
     this.prevX = snap.x
     this.prevY = snap.y
+    this.targetX = snap.x
+    this.targetY = snap.y
     this.hp = snap.hp
     this.contactDamage = KIND_CONTACT_DAMAGE[snap.kind]
     this.xpValue = KIND_XP[snap.kind]
@@ -158,10 +164,10 @@ export class ClientEnemy implements AnyEnemy {
   applySnapshot(snap: EnemySnapshot) {
     this.prevX = this.x
     this.prevY = this.y
-    this.x = snap.x
-    this.y = snap.y
+    this.targetX = snap.x
+    this.targetY = snap.y
+    this.lerpT = 0
     this.hp = snap.hp
-    this.sprite.setPosition(snap.x, snap.y)
     // Rescale contact damage every tick so it matches the server difficulty curve
     if (this.kind === 'charger') {
       this.contactDamage = Math.round((snap.isCharging ? 30 : 12) * difficultyScale.damage)
@@ -188,6 +194,13 @@ export class ClientEnemy implements AnyEnemy {
       this.hitFlashTimer -= delta
       if (this.hitFlashTimer <= 0) this.sprite.clearTint()
     }
+
+    this.lerpT = Math.min(this.lerpT + delta, ClientEnemy.TICK_MS)
+    const t = this.lerpT / ClientEnemy.TICK_MS
+    this.x = this.prevX + (this.targetX - this.prevX) * t
+    this.y = this.prevY + (this.targetY - this.prevY) * t
+    this.sprite.setPosition(this.x, this.y)
+
     for (const p of this.projectiles) p.update(delta)
     this.projectiles = this.projectiles.filter(p => p.active)
   }

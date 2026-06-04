@@ -1645,7 +1645,7 @@ export class CombatSystem {
     return Math.max(1, dmg + Math.floor(Math.random() * 3) - 1)
   }
 
-  spawnBrazierDrop(drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'divineWrath', x: number, y: number) {
+  spawnBrazierDrop(drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath', x: number, y: number) {
     switch (drop) {
       case 'coin':
         this.coins.push(new CoinOrb(this.scene, x, y))
@@ -1669,6 +1669,7 @@ export class CombatSystem {
       case 'magnet':
         this.orbMagnetTimer = 3000
         break
+      case 'freeze':
       case 'divineWrath':
         break
     }

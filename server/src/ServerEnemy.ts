@@ -53,12 +53,11 @@ const CONFIGS: Record<EnemyKind, Cfg> = {
   golem:     { speed: 48,   maxHp: 100, xpValue: 13, isBoss: false },
   knight:    { speed: 90,   maxHp: 180, xpValue: 20, isBoss: false },
   archfiend: { speed: 118,  maxHp: 300, xpValue: 30, isBoss: false },
-  // Client-only fallback types — server never spawns these
-  veteran:  { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
-  brute:    { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
-  revenant: { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
-  warlord:  { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
-  titan:    { speed: 0, maxHp: 0, xpValue: 0, isBoss: false },
+  veteran:  { speed: 88,  maxHp: 18,  xpValue: 4,  isBoss: false },
+  brute:    { speed: 50,  maxHp: 80,  xpValue: 12, isBoss: false },
+  revenant: { speed: 130, maxHp: 28,  xpValue: 6,  isBoss: false },
+  warlord:  { speed: 78,  maxHp: 160, xpValue: 20, isBoss: false },
+  titan:    { speed: 42,  maxHp: 500, xpValue: 50, isBoss: false },
 }
 
 let _nextId = 1
@@ -169,6 +168,11 @@ export class ServerEnemy {
       case 'basic':
       case 'speeder':
       case 'tank':
+      case 'veteran':
+      case 'brute':
+      case 'revenant':
+      case 'warlord':
+      case 'titan':
         this.x += (dx / dist) * this.speed * eff * dt
         this.y += (dy / dist) * this.speed * eff * dt
         break
