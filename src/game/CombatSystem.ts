@@ -45,6 +45,7 @@ const SPEAR_HIT_R = 12
 const AXE_INTERVAL = 4000
 const AXE_DAMAGE_MULT = 2.5
 const BOOMERANG_HIT_R = 28
+const BRAZIER_HIT_R   = 56
 const FLAME_SPAWN_DIST = 55
 const FLAME_RADIUS = 50
 const FLAME_DURATION = 3000
@@ -229,7 +230,7 @@ export class CombatSystem {
     for (const [bId, b] of this.brazierTargets) {
       const dx = b.x - px, dy = b.y - py
       const dist2 = dx * dx + dy * dy
-      if (dist2 > (slashRange + 14) ** 2) continue
+      if (dist2 > (slashRange + BRAZIER_HIT_R) ** 2) continue
       const dist = Math.sqrt(dist2) || 1
       const cosH = Math.cos(halfspan)
       if ((dx / dist) * fx + (dy / dist) * fy <= cosH) continue
@@ -536,7 +537,7 @@ export class CombatSystem {
         for (const [bId, b] of this.brazierTargets) {
           if (p.hitTargets.has(bId as any)) continue
           const dx = p.x - b.x, dy = p.y - b.y
-          if (dx * dx + dy * dy < (p.hitRadius + 14) ** 2) {
+          if (dx * dx + dy * dy < (p.hitRadius + BRAZIER_HIT_R) ** 2) {
             p.hitTargets.add(bId as any)
             activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(damage) })
           }
@@ -888,6 +889,14 @@ export class CombatSystem {
             this.applyHit(e, Math.floor(damage * 1.5), coinDropChance, lifeDrain, vampiric)
           }
         }
+        for (const [bId, bz] of this.brazierTargets) {
+          if (hitTargets.has(bId as any)) continue
+          const dx = b.x - bz.x, dy = b.y - bz.y
+          if (dx * dx + dy * dy < (BOOMERANG_HIT_R + BRAZIER_HIT_R) ** 2) {
+            hitTargets.add(bId as any)
+            activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(damage * 1.5) })
+          }
+        }
       }
       compact(this.boomerangs)
     }
@@ -968,6 +977,14 @@ export class CombatSystem {
             this.applyHit(e, damage, coinDropChance, lifeDrain, vampiric)
             p.hitTargets.add(e)
             if (p.maxHits > 0 && p.hitTargets.size >= p.maxHits) { p.destroy(); break }
+          }
+        }
+        for (const [bId, bz] of this.brazierTargets) {
+          if (p.hitTargets.has(bId as any)) continue
+          const dx = p.x - bz.x, dy = p.y - bz.y
+          if (dx * dx + dy * dy < (p.hitRadius + BRAZIER_HIT_R) ** 2) {
+            p.hitTargets.add(bId as any)
+            activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(damage) })
           }
         }
       }
@@ -1073,6 +1090,14 @@ export class CombatSystem {
           if (dx * dx + dy * dy < (a.hitRadius + e.hitRadius) * (a.hitRadius + e.hitRadius)) {
             a.currentHitTargets.add(e)
             this.applyHit(e, throwDamage, coinDropChance, lifeDrain, vampiric)
+          }
+        }
+        for (const [bId, bz] of this.brazierTargets) {
+          if (a.currentHitTargets.has(bId as any)) continue
+          const dx = a.x - bz.x, dy = a.y - bz.y
+          if (dx * dx + dy * dy < (a.hitRadius + BRAZIER_HIT_R) ** 2) {
+            a.currentHitTargets.add(bId as any)
+            activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(throwDamage) })
           }
         }
       }
