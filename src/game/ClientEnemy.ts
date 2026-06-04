@@ -126,6 +126,7 @@ export class ClientEnemy implements AnyEnemy {
   private spriteKey: string
   private lastDir: Direction = 'down'
   private hitFlashTimer = 0
+  private frozenTimer = 0
   private prevX: number
   private prevY: number
   private targetX: number
@@ -183,6 +184,11 @@ export class ClientEnemy implements AnyEnemy {
     }
   }
 
+  freeze(ms: number) {
+    this.frozenTimer = Math.max(this.frozenTimer, ms)
+    if (this.hitFlashTimer <= 0) this.sprite.setTint(0x88ccff)
+  }
+
   // AnyEnemy interface — server is authoritative for HP; client shows hit flash only
   takeDamage(_amount: number) {
     this.hitFlashTimer = 80
@@ -192,7 +198,14 @@ export class ClientEnemy implements AnyEnemy {
   update(_tx: number, _ty: number, delta: number) {
     if (this.hitFlashTimer > 0) {
       this.hitFlashTimer -= delta
-      if (this.hitFlashTimer <= 0) this.sprite.clearTint()
+      if (this.hitFlashTimer <= 0) {
+        if (this.frozenTimer > 0) this.sprite.setTint(0x88ccff)
+        else this.sprite.clearTint()
+      }
+    }
+    if (this.frozenTimer > 0) {
+      this.frozenTimer -= delta
+      if (this.frozenTimer <= 0 && this.hitFlashTimer <= 0) this.sprite.clearTint()
     }
 
     this.lerpT = Math.min(this.lerpT + delta, ClientEnemy.TICK_MS)

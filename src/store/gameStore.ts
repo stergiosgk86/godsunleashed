@@ -14,6 +14,8 @@ export type AdminSpawnEntity =
   | 'weapon:wand' | 'weapon:boomerang' | 'weapon:flameTrail' | 'weapon:bloodNova'
   | 'weapon:lightning' | 'weapon:axe' | 'weapon:aura' | 'weapon:orbital'
   | 'weapon:equinox' | 'weapon:solstice' | 'weapon:ravens' | 'weapon:spear' | 'weapon:melee'
+  | 'brazier' | 'brazier:freeze' | 'brazier:divineWrath' | 'brazier:rerollDie'
+  | 'brazier:coin' | 'brazier:coinBag' | 'brazier:hp' | 'brazier:xp' | 'brazier:magnet'
 
 export function weaponBaseDamage(level: number): number {
   return 8 + Math.floor(level * 0.7)

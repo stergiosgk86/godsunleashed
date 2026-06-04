@@ -106,6 +106,20 @@ const SPAWN_GROUPS: { label: string; color: string; items: { label: string; enti
     ],
   },
   {
+    label: 'BRAZIERS', color: '#ff8800',
+    items: [
+      { label: 'Spawn Brazier',  entity: 'brazier' },
+      { label: 'Freeze',         entity: 'brazier:freeze' },
+      { label: 'Divine Wrath',   entity: 'brazier:divineWrath' },
+      { label: 'Reroll Die',     entity: 'brazier:rerollDie' },
+      { label: 'Coin',           entity: 'brazier:coin' },
+      { label: 'Coin Bag',       entity: 'brazier:coinBag' },
+      { label: 'HP Potion',      entity: 'brazier:hp' },
+      { label: 'XP Burst',       entity: 'brazier:xp' },
+      { label: 'Magnet',         entity: 'brazier:magnet' },
+    ],
+  },
+  {
     label: 'WEAPONS', color: '#cc88ff',
     items: [
       { label: 'Arcane Wand',  entity: 'weapon:wand' },

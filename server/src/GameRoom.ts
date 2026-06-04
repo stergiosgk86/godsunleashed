@@ -765,6 +765,30 @@ export class GameRoom {
 
     if (entity === 'potion' || entity === 'xporb' || entity === 'coin') {
       this.send(requester.ws, { type: 'adminSpawnItem', entity, x: ix, y: iy })
+    } else if (entity === 'brazier') {
+      const id = ++this.brazierIdCtr
+      this.braziers.set(id, { id, x: ix, y: iy, hp: BRAZIER_HP, spawnedAt: this.spawner.runElapsed })
+      this.broadcast({ type: 'brazierSpawn', id, x: ix, y: iy, hp: BRAZIER_HP })
+    } else if (entity.startsWith('brazier:')) {
+      const drop = entity.slice(8) as BrazierDrop
+      // Fake brazier id 0 — no sprite to clean up, just triggers the drop effect
+      if (drop === 'coin') {
+        requester.coins += 1
+      } else if (drop === 'coinBag') {
+        requester.coins += 3
+      } else if (drop === 'freeze') {
+        this.spawner.freeze(10_000)
+      } else if (drop === 'rerollDie') {
+        requester.rerollsLeft++
+        this.send(requester.ws, { type: 'rerollGrant' })
+      } else if (drop === 'divineWrath') {
+        const killed = this.spawner.killAllNonBoss()
+        requester.kills += killed.length
+        for (const d of killed) {
+          this.broadcast({ type: 'enemyDied', enemyId: d.id, x: d.x, y: d.y, xpValue: d.xpValue, killerId: requesterId })
+        }
+      }
+      this.broadcast({ type: 'brazierDestroy', id: 0, x: requester.x, y: requester.y, drop, destroyedBy: requesterId })
     } else if (entity.startsWith('weapon:')) {
       const upgradeId = entity.slice(7)
       const u = requester.upgrades

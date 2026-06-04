@@ -745,18 +745,18 @@ export class MainScene extends Phaser.Scene {
       if (msg.drop !== null) {
         const isMyDrop = msg.destroyedBy === activeNetClient?.playerId
         // Personal drops (collectibles, buffs) only spawn on the destroyer's client
-        const PERSONAL_DROPS = new Set(['coin', 'coinBag', 'hp', 'xp', 'magnet'])
+        const PERSONAL_DROPS = new Set(['coin', 'coinBag', 'hp', 'xp', 'magnet', 'rerollDie'])
         if (!PERSONAL_DROPS.has(msg.drop) || isMyDrop) {
           this.combat.spawnBrazierDrop(msg.drop, msg.x, msg.y)
         }
-        if (isMyDrop) {
-          if (msg.drop === 'freeze') {
-            this.cameras.main.flash(400, 100, 180, 255)
-          } else if (msg.drop === 'divineWrath') {
-            this.cameras.main.flash(350, 255, 220, 100)
-          } else if (msg.drop === 'rerollDie') {
-            this.cameras.main.flash(300, 180, 100, 255)
-          }
+        // Freeze and divineWrath are global — flash + effects fire for everyone
+        if (msg.drop === 'freeze') {
+          this.cameras.main.flash(400, 100, 180, 255)
+          for (const ce of this.clientEnemies.values()) ce.freeze(10_000)
+        } else if (msg.drop === 'divineWrath') {
+          this.cameras.main.flash(350, 255, 220, 100)
+        } else if (msg.drop === 'rerollDie' && isMyDrop) {
+          this.cameras.main.flash(300, 180, 100, 255)
         }
       }
     })

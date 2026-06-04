@@ -497,6 +497,14 @@ export class CombatSystem {
           if (b.pierceCount >= b.maxPierces) { b.destroy(); break }
         }
       }
+      for (const [bId, bz] of this.brazierTargets) {
+        if (b.hitTargets.has(bId as any)) continue
+        const dx = b.x - bz.x, dy = b.y - bz.y
+        if (dx * dx + dy * dy < (b.hitRadius + BRAZIER_HIT_R) ** 2) {
+          b.hitTargets.add(bId as any)
+          activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(gunDmgActive) })
+        }
+      }
     }
     compact(this.sunBeams)
 
@@ -838,6 +846,16 @@ export class CombatSystem {
             if (now - lastHit >= HIT_COOLDOWN) {
               this.orbHitCooldowns.set(e, now)
               this.applyHit(e, orbDamage, coinDropChance, lifeDrain, vampiric)
+            }
+          }
+        }
+        for (const [bId, bz] of this.brazierTargets) {
+          const dx = bz.x - ox, dy = bz.y - oy
+          if (dx * dx + dy * dy < (ORB_HIT_RADIUS + BRAZIER_HIT_R) ** 2) {
+            const lastHit = this.orbHitCooldowns.get(bId as any) ?? 0
+            if (now - lastHit >= HIT_COOLDOWN) {
+              this.orbHitCooldowns.set(bId as any, now)
+              activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(orbDamage) })
             }
           }
         }
@@ -1238,6 +1256,14 @@ export class CombatSystem {
           if (bdx * bdx + bdy * bdy < (RAVENS_BOMB_HIT_R + e.hitRadius) * (RAVENS_BOMB_HIT_R + e.hitRadius)) {
             b.hitEnemies.add(e)
             this.applyHit(e, ravensDmg, coinDropChance, lifeDrain, vampiric)
+          }
+        }
+        for (const [bId, bz] of this.brazierTargets) {
+          if (b.hitEnemies.has(bId as any)) continue
+          const bdx = b.x - bz.x, bdy = b.y - bz.y
+          if (bdx * bdx + bdy * bdy < (RAVENS_BOMB_HIT_R + BRAZIER_HIT_R) ** 2) {
+            b.hitEnemies.add(bId as any)
+            activeNetClient?.send({ type: 'hitBrazier', brazierId: bId, damage: Math.round(ravensDmg) })
           }
         }
       }
@@ -1677,15 +1703,18 @@ export class CombatSystem {
     switch (drop) {
       case 'coin':
         this.coins.push(new CoinOrb(this.scene, x, y))
+        this.effects.showItemCollect(x, y - 20, '◈ +1', 0xffcc44, 18)
         break
       case 'coinBag':
         for (let i = 0; i < 3; i++) {
           const a = (i / 3) * Math.PI * 2
           this.coins.push(new CoinOrb(this.scene, x + Math.cos(a) * 16, y + Math.sin(a) * 16))
         }
+        this.effects.showItemCollect(x, y - 20, '◈ +3', 0xffcc44, 18)
         break
       case 'hp':
         this.potions.push(new HealthPotion(this.scene, x, y))
+        this.effects.showItemCollect(x, y - 20, '+ HP POTION', 0x44ff88, 18)
         break
       case 'xp':
         for (let i = 0; i < 4; i++) {
@@ -1693,14 +1722,20 @@ export class CombatSystem {
           const a = (i / 4) * Math.PI * 2
           this.orbs.push(new XPOrb(this.scene, x + Math.cos(a) * 20, y + Math.sin(a) * 20, 25))
         }
+        this.effects.showItemCollect(x, y - 20, '+ XP BURST', 0xaaddff, 18)
         break
       case 'magnet':
         this.orbMagnetTimer = 3000
-        break
-      case 'rerollDie':
+        this.effects.showItemCollect(x, y - 20, 'MAGNET!', 0xcc88ff, 18)
         break
       case 'freeze':
+        this.effects.showItemCollect(x, y - 20, 'FROZEN!', 0x88ccff, 22)
+        break
       case 'divineWrath':
+        this.effects.showItemCollect(x, y - 20, 'DIVINE WRATH!', 0xffdd44, 22)
+        break
+      case 'rerollDie':
+        this.effects.showItemCollect(x, y - 20, 'REROLL +1', 0xcc88ff, 20)
         break
     }
   }
