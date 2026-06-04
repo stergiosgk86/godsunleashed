@@ -120,6 +120,7 @@ const SHOP_UPGRADES: Array<{ id: keyof MetaUpgrades; label: string }> = [
   { id: 'moveSpeed',   label: 'Move Speed'   },
   { id: 'armor',       label: 'Armor'        },
   { id: 'attackSpeed', label: 'Attack Speed' },
+  { id: 'reroll',      label: 'Reroll'       },
 ]
 
 // ── Option A: Volcanic / Hellfire ────────────────────────────────────────────
@@ -790,6 +791,7 @@ function upgradeStat(id: keyof MetaUpgrades, rank: number): string {
     case 'moveSpeed': return `+${rank * 2}% move speed`
     case 'armor':        return `+${rank} armor`
     case 'attackSpeed': return rank === 0 ? 'no bonus' : `-${Math.round(100 * (1 - Math.pow(0.95, rank)))}% attack cooldown`
+    case 'reroll':      return rank === 0 ? '0 rerolls per run' : `${rank} reroll${rank > 1 ? 's' : ''} per run`
   }
 }
 

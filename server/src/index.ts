@@ -198,7 +198,7 @@ wss.on('connection', (ws) => {
         room = openRoom
       }
 
-      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY, msg.viewportW ?? 1280, msg.viewportH ?? 720, msg.resumeLevel ?? 1, msg.resumeXp ?? 0, msg.resumeElapsed ?? 0, msg.stage ?? 1, unlockedWeapons)
+      room.addPlayer(playerId, authed.userId, ws, msg.characterType, authed.username ?? '?', startX, startY, msg.viewportW ?? 1280, msg.viewportH ?? 720, msg.resumeLevel ?? 1, msg.resumeXp ?? 0, msg.resumeElapsed ?? 0, msg.stage ?? 1, unlockedWeapons, msg.rerollRank ?? 0)
 
       if (!msg.solo && (room.isFull || room.isStarted)) {
         console.log(`[${label}] room full → game starting`)
@@ -256,6 +256,8 @@ wss.on('connection', (ws) => {
       if (room) room.handleCollectXP(playerId, msg.amount)
     } else if (msg.type === 'hitBrazier') {
       if (room) room.handleHitBrazier(playerId, msg.brazierId, msg.damage)
+    } else if (msg.type === 'rerollUpgrade') {
+      if (room) room.handleRerollUpgrade(playerId)
     } else if (msg.type === 'adminClearUpgrades') {
       const r = room
       if (r) {

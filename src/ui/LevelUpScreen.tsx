@@ -82,15 +82,19 @@ export function LevelUpScreen() {
   const upgradeChoices   = useGameStore(s => s.upgradeChoices)
   const level            = useGameStore(s => s.level)
   const chooseUpgrade    = useGameStore(s => s.chooseUpgrade)
+  const rerollsLeft      = useGameStore(s => s.rerollsLeft)
+  const rerollUpgrades   = useGameStore(s => s.rerollUpgrades)
 
   if (!isLevelUpPending) return null
-  return <LevelUpOverlay level={level} choices={upgradeChoices} onChoose={chooseUpgrade} />
+  return <LevelUpOverlay level={level} choices={upgradeChoices} onChoose={chooseUpgrade} rerollsLeft={rerollsLeft} onReroll={rerollUpgrades} />
 }
 
-function LevelUpOverlay({ level, choices, onChoose }: {
+function LevelUpOverlay({ level, choices, onChoose, rerollsLeft, onReroll }: {
   level: number
   choices: Upgrade[]
   onChoose: (id: UpgradeId) => void
+  rerollsLeft: number
+  onReroll: () => void
 }) {
   const isMobile = window.innerWidth <= 768
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -207,6 +211,39 @@ function LevelUpOverlay({ level, choices, onChoose }: {
         }}>
           choose an upgrade
         </div>
+
+        {/* Reroll button */}
+        <button
+          onClick={rerollsLeft > 0 ? onReroll : undefined}
+          disabled={rerollsLeft <= 0}
+          style={{
+            marginTop: isMobile ? 4 : 8,
+            padding: '8px 22px',
+            background: rerollsLeft > 0 ? 'rgba(40,30,80,0.85)' : 'rgba(20,15,40,0.5)',
+            border: `2px solid ${rerollsLeft > 0 ? '#6644cc' : '#333366'}`,
+            borderRadius: 10, color: rerollsLeft > 0 ? '#bb99ff' : '#445566',
+            fontFamily: 'monospace', fontSize: isMobile ? 13 : 15,
+            letterSpacing: 2, cursor: rerollsLeft > 0 ? 'pointer' : 'not-allowed',
+            transition: 'all 0.15s',
+            animation: 'lu-hint 0.4s ease-out 420ms both',
+          }}
+          onMouseEnter={e => {
+            if (rerollsLeft <= 0) return
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.background = 'rgba(70,40,140,0.9)'
+            el.style.borderColor = '#9966ff'
+            el.style.color = '#ddbbff'
+          }}
+          onMouseLeave={e => {
+            if (rerollsLeft <= 0) return
+            const el = e.currentTarget as HTMLButtonElement
+            el.style.background = 'rgba(40,30,80,0.85)'
+            el.style.borderColor = '#6644cc'
+            el.style.color = '#bb99ff'
+          }}
+        >
+          REROLL ({rerollsLeft})
+        </button>
       </div>
 
       {/* Cards */}

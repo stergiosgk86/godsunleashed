@@ -26,7 +26,7 @@ export interface PlayerSnapshot {
 }
 
 export type C2SMessage =
-  | { type: 'join'; characterType: string; solo?: boolean; stage?: number; viewportW?: number; viewportH?: number; resumeElapsed?: number; resumeLevel?: number; resumeXp?: number }
+  | { type: 'join'; characterType: string; solo?: boolean; stage?: number; viewportW?: number; viewportH?: number; resumeElapsed?: number; resumeLevel?: number; resumeXp?: number; rerollRank?: number }
   | { type: 'input'; x: number; y: number; aura: number; orbital: number }
   | { type: 'hit'; enemyId: number; damage: number }
   | { type: 'auraHit'; enemyId: number; damage: number }
@@ -41,6 +41,7 @@ export type C2SMessage =
   | { type: 'adminClearUpgrades' }
   | { type: 'collectXP'; amount: number }
   | { type: 'hitBrazier'; brazierId: number; damage: number }
+  | { type: 'rerollUpgrade' }
 
 export type S2CMessage =
   | { type: 'waiting'; playerCount: number; isHost: boolean }
@@ -72,4 +73,5 @@ export type S2CMessage =
   | { type: 'profileSync' }
   | { type: 'brazierSpawn'; id: number; x: number; y: number; hp: number }
   | { type: 'brazierHit'; id: number; hp: number }
-  | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | null }
+  | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | 'rerollDie' | null }
+  | { type: 'rerollChoices'; choices: string[] }

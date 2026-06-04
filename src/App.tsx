@@ -394,6 +394,7 @@ function App() {
           stage: useStageStore.getState().selectedStage,
           viewportW: window.innerWidth,
           viewportH: window.innerHeight,
+          rerollRank: useProfileStore.getState().upgrades.reroll,
           ...(savedRun && {
             resumeElapsed: savedRun.elapsed,
             resumeLevel: savedRun.level,

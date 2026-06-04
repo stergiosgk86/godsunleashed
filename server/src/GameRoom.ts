@@ -326,19 +326,20 @@ const BRAZIER_CAP           = 8
 const BRAZIER_SPAWN_MS      = 2000   // check every 2 s
 const BRAZIER_SPAWN_CHANCE  = 0.15   // 15% per check
 
-type BrazierDrop = 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath'
+type BrazierDrop = 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | 'rerollDie'
 interface ServerBrazier { id: number; x: number; y: number; hp: number; spawnedAt: number }
 
 function rollBrazierDrop(): BrazierDrop {
-  // VS-style weights: coin=50 hp=12 coinBag=10 xp=8 magnet=2 freeze=2 killAll=1 (total 85)
+  // VS-style weights: coin=49 hp=12 coinBag=10 xp=8 magnet=2 freeze=2 divineWrath=1 rerollDie=1 (total 85)
   const r = Math.random() * 85
-  if (r < 50) return 'coin'
-  if (r < 62) return 'hp'
-  if (r < 72) return 'coinBag'
-  if (r < 80) return 'xp'
-  if (r < 82) return 'magnet'
-  if (r < 84) return 'freeze'
-  return 'divineWrath'
+  if (r < 49) return 'coin'
+  if (r < 61) return 'hp'
+  if (r < 71) return 'coinBag'
+  if (r < 79) return 'xp'
+  if (r < 81) return 'magnet'
+  if (r < 83) return 'freeze'
+  if (r < 84) return 'divineWrath'
+  return 'rerollDie'
 }
 
 interface Player {
@@ -361,6 +362,7 @@ interface Player {
   level: number
   pendingChoices: string[] | null  // non-null while waiting for chooseUpgrade
   pendingRawXP: number             // XP collected while upgrade screen is open; applied on chooseUpgrade
+  rerollsLeft: number
   upgrades: PlayerUpgrades
   unlockedWeapons: Set<string>
   // Server-tracked run stats
@@ -390,12 +392,12 @@ export class GameRoom {
 
   constructor(isSolo = false) { this.isSolo = isSolo }
 
-  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720, resumeLevel = 1, resumeXp = 0, resumeElapsed = 0, stage = 1, unlockedWeapons: string[] = []) {
+  addPlayer(id: string, userId: number, ws: WebSocket, characterType: string, username: string, x: number, y: number, viewW = 1280, viewH = 720, resumeLevel = 1, resumeXp = 0, resumeElapsed = 0, stage = 1, unlockedWeapons: string[] = [], rerollRank = 0) {
     if (this.started) return
     const isHost = this.players.length === 0
     this.players.push({
       id, userId, ws, x, y, viewW, viewH, characterType, username, dead: false, paused: false, isHost, aura: 0, orbital: 0,
-      xp: resumeXp, level: resumeLevel, pendingChoices: null, pendingRawXP: 0, upgrades: { ...emptyUpgrades(), ...startingUpgrades(characterType) },
+      xp: resumeXp, level: resumeLevel, pendingChoices: null, pendingRawXP: 0, rerollsLeft: Math.min(rerollRank, 5), upgrades: { ...emptyUpgrades(), ...startingUpgrades(characterType) },
       unlockedWeapons: new Set(unlockedWeapons),
       kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
@@ -623,6 +625,15 @@ export class GameRoom {
     }
   }
 
+  handleRerollUpgrade(playerId: string) {
+    const p = this.players.find(p => p.id === playerId)
+    if (!p || p.dead || !p.pendingChoices || p.rerollsLeft <= 0) return
+    p.rerollsLeft--
+    const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares', p.unlockedWeapons)
+    if (choices.length > 0) p.pendingChoices = choices
+    this.send(p.ws, { type: 'rerollChoices', choices: p.pendingChoices ?? [] })
+  }
+
   handleHitBrazier(playerId: string, brazierId: number, damage: number) {
     if (!this.started || this.finished) return
     if (!Number.isInteger(brazierId) || brazierId < 0 || !isFinite(damage) || damage <= 0) return
@@ -644,6 +655,8 @@ export class GameRoom {
         player.coins += 3
       } else if (drop === 'freeze') {
         this.spawner.freeze(10_000)
+      } else if (drop === 'rerollDie') {
+        player.rerollsLeft++
       } else if (drop === 'divineWrath') {
         const killed = this.spawner.killAllNonBoss()
         for (const d of killed) {

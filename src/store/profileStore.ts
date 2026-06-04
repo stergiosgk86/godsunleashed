@@ -12,13 +12,14 @@ export interface MetaUpgrades {
   moveSpeed: number
   armor: number
   attackSpeed: number
+  reroll: number
 }
 
 export const UPGRADE_COSTS = [50, 125, 250, 450, 750]
 export const UPGRADE_MAX_RANK = 5
 
 function emptyUpgrades(): MetaUpgrades {
-  return { maxHealth: 0, recovery: 0, magnet: 0, might: 0, luck: 0, growth: 0, moveSpeed: 0, armor: 0, attackSpeed: 0 }
+  return { maxHealth: 0, recovery: 0, magnet: 0, might: 0, luck: 0, growth: 0, moveSpeed: 0, armor: 0, attackSpeed: 0, reroll: 0 }
 }
 
 // Characters that cost coins — must match server CHARACTER_UNLOCK_COSTS

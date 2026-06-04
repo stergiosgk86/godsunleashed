@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NetClient } from '../net/NetClient'
 import { useAuthStore } from '../store/authStore'
+import { useProfileStore } from '../store/profileStore'
 import type { PlayerSnapshot } from '../net/protocol'
 
 function useIsMobile() {
@@ -52,7 +53,7 @@ export function MultiplayerLobby({ characterType, onReady, onCancel }: Props) {
     }
 
     net.onOpen(() => {
-      net.send({ type: 'join', characterType, viewportW: window.innerWidth, viewportH: window.innerHeight })
+      net.send({ type: 'join', characterType, viewportW: window.innerWidth, viewportH: window.innerHeight, rerollRank: useProfileStore.getState().upgrades.reroll })
     })
 
     net.on('waiting', (msg) => {

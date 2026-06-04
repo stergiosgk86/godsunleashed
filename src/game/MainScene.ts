@@ -537,10 +537,22 @@ export class MainScene extends Phaser.Scene {
         if (chosenId !== null) net.send({ type: 'chooseUpgrade', upgradeId: chosenId })
       },
     )
+
+    // Relay reroll requests to the server
+    const unsubReroll = useGameStore.subscribe(
+      s => s.rerollRequested,
+      (requested) => {
+        if (requested) {
+          net.send({ type: 'rerollUpgrade' })
+          useGameStore.getState().clearRerollRequest()
+        }
+      },
+    )
     let shutdownStarted = false
     this.events.once('shutdown', () => {
       shutdownStarted = true
       unsubChosen()
+      unsubReroll()
       useGameStore.getState().setServerDrivenLeveling(false)
       net.close()
     })
@@ -585,6 +597,13 @@ export class MainScene extends Phaser.Scene {
 
     net.on('xpGrant', (msg) => {
       useGameStore.setState({ xp: msg.xp, xpNeeded: msg.xpToNext })
+    })
+
+    net.on('rerollChoices', (msg) => {
+      const choices = msg.choices
+        .map((id: string) => UPGRADE_POOL.find(u => u.id === id))
+        .filter((u): u is Upgrade => u !== undefined)
+      if (choices.length > 0) useGameStore.setState({ upgradeChoices: choices, chosenUpgrade: null })
     })
 
     net.on('tick', (msg) => this.applyTick(msg.enemies, msg.players, msg.elapsed))
@@ -722,6 +741,8 @@ export class MainScene extends Phaser.Scene {
           this.cameras.main.flash(400, 100, 180, 255)
         } else if (msg.drop === 'divineWrath') {
           this.cameras.main.flash(350, 255, 220, 100)
+        } else if (msg.drop === 'rerollDie') {
+          this.cameras.main.flash(300, 180, 100, 255)
         }
       }
     })

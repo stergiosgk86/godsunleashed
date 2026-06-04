@@ -313,6 +313,8 @@ interface GameState {
   moveSpeed: number
   isLevelUpPending: boolean
   upgradeChoices: Upgrade[]
+  rerollsLeft: number
+  rerollRequested: boolean
   invincibleUntil: number
   damageFlashUntil: number
   bossHp: number | null
@@ -409,6 +411,9 @@ interface GameState {
   die: () => void
   win: () => void
   chooseUpgrade: (id: UpgradeId) => void
+  rerollUpgrades: () => void
+  clearRerollRequest: () => void
+  addReroll: () => void
   setBossHp: (hp: number | null, maxHp?: number) => void
   setBossInvulnerable: (invuln: boolean) => void
   togglePause: () => void
@@ -456,6 +461,8 @@ export const useGameStore = create<GameState>()(
     moveSpeed: 160,
     isLevelUpPending: false,
     upgradeChoices: [],
+    rerollsLeft: 0,
+    rerollRequested: false,
     invincibleUntil: 0,
     damageFlashUntil: 0,
     bossHp: null,
@@ -682,6 +689,7 @@ export const useGameStore = create<GameState>()(
       hp: 100, maxHp: 100,
       might: 1.0, mightPicks: 0, attackInterval: 950, wandAttackInterval: 1200, moveSpeed: 160,
       isLevelUpPending: false, upgradeChoices: [],
+      rerollsLeft: useProfileStore.getState().upgrades.reroll, rerollRequested: false,
       invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300, bossInvulnerable: false,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, auraRange: 0, orbital: 0, orbSpeed: 0, orbPower: 0, orbRange: 0,
@@ -693,6 +701,19 @@ export const useGameStore = create<GameState>()(
       sessionCoins: 0, isDead: false, isWon: false, hpRegen: 0, lifeDrain: 0,
       kills: 0, damageDealt: 0, bossKills: 0, tookDamageThisRun: false, recentAchievement: null, timeSurvived: 0,
     }),
+
+    rerollUpgrades: () => set(s => {
+      if (s.rerollsLeft <= 0 || !s.isLevelUpPending) return {}
+      if (!s.serverDrivenLeveling) {
+        const unlockedWeapons = new Set(useProfileStore.getState().unlockedWeapons)
+        return { rerollsLeft: s.rerollsLeft - 1, upgradeChoices: pickChoices(s, unlockedWeapons) }
+      }
+      return { rerollsLeft: s.rerollsLeft - 1, rerollRequested: true }
+    }),
+
+    clearRerollRequest: () => set({ rerollRequested: false }),
+
+    addReroll: () => set(s => ({ rerollsLeft: s.rerollsLeft + 1 })),
 
     chooseUpgrade: (id) => {
       set(s => {
