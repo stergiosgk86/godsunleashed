@@ -102,7 +102,7 @@ function countOwnedWeapons(u: PlayerUpgrades): number {
 }
 
 // VS-inspired 3-tier curve. Mirrors client xpNeeded in gameStore.ts.
-// T1 (L1–19): base 35, +40/level. T2 (L21–39): base 835, +55/level. T3 (L41+): base 1990, +75/level.
+// T1 (L1–19): base 35, +40/level. T2 (L21–39): base 860, +55/level. T3 (L41+): base 2015, +75/level.
 // Hard gates at L20 (+1000) and L40 (+3000).
 function xpNeeded(level: number): number {
   if (level <= 20) {
@@ -495,7 +495,7 @@ export class GameRoom {
     const died = enemy.takeDamage(safeDamage)
     if (died) {
       obs('KILL', `${enemy.kind} maxHp=${enemy.maxHp} | xp=${enemy.xpValue} | killer Lv${player?.level ?? '?'} kills=${player?.kills ?? '?'} | elapsed=${Math.round((this.spawner.runElapsed||0)/1000)}s`)
-      this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue })
+      this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue, killerId: playerId })
       if (enemy.isBoss) this.broadcast({ type: 'bossHp', bossId: enemyId, hp: 0 })
       if (player) {
         player.kills++
@@ -523,7 +523,7 @@ export class GameRoom {
 
     const died = enemy.takeDamage(safeDamage)
     if (died) {
-      this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue })
+      this.broadcast({ type: 'enemyDied', enemyId, x: enemy.x, y: enemy.y, xpValue: enemy.xpValue, killerId: playerId })
       if (enemy.isBoss) this.broadcast({ type: 'bossHp', bossId: enemyId, hp: 0 })
       if (player) {
         player.kills++
@@ -628,10 +628,12 @@ export class GameRoom {
   handleRerollUpgrade(playerId: string) {
     const p = this.players.find(p => p.id === playerId)
     if (!p || p.dead || !p.pendingChoices || p.rerollsLeft <= 0) return
-    p.rerollsLeft--
     const choices = pickUpgradeChoices(p.upgrades, p.characterType === 'ares', p.unlockedWeapons)
-    if (choices.length > 0) p.pendingChoices = choices
-    this.send(p.ws, { type: 'rerollChoices', choices: p.pendingChoices ?? [] })
+    // Only burn the die if there are actually new choices to show
+    if (choices.length === 0) return
+    p.rerollsLeft--
+    p.pendingChoices = choices
+    this.send(p.ws, { type: 'rerollChoices', choices })
   }
 
   handleHitBrazier(playerId: string, brazierId: number, damage: number) {
@@ -657,14 +659,16 @@ export class GameRoom {
         this.spawner.freeze(10_000)
       } else if (drop === 'rerollDie') {
         player.rerollsLeft++
+        this.send(player.ws, { type: 'rerollGrant' })
       } else if (drop === 'divineWrath') {
         const killed = this.spawner.killAllNonBoss()
+        if (player) player.kills += killed.length
         for (const d of killed) {
-          this.broadcast({ type: 'enemyDied', enemyId: d.id, x: d.x, y: d.y, xpValue: 0 })
+          this.broadcast({ type: 'enemyDied', enemyId: d.id, x: d.x, y: d.y, xpValue: d.xpValue, killerId: playerId })
         }
       }
 
-      this.broadcast({ type: 'brazierDestroy', id: brazierId, x: brazier.x, y: brazier.y, drop })
+      this.broadcast({ type: 'brazierDestroy', id: brazierId, x: brazier.x, y: brazier.y, drop, destroyedBy: playerId })
     } else {
       this.broadcast({ type: 'brazierHit', id: brazierId, hp: brazier.hp })
     }
@@ -746,13 +750,6 @@ export class GameRoom {
     } else {
       obs('XP', `+${gained} (raw=${rawAmount}) → ${p.xp}/${needed} | Lv${p.level} | scale=${xpScale.toFixed(2)} xpGain=${p.upgrades.xpGain}`)
       this.send(p.ws, { type: 'xpGrant', xp: p.xp, xpToNext: needed })
-    }
-  }
-
-  private grantXP(xpValue: number) {
-    for (const p of this.players) {
-      if (p.dead || p.pendingChoices !== null) continue
-      this.grantXPToPlayer(p, xpValue)
     }
   }
 

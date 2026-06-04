@@ -78,7 +78,7 @@ export const UPGRADE_POOL: Upgrade[] = [
 ]
 
 // VS-inspired 3-tier curve. Mirrors server xpNeeded in GameRoom.ts.
-// T1 (L1–19): base 35, +40/level. T2 (L21–39): base 835, +55/level. T3 (L41+): base 1990, +75/level.
+// T1 (L1–19): base 35, +40/level. T2 (L21–39): base 860, +55/level. T3 (L41+): base 2015, +75/level.
 // Hard gates at L20 (+1000) and L40 (+3000).
 function xpNeeded(level: number): number {
   if (level <= 20) {

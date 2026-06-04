@@ -648,12 +648,12 @@ export class ServerSpawner {
     this.freezeTimer = Math.max(this.freezeTimer, ms)
   }
 
-  killAllNonBoss(): { id: number; x: number; y: number }[] {
-    const dead: { id: number; x: number; y: number }[] = []
+  killAllNonBoss(): { id: number; x: number; y: number; xpValue: number }[] {
+    const dead: { id: number; x: number; y: number; xpValue: number }[] = []
     for (const e of this.enemies) {
       if (!e.active || e.isBoss) continue
       e.active = false
-      dead.push({ id: e.id, x: e.x, y: e.y })
+      dead.push({ id: e.id, x: e.x, y: e.y, xpValue: e.xpValue })
     }
     this.enemies = this.enemies.filter(e => e.active)
     return dead

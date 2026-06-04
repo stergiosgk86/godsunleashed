@@ -47,7 +47,7 @@ export type S2CMessage =
   | { type: 'waiting'; playerCount: number; isHost: boolean }
   | { type: 'start'; yourId: string; players: PlayerSnapshot[] }
   | { type: 'tick'; enemies: EnemySnapshot[]; players: PlayerSnapshot[]; elapsed: number }
-  | { type: 'enemyDied'; enemyId: number; x: number; y: number; xpValue: number }
+  | { type: 'enemyDied'; enemyId: number; x: number; y: number; xpValue: number; killerId: string }
   | { type: 'bossWarning'; final: boolean }
   | { type: 'bossSpawn'; bossId: number; maxHp: number; final: boolean; kind: string }
   | { type: 'bossHp'; bossId: number; hp: number }
@@ -73,5 +73,6 @@ export type S2CMessage =
   | { type: 'profileSync' }
   | { type: 'brazierSpawn'; id: number; x: number; y: number; hp: number }
   | { type: 'brazierHit'; id: number; hp: number }
-  | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | 'rerollDie' | null }
+  | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | 'rerollDie' | null; destroyedBy: string }
   | { type: 'rerollChoices'; choices: string[] }
+  | { type: 'rerollGrant' }

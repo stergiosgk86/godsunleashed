@@ -191,6 +191,9 @@ export class CombatSystem {
 
   updateBraziers(braziers: Map<number, { x: number; y: number }>) {
     this.brazierTargets = braziers
+    for (const id of this.brazierAuraCooldowns.keys()) {
+      if (!braziers.has(id)) this.brazierAuraCooldowns.delete(id)
+    }
   }
 
   setFacing(vx: number, vy: number) {
@@ -1695,7 +1698,6 @@ export class CombatSystem {
         this.orbMagnetTimer = 3000
         break
       case 'rerollDie':
-        useGameStore.getState().addReroll()
         break
       case 'freeze':
       case 'divineWrath':

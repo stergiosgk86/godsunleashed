@@ -606,6 +606,10 @@ export class MainScene extends Phaser.Scene {
       if (choices.length > 0) useGameStore.setState({ upgradeChoices: choices, chosenUpgrade: null })
     })
 
+    net.on('rerollGrant', () => {
+      useGameStore.getState().addReroll()
+    })
+
     net.on('tick', (msg) => this.applyTick(msg.enemies, msg.players, msg.elapsed))
 
     net.on('enemyDied', (msg) => {
@@ -613,13 +617,16 @@ export class MainScene extends Phaser.Scene {
       const isBoss = ce?.isBoss ?? false
       if (ce) { this.effects.showDeathBurst(msg.x, msg.y); ce.destroy(); this.clientEnemies.delete(msg.enemyId) }
       this.combat.spawnDropsAt(msg.x, msg.y, msg.xpValue, isBoss)
+      const isMyKill = msg.killerId === activeNetClient?.playerId
       const gs = useGameStore.getState()
-      gs.addKill()
+      if (isMyKill) gs.addKill()
       if (isBoss) { gs.addBossKill(); soundSystem.bossDie() }
       else soundSystem.enemyDie()
-      // Apply per-kill flat heal (lifeDrain) — skipped in applyHit because server decides kills
-      const { lifeDrain } = useGameStore.getState()
-      if (lifeDrain > 0) useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + lifeDrain) }))
+      // Per-kill flat heal (lifeDrain) only applies to the killer
+      if (isMyKill) {
+        const { lifeDrain } = useGameStore.getState()
+        if (lifeDrain > 0) useGameStore.setState(s => ({ hp: Math.min(s.maxHp, s.hp + lifeDrain) }))
+      }
     })
 
     net.on('surge', (msg) => {
@@ -736,13 +743,20 @@ export class MainScene extends Phaser.Scene {
         this.effects.showDeathBurst(msg.x, msg.y)
       }
       if (msg.drop !== null) {
-        this.combat.spawnBrazierDrop(msg.drop, msg.x, msg.y)
-        if (msg.drop === 'freeze') {
-          this.cameras.main.flash(400, 100, 180, 255)
-        } else if (msg.drop === 'divineWrath') {
-          this.cameras.main.flash(350, 255, 220, 100)
-        } else if (msg.drop === 'rerollDie') {
-          this.cameras.main.flash(300, 180, 100, 255)
+        const isMyDrop = msg.destroyedBy === activeNetClient?.playerId
+        // Personal drops (collectibles, buffs) only spawn on the destroyer's client
+        const PERSONAL_DROPS = new Set(['coin', 'coinBag', 'hp', 'xp', 'magnet'])
+        if (!PERSONAL_DROPS.has(msg.drop) || isMyDrop) {
+          this.combat.spawnBrazierDrop(msg.drop, msg.x, msg.y)
+        }
+        if (isMyDrop) {
+          if (msg.drop === 'freeze') {
+            this.cameras.main.flash(400, 100, 180, 255)
+          } else if (msg.drop === 'divineWrath') {
+            this.cameras.main.flash(350, 255, 220, 100)
+          } else if (msg.drop === 'rerollDie') {
+            this.cameras.main.flash(300, 180, 100, 255)
+          }
         }
       }
     })
