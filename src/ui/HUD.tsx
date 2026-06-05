@@ -387,7 +387,7 @@ function FogIndicator() {
 
   return (
     <div style={{
-      position: 'absolute', top: window.innerWidth <= 768 ? 58 : 16, right: 16,
+      position: 'absolute', top: window.innerWidth <= 768 ? 238 : 222, right: 12,
       background: '#05050faa',
       border: `1px solid ${crit ? '#660022' : warn ? '#441133' : '#2a1a44'}`,
       borderRadius: 4, padding: '4px 8px',
