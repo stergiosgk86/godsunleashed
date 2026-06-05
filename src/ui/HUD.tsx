@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useGameStore, weaponBaseDamage } from '../store/gameStore'
+import { useStageStore } from '../store/stageStore'
 import { runData, RUN_DURATION } from '../game/runData'
 
 function WaveLabel() {
@@ -366,6 +367,65 @@ function PauseButton() {
   )
 }
 
+function FogIndicator() {
+  const selectedStage = useStageStore(s => s.selectedStage)
+  const [fogT, setFogT] = useState(0)
+
+  useEffect(() => {
+    if (selectedStage !== 3) return
+    let id: number
+    const tick = () => { setFogT(Math.min(runData.elapsed / RUN_DURATION, 1)); id = requestAnimationFrame(tick) }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [selectedStage])
+
+  if (selectedStage !== 3) return null
+
+  const pct  = fogT * 100
+  const warn = fogT > 0.66
+  const crit = fogT > 0.85
+
+  return (
+    <div style={{
+      position: 'absolute', top: window.innerWidth <= 768 ? 58 : 16, right: 16,
+      background: '#05050faa',
+      border: `1px solid ${crit ? '#660022' : warn ? '#441133' : '#2a1a44'}`,
+      borderRadius: 4, padding: '4px 8px',
+      pointerEvents: 'none', minWidth: 130,
+      display: 'flex', flexDirection: 'column', gap: 4,
+      boxShadow: crit ? '0 0 10px rgba(180,0,60,0.35)' : warn ? '0 0 6px rgba(120,0,80,0.25)' : 'none',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{
+          color: crit ? '#ff4466' : warn ? '#cc66aa' : '#9966cc',
+          fontSize: 10, fontFamily: 'monospace', letterSpacing: 1,
+          textShadow: crit ? '0 0 8px #ff0044' : 'none',
+        }}>
+          VEIL CLOSING
+        </span>
+        <span style={{
+          color: crit ? '#ff4466' : warn ? '#cc66aa' : '#9966cc',
+          fontSize: 10, fontFamily: 'monospace', fontWeight: 'bold',
+        }}>
+          {Math.round(pct)}%
+        </span>
+      </div>
+      <div style={{ height: 5, background: '#0d0d22', borderRadius: 99, overflow: 'hidden', border: '1px solid #1a0a2a' }}>
+        <div style={{
+          height: '100%', width: `${pct}%`,
+          background: crit
+            ? 'linear-gradient(90deg, #660033, #ff0044)'
+            : warn
+              ? 'linear-gradient(90deg, #551144, #cc2277)'
+              : 'linear-gradient(90deg, #331166, #8833cc)',
+          borderRadius: 99,
+          boxShadow: warn ? '0 0 6px rgba(200,30,100,0.5)' : '0 0 4px rgba(120,40,200,0.4)',
+        }} />
+      </div>
+    </div>
+  )
+}
+
 export function HUD() {
   const hp = useGameStore(s => s.hp)
   const maxHp = useGameStore(s => s.maxHp)
@@ -381,6 +441,7 @@ export function HUD() {
       <PauseButton />
       <WaveLabel />
       <TimerDisplay />
+      <FogIndicator />
       <LeftPanel />
 
       <div style={{
