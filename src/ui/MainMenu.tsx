@@ -1173,9 +1173,98 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               )
             })()}
 
+            {/* Stage 3 — fog of war */}
+            {(() => {
+              const stage3Unlocked = maxStage1Level >= 200 || unlockedStages.includes(3)
+              return stage3Unlocked ? (
+                <div
+                  onClick={() => { setStage(3); onPlay() }}
+                  style={{
+                    position: 'relative', overflow: 'hidden',
+                    background: 'linear-gradient(135deg, rgba(10,5,30,0.95) 0%, rgba(20,5,45,0.95) 100%)',
+                    border: '1px solid rgba(80,40,160,0.6)',
+                    borderLeft: '4px solid #7733cc',
+                    borderRadius: 12, padding: '18px 20px',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(60,20,120,0.3)',
+                    transition: 'all 0.18s ease',
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                    userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(20,10,55,0.98) 0%, rgba(35,10,70,0.98) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 32px rgba(100,40,200,0.45)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(10,5,30,0.95) 0%, rgba(20,5,45,0.95) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 20px rgba(60,20,120,0.3)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#ffffff', letterSpacing: 2 }}>
+                      STAGE 3
+                    </div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                      color: '#bb88ff', background: 'rgba(40,10,70,0.5)',
+                      border: '1px solid rgba(100,40,180,0.5)', borderRadius: 20,
+                      padding: '2px 10px',
+                    }}>
+                      AVAILABLE
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#9977cc', lineHeight: 1.5 }}>
+                    Veil of Nyx — Survive the darkness
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#7733cc', marginTop: 4, letterSpacing: 1 }}>
+                    ▶ CLICK TO START
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  background: 'rgba(10,10,22,0.7)',
+                  border: '1px solid rgba(50,20,80,0.4)',
+                  borderLeft: '4px solid rgba(70,30,110,0.5)',
+                  borderRadius: 12, padding: '18px 20px',
+                  cursor: 'default',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#443355', letterSpacing: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      🔒 STAGE 3
+                    </div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                      color: '#664477', background: 'rgba(30,10,50,0.6)',
+                      border: '1px solid rgba(60,20,90,0.4)', borderRadius: 20,
+                      padding: '2px 10px',
+                    }}>
+                      LOCKED
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#553366', lineHeight: 1.5 }}>
+                    Veil of Nyx — Survive the darkness
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#774488', letterSpacing: 1 }}>
+                    Reach <span style={{ color: '#9944bb', fontWeight: 'bold' }}>Level 200</span> in Stage 1 to unlock
+                  </div>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setStage(3); onPlay() }}
+                      style={{
+                        marginTop: 4, padding: '7px 0', width: '100%',
+                        fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 2,
+                        color: '#ffaa22', background: 'rgba(40,25,0,0.7)',
+                        border: '1px solid rgba(180,100,0,0.5)', borderRadius: 7, cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(60,35,0,0.9)'; e.currentTarget.style.color = '#ffcc44' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(40,25,0,0.7)'; e.currentTarget.style.color = '#ffaa22' }}
+                    >
+                      ⚡ ADMIN OVERRIDE
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
+
             {/* Coming soon stages */}
             {[
-              { num: 3, name: 'Sea of Poseidon' },
               { num: 4, name: 'Forge of Hephaestus' },
             ].map(({ num, name }) => (
               <div

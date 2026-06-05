@@ -402,7 +402,7 @@ export class GameRoom {
       kills: 0, bossKills: 0, coins: 0, damageDealt: 0,
     })
     if (this.isSolo && resumeElapsed > 0) this.resumeElapsed = resumeElapsed
-    if (stage !== 1) {
+    if (stage === 2) {
       this.spawner.stage2Mode = true
       this.spawner.corridorHalfY = 380
     }

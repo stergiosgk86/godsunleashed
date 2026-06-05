@@ -74,6 +74,9 @@ export class MainScene extends Phaser.Scene {
   private wallTop: Phaser.GameObjects.TileSprite | null = null
   private wallBot: Phaser.GameObjects.TileSprite | null = null
   private floorSprite: Phaser.GameObjects.TileSprite | null = null
+  private fogCanvas: HTMLCanvasElement | null = null
+  private fogCtx: CanvasRenderingContext2D | null = null
+  private camZoom = 1.2
 
   constructor() {
     super({ key: 'MainScene' })
@@ -87,6 +90,11 @@ export class MainScene extends Phaser.Scene {
 
     if (this.selectedStage === 2) {
       // Stage 2 background set up after zoom is established (later in create)
+    } else if (this.selectedStage === 3) {
+      // Stage 3: open world shrouded in fog — same ground as Stage 1, fog overlay added later
+      this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
+      this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'ground_tiles')
+        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(-10)
     } else {
       // Stage 1: open world
       this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
@@ -193,6 +201,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     const camZoom = window.innerWidth <= 768 ? 0.7 : 1.2
+    this.camZoom = camZoom
     this.cameras.main.setZoom(camZoom)
 
     if (this.selectedStage === 2) {
@@ -254,6 +263,25 @@ export class MainScene extends Phaser.Scene {
 
       this.spawner.disabled = true
       this.spawner.corridorHalfHeight = CORRIDOR_HALF
+    }
+
+    if (this.selectedStage === 3) {
+      // Plain DOM canvas overlay — sits above the Phaser canvas, below React HUD.
+      // Uses Canvas2D destination-out compositing for the gradient visibility hole.
+      const W = this.scale.width, H = this.scale.height
+      const parent = this.game.canvas.parentElement
+      if (parent) {
+        const c = document.createElement('canvas')
+        c.width  = W
+        c.height = H
+        c.style.position = 'absolute'
+        c.style.left = '0'
+        c.style.top  = '0'
+        c.style.pointerEvents = 'none'
+        parent.appendChild(c)
+        this.fogCanvas = c
+        this.fogCtx    = c.getContext('2d')!
+      }
     }
 
     this.cameras.main.startFollow(this.player.graphic, true, 0.1, 0.1)
@@ -382,6 +410,11 @@ export class MainScene extends Phaser.Scene {
         this.beforeUnloadHandler = null
       }
       this.chunkManager?.destroyAll()
+      if (this.fogCanvas) {
+        this.fogCanvas.parentElement?.removeChild(this.fogCanvas)
+        this.fogCanvas = null
+        this.fogCtx = null
+      }
       this.joystick.destroy()
       this.dashButton?.destroy()
       runData.elapsed = 0
@@ -398,7 +431,7 @@ export class MainScene extends Phaser.Scene {
     if (gs.isDead || gs.isWon) return null
     const base = {
       character: this.charType,
-      stage: this.selectedStage as 1 | 2,
+      stage: this.selectedStage as 1 | 2 | 3,
       elapsed: runData.elapsed,
       playerX: this.player.x,
       playerY: this.player.y,
@@ -888,6 +921,28 @@ export class MainScene extends Phaser.Scene {
     this.combat.setMoving(this.player.isMoving)
     this.effects.update(delta)
 
+    if (this.fogCtx && this.fogCanvas) {
+      const W   = this.fogCanvas.width
+      const H   = this.fogCanvas.height
+      const ctx = this.fogCtx
+      const cam = this.cameras.main
+      const sx  = (this.player.x - cam.worldView.x) * this.camZoom
+      const sy  = (this.player.y - cam.worldView.y) * this.camZoom
+      // Single radial gradient fillRect — no arc, no clip, no visible circle.
+      // maxR shrinks over the run (quadratic ease: slow start, accelerates toward end).
+      ctx.clearRect(0, 0, W, H)
+      const fogT = Math.min(runData.elapsed / RUN_DURATION, 1)
+      const maxR = Math.hypot(W, H) * (0.60 - 0.42 * fogT)
+      const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, maxR)
+      grad.addColorStop(0,    'rgba(0,0,0,0)')     // clear at player
+      grad.addColorStop(0.25, 'rgba(0,0,0,0.05)')  // almost clear nearby
+      grad.addColorStop(0.50, 'rgba(0,0,0,0.55)')  // smooth mid-fade
+      grad.addColorStop(0.75, 'rgba(0,0,0,0.88)')  // mostly dark
+      grad.addColorStop(1,    'rgba(0,0,0,0.97)')  // near-black at screen edges
+      ctx.fillStyle = grad
+      ctx.fillRect(0, 0, W, H)
+    }
+
     const net = activeNetClient
     if (net) {
       // Keep difficulty curves in sync with server elapsed so scaling
@@ -940,8 +995,8 @@ export class MainScene extends Phaser.Scene {
       // Singleplayer
       if (!novaPaused) {
         runData.elapsed += delta
-        // Stage 2: survive-to-end win (server normally handles this; fallback for offline mode)
-        if (this.selectedStage === 2 && runData.elapsed >= RUN_DURATION) {
+        // Stage 2/3: survive-to-end win (server normally handles this; fallback for offline mode)
+        if ((this.selectedStage === 2 || this.selectedStage === 3) && runData.elapsed >= RUN_DURATION) {
           soundSystem.bossDie()
           useGameStore.getState().win()
           this.scene.pause()
