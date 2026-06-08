@@ -321,6 +321,7 @@ interface GameState {
   damageFlashUntil: number
   bossHp: number | null
   bossMaxHp: number
+  bossKind: string | null
   bossInvulnerable: boolean
   isPaused: boolean
   dashCooldown: number
@@ -417,6 +418,7 @@ interface GameState {
   clearRerollRequest: () => void
   addReroll: () => void
   setBossHp: (hp: number | null, maxHp?: number) => void
+  setBossKind: (kind: string | null) => void
   setBossInvulnerable: (invuln: boolean) => void
   togglePause: () => void
   startDash: () => boolean
@@ -469,6 +471,7 @@ export const useGameStore = create<GameState>()(
     damageFlashUntil: 0,
     bossHp: null,
     bossMaxHp: 300,
+    bossKind: null,
     bossInvulnerable: false,
     isPaused: false,
     dashCooldown: DASH_COOLDOWN_MS,
@@ -658,8 +661,10 @@ export const useGameStore = create<GameState>()(
     win: () => set({ isWon: true, isPaused: false }),
 
     setBossHp: (hp, maxHp) => {
-      set(s => ({ bossHp: hp, bossMaxHp: maxHp ?? s.bossMaxHp }))
+      set(s => ({ bossHp: hp, bossMaxHp: maxHp ?? s.bossMaxHp, bossKind: hp === null ? null : s.bossKind }))
     },
+
+    setBossKind: (kind) => set({ bossKind: kind }),
 
     setBossInvulnerable: (invuln) => set({ bossInvulnerable: invuln }),
 
@@ -692,7 +697,7 @@ export const useGameStore = create<GameState>()(
       might: 1.0, mightPicks: 0, attackInterval: 950, wandAttackInterval: 1200, moveSpeed: 160,
       isLevelUpPending: false, upgradeChoices: [],
       rerollsLeft: useProfileStore.getState().upgrades.reroll, rerollRequested: false,
-      invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300, bossInvulnerable: false,
+      invincibleUntil: 0, damageFlashUntil: 0, bossHp: null, bossMaxHp: 300, bossKind: null, bossInvulnerable: false,
       isPaused: false, dashCooldown: DASH_COOLDOWN_MS, dashCooldownUntil: 0,
       dashDistance: 1, multiShot: 0, piercing: false, aura: 0, auraTick: 0, auraRange: 0, orbital: 0, orbSpeed: 0, orbPower: 0, orbRange: 0,
       wand: false, boomerang: false, flameTrail: false, bloodNova: false, bloodNovaCD: 0, vampiric: false, lightning: false, lightningTargets: 0, lightningCooldown: 0, axe: false, axeAmount: 0, axeDamage: 0, axePierce: 0, axeEvolution: false, divineShield: false, divineShieldActive: false, xpGain: 0, magnetRange: 0, armor: 0,

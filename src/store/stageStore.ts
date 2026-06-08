@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 
 interface StageStore {
-  selectedStage: 1 | 2 | 3
-  setStage: (stage: 1 | 2 | 3) => void
+  selectedStage: 1 | 2 | 3 | 4 | 5
+  setStage: (stage: 1 | 2 | 3 | 4 | 5) => void
 }
 
 export const useStageStore = create<StageStore>((set) => ({

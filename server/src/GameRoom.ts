@@ -406,6 +406,12 @@ export class GameRoom {
       this.spawner.stage2Mode = true
       this.spawner.corridorHalfY = 380
     }
+    if (stage === 4) {
+      this.spawner.stage4Mode = true
+    }
+    if (stage === 5) {
+      this.spawner.stage5Mode = true
+    }
     this.broadcastWaiting()
     if (this.players.length >= MAX_PLAYERS || this.isSolo) {
       this.startGame()
@@ -940,6 +946,9 @@ export class GameRoom {
       this.broadcast({ type: 'gameOver', won: true })
       this.finishGame(true)
     }
+    this.spawner.onMinotaurDefeated = () => {
+      this.broadcast({ type: 'exitOpen' })
+    }
 
     this.interval = setInterval(() => this.tick(), TICK_MS)
   }
@@ -978,7 +987,7 @@ export class GameRoom {
         weaponCount,
         multiplayer: !this.isSolo,
         damageDealt: p.damageDealt,
-        stage: this.spawner.stage2Mode ? 2 : 1,
+        stage: this.spawner.stage5Mode ? 5 : this.spawner.stage4Mode ? 4 : this.spawner.stage2Mode ? 2 : 1,
         characterType: p.characterType,
         spearEvolutionReady: u.spear && u.spearCount >= 5 && u.spearSpeed >= 3,
         axeEvolutionReady:   u.axe   && u.axeAmount  >= 1 && u.axeDamage >= 1 && u.axePierce >= 1,
@@ -1015,8 +1024,8 @@ export class GameRoom {
       this.spawner.update(positions, TICK_MS)
       this.tickBraziers(TICK_MS)
 
-      // Stage 2: survive-to-end win condition (no final boss in this stage)
-      if (this.spawner.stage2Mode && this.spawner.isFinished && !this.finished) {
+      // Stage 2/5: survive-to-end win condition (no final boss)
+      if ((this.spawner.stage2Mode || this.spawner.stage5Mode) && this.spawner.isFinished && !this.finished) {
         this.broadcast({ type: 'gameOver', won: true })
         this.finishGame(true)
         return

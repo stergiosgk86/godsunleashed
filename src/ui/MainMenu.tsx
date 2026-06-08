@@ -975,7 +975,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
         height: (!mob && view === 'characters') ? 'calc(100vh - 180px)' : undefined,
         width: (!mob && view === 'characters') ? 700 : undefined,
         boxSizing: 'border-box',
-        overflow: view === 'characters' ? 'auto' : 'hidden',
+        overflow: 'hidden',
       }}>
 
       {view === 'settings' ? (
@@ -1027,13 +1027,13 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
       ) : view === 'stageSelect' ? (
         <>
           <ViewHeader color="#8888ff">SELECT STAGE</ViewHeader>
-          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', flex: 1, minHeight: 0, userSelect: 'none', WebkitUserSelect: 'none' }}>
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto', maxHeight: 'calc(100vh - 360px)', userSelect: 'none', WebkitUserSelect: 'none', paddingTop: 4 }}>
 
             {/* Stage 1 — available */}
             <div
               onClick={() => { setStage(1); onPlay() }}
               style={{
-                position: 'relative', overflow: 'hidden',
+                position: 'relative', overflow: 'hidden', flexShrink: 0,
                 background: 'linear-gradient(135deg, rgba(15,15,60,0.95) 0%, rgba(30,10,70,0.95) 100%)',
                 border: '1px solid rgba(100,80,220,0.6)',
                 borderLeft: '4px solid #6655ff',
@@ -1076,7 +1076,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                 <div
                   onClick={() => { setStage(2); onPlay() }}
                   style={{
-                    position: 'relative', overflow: 'hidden',
+                    position: 'relative', overflow: 'hidden', flexShrink: 0,
                     background: 'linear-gradient(135deg, rgba(40,10,10,0.95) 0%, rgba(70,15,15,0.95) 100%)',
                     border: '1px solid rgba(160,40,40,0.6)',
                     borderLeft: '4px solid #cc3322',
@@ -1116,7 +1116,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   border: '1px solid rgba(80,20,20,0.4)',
                   borderLeft: '4px solid rgba(100,30,20,0.5)',
                   borderRadius: 12, padding: '18px 20px',
-                  cursor: 'default',
+                  cursor: 'default', flexShrink: 0,
                   display: 'flex', flexDirection: 'column', gap: 8,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1180,7 +1180,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                 <div
                   onClick={() => { setStage(3); onPlay() }}
                   style={{
-                    position: 'relative', overflow: 'hidden',
+                    position: 'relative', overflow: 'hidden', flexShrink: 0,
                     background: 'linear-gradient(135deg, rgba(10,5,30,0.95) 0%, rgba(20,5,45,0.95) 100%)',
                     border: '1px solid rgba(80,40,160,0.6)',
                     borderLeft: '4px solid #7733cc',
@@ -1220,7 +1220,7 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
                   border: '1px solid rgba(50,20,80,0.4)',
                   borderLeft: '4px solid rgba(70,30,110,0.5)',
                   borderRadius: 12, padding: '18px 20px',
-                  cursor: 'default',
+                  cursor: 'default', flexShrink: 0,
                   display: 'flex', flexDirection: 'column', gap: 8,
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1263,39 +1263,213 @@ export function MainMenu({ onPlay, onMultiplayer, onLogout }: {
               )
             })()}
 
-            {/* Coming soon stages */}
-            {[
-              { num: 4, name: 'Forge of Hephaestus' },
-            ].map(({ num, name }) => (
-              <div
-                key={num}
-                style={{
-                  background: 'rgba(10,10,22,0.6)',
-                  border: '1px solid rgba(40,40,70,0.4)',
-                  borderLeft: '4px solid rgba(60,50,100,0.5)',
+            {/* Stage 4 — Tartarus */}
+            {(() => {
+              const stage4Unlocked = maxStage1Level >= 300 || unlockedStages.includes(4)
+              const progress4 = Math.min(maxStage1Level, 300)
+              return stage4Unlocked ? (
+                <div
+                  onClick={() => { setStage(4); onPlay() }}
+                  style={{
+                    position: 'relative', overflow: 'hidden', flexShrink: 0,
+                    background: 'linear-gradient(135deg, rgba(30,5,5,0.95) 0%, rgba(50,8,5,0.95) 100%)',
+                    border: '1px solid rgba(180,60,20,0.6)',
+                    borderLeft: '4px solid #cc4400',
+                    borderRadius: 12, padding: '18px 20px',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(160,40,10,0.3)',
+                    transition: 'all 0.18s ease',
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                    userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(50,8,5,0.98) 0%, rgba(80,12,8,0.98) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 32px rgba(220,60,20,0.45)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(30,5,5,0.95) 0%, rgba(50,8,5,0.95) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 20px rgba(160,40,10,0.3)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#ffffff', letterSpacing: 2 }}>
+                      STAGE 4
+                    </div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                      color: '#ff8833', background: 'rgba(60,20,0,0.5)',
+                      border: '1px solid rgba(180,60,0,0.5)', borderRadius: 20,
+                      padding: '2px 10px',
+                    }}>
+                      AVAILABLE
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#cc7755', lineHeight: 1.5 }}>
+                    Tartarus — Survive the volcanic abyss. Beware the lava pits.
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#cc4400', marginTop: 4, letterSpacing: 1 }}>
+                    ▶ CLICK TO START
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  background: 'rgba(10,5,5,0.7)',
+                  border: '1px solid rgba(80,25,10,0.4)',
+                  borderLeft: '4px solid rgba(100,30,10,0.5)',
                   borderRadius: 12, padding: '18px 20px',
-                  cursor: 'default', opacity: 0.55,
-                  display: 'flex', flexDirection: 'column', gap: 6,
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#666688', letterSpacing: 2 }}>
-                    STAGE {num}
+                  cursor: 'default', flexShrink: 0,
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#553322', letterSpacing: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      🔒 STAGE 4
+                    </div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                      color: '#774433', background: 'rgba(40,10,5,0.6)',
+                      border: '1px solid rgba(80,20,5,0.4)', borderRadius: 20,
+                      padding: '2px 10px',
+                    }}>
+                      LOCKED
+                    </div>
                   </div>
-                  <div style={{
-                    fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
-                    color: '#888899', background: 'rgba(20,20,40,0.5)',
-                    border: '1px solid rgba(60,60,100,0.4)', borderRadius: 20,
-                    padding: '2px 10px',
-                  }}>
-                    COMING SOON
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#664433', lineHeight: 1.5 }}>
+                    Tartarus — Survive the volcanic abyss. Beware the lava pits.
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#885544', letterSpacing: 1 }}>
+                    Reach <span style={{ color: '#cc6633', fontWeight: 'bold' }}>Level 300</span> in Stage 1 to unlock
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(40,15,10,0.6)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2,
+                        width: `${(progress4 / 300) * 100}%`,
+                        background: 'linear-gradient(90deg, #661100, #cc4400)',
+                        transition: 'width 0.4s ease',
+                      }} />
+                    </div>
+                    <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#775533', flexShrink: 0 }}>
+                      Lv {progress4} / 300
+                    </span>
+                  </div>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setStage(4); onPlay() }}
+                      style={{
+                        marginTop: 4, padding: '7px 0', width: '100%',
+                        fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 2,
+                        color: '#ffaa22', background: 'rgba(40,25,0,0.7)',
+                        border: '1px solid rgba(180,100,0,0.5)', borderRadius: 7, cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(60,35,0,0.9)'; e.currentTarget.style.color = '#ffcc44' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(40,25,0,0.7)'; e.currentTarget.style.color = '#ffaa22' }}
+                    >
+                      ⚡ ADMIN OVERRIDE
+                    </button>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* Stage 5 — The Labyrinth */}
+            {(() => {
+              const stage5Unlocked = maxStage1Level >= 400 || unlockedStages.includes(5)
+              const progress5 = Math.min(maxStage1Level, 400)
+              return stage5Unlocked ? (
+                <div
+                  onClick={() => { setStage(5); onPlay() }}
+                  style={{
+                    position: 'relative', overflow: 'hidden', flexShrink: 0,
+                    background: 'linear-gradient(135deg, rgba(12,10,20,0.95) 0%, rgba(20,16,32,0.95) 100%)',
+                    border: '1px solid rgba(60,50,120,0.6)',
+                    borderLeft: '4px solid #4455aa',
+                    borderRadius: 12, padding: '18px 20px',
+                    cursor: 'pointer',
+                    boxShadow: '0 0 20px rgba(40,35,100,0.3)',
+                    transition: 'all 0.18s ease',
+                    display: 'flex', flexDirection: 'column', gap: 6,
+                    userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'manipulation',
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(20,16,38,0.98) 0%, rgba(32,26,55,0.98) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 32px rgba(70,55,160,0.45)' }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'linear-gradient(135deg, rgba(12,10,20,0.95) 0%, rgba(20,16,32,0.95) 100%)'; (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 20px rgba(40,35,100,0.3)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#ffffff', letterSpacing: 2 }}>
+                      STAGE 5
+                    </div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                      color: '#8899dd', background: 'rgba(20,15,40,0.5)',
+                      border: '1px solid rgba(60,50,140,0.5)', borderRadius: 20,
+                      padding: '2px 10px',
+                    }}>
+                      AVAILABLE
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#6677aa', lineHeight: 1.5 }}>
+                    The Labyrinth — Navigate the cross-corridor. Fog and enemies close in.
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#4455aa', marginTop: 4, letterSpacing: 1 }}>
+                    ▶ CLICK TO START
                   </div>
                 </div>
-                <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#555577', lineHeight: 1.5 }}>
-                  {name}
+              ) : (
+                <div style={{
+                  background: 'rgba(10,8,18,0.7)',
+                  border: '1px solid rgba(40,35,70,0.4)',
+                  borderLeft: '4px solid rgba(55,45,100,0.5)',
+                  borderRadius: 12, padding: '18px 20px',
+                  cursor: 'default', flexShrink: 0,
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: 18, color: '#332244', letterSpacing: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      🔒 STAGE 5
+                    </div>
+                    <div style={{
+                      fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 1,
+                      color: '#554466', background: 'rgba(25,15,40,0.6)',
+                      border: '1px solid rgba(50,30,80,0.4)', borderRadius: 20,
+                      padding: '2px 10px',
+                    }}>
+                      LOCKED
+                    </div>
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#443355', lineHeight: 1.5 }}>
+                    The Labyrinth — Navigate the cross-corridor. Fog and enemies close in.
+                  </div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#665577', letterSpacing: 1 }}>
+                    Reach <span style={{ color: '#8866aa', fontWeight: 'bold' }}>Level 400</span> in Stage 1 to unlock
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: 'rgba(30,20,50,0.6)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 2,
+                        width: `${(progress5 / 400) * 100}%`,
+                        background: 'linear-gradient(90deg, #221133, #4433aa)',
+                        transition: 'width 0.4s ease',
+                      }} />
+                    </div>
+                    <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#554466', flexShrink: 0 }}>
+                      Lv {progress5} / 400
+                    </span>
+                  </div>
+                  {isSuperAdmin && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setStage(5); onPlay() }}
+                      style={{
+                        marginTop: 4, padding: '7px 0', width: '100%',
+                        fontFamily: 'monospace', fontSize: 11, fontWeight: 'bold', letterSpacing: 2,
+                        color: '#ffaa22', background: 'rgba(40,25,0,0.7)',
+                        border: '1px solid rgba(180,100,0,0.5)', borderRadius: 7, cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(60,35,0,0.9)'; e.currentTarget.style.color = '#ffcc44' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(40,25,0,0.7)'; e.currentTarget.style.color = '#ffaa22' }}
+                    >
+                      ⚡ ADMIN OVERRIDE
+                    </button>
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })()}
           </div>
           <BackButton onBack={() => setView('characters')} />
         </>

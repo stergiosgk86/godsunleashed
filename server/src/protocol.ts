@@ -1,6 +1,6 @@
 // Mirrors src/net/protocol.ts — keep in sync
 
-export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'summoner' | 'boss' | 'finalBoss'
+export type EnemyKind = 'basic' | 'speeder' | 'tank' | 'ranged' | 'exploder' | 'ghost' | 'charger' | 'necromancer' | 'summoner' | 'boss' | 'finalBoss' | 'minotaur'
   | 'drifter' | 'scurrier' | 'lurker' | 'mummy' | 'jackal' | 'cultist' | 'golem' | 'knight' | 'archfiend'
   | 'veteran' | 'brute' | 'revenant' | 'warlord' | 'titan'  // client-only fallback types (server never spawns these)
 
@@ -76,3 +76,4 @@ export type S2CMessage =
   | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | 'rerollDie' | null; destroyedBy: string }
   | { type: 'rerollChoices'; choices: string[] }
   | { type: 'rerollGrant' }
+  | { type: 'exitOpen' }

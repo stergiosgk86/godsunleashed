@@ -3,6 +3,7 @@ import { useGameStore } from '../store/gameStore'
 export function BossHPBar() {
   const bossHp           = useGameStore(s => s.bossHp)
   const bossMaxHp        = useGameStore(s => s.bossMaxHp)
+  const bossKind         = useGameStore(s => s.bossKind)
   const bossInvulnerable = useGameStore(s => s.bossInvulnerable)
 
   if (bossHp === null) return null
@@ -24,7 +25,9 @@ export function BossHPBar() {
 
   const label = bossInvulnerable
     ? '\u{1F6E1} SHIELDED'
-    : isPhase2 ? '⚠ BOSS — PHASE 2' : 'BOSS'
+    : bossKind === 'minotaur'
+      ? isPhase2 ? '🐂 THE MINOTAUR — ENRAGED' : '🐂 THE MINOTAUR'
+      : isPhase2 ? '⚠ BOSS — PHASE 2' : 'BOSS'
 
   return (
     <div style={{

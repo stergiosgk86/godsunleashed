@@ -178,8 +178,9 @@ wss.on('connection', (ws) => {
       joined = true
       console.log(`[${label}] joined as ${msg.characterType}${msg.solo ? ' (solo)' : ''}`)
 
-      const startX = 2000 + (Math.random() - 0.5) * 200
-      const startY = 2000 + (Math.random() - 0.5) * 200
+      // Stage 5: player spawns at north entry corridor; other stages use default open-world position
+      const startX = msg.stage === 5 ? 0 : 2000 + (Math.random() - 0.5) * 200
+      const startY = msg.stage === 5 ? -2200 : 2000 + (Math.random() - 0.5) * 200
 
       // Fetch which weapon groups this player has unlocked so the server can filter the level-up pool
       const wpRow = await db.query('SELECT unlocked_weapons FROM profiles WHERE user_id = $1', [authed.userId]).catch(() => null)

@@ -43,6 +43,7 @@ const CONFIGS: Record<EnemyKind, Cfg> = {
   summoner:    { speed: 45,   maxHp: 2500, xpValue: 150, isBoss: true  },
   boss:        { speed: 55,   maxHp: 2500, xpValue: 80,  isBoss: true  },
   finalBoss:   { speed: 72,   maxHp: 5000, xpValue: 500, isBoss: true  },
+  minotaur:    { speed: 52,   maxHp: 8000, xpValue: 400, isBoss: true  },
   // ── Stage 2 enemies — pure chasers, no attacks ────────────────────────────
   drifter:   { speed: 115,  maxHp: 4,   xpValue: 2,  isBoss: false },
   scurrier:  { speed: 150,  maxHp: 1,   xpValue: 1,  isBoss: false },
@@ -135,6 +136,9 @@ export class ServerEnemy {
     } else if (kind === 'boss') {
       this.shootTimer      = 1500   // matches BossEnemy shootTimer=1500
       this.bossChargeTimer = 6000   // matches BossEnemy CHARGE_INTERVAL=6000
+    } else if (kind === 'minotaur') {
+      this.bossChargeTimer = 5000   // first charge at 5s
+      this.shootTimer      = 8000   // first stomp at 8s
     }
     // Summoner first summon is earlier (half interval)
     this.summonerSummonTimer = SUMMONER_SUMMON_P1 * 0.5
@@ -245,6 +249,10 @@ export class ServerEnemy {
       case 'boss':
       case 'finalBoss':
         this.updateBoss(dx, dy, dist, dt, delta)
+        break
+
+      case 'minotaur':
+        this.updateMinotaur(dx, dy, dist, dt, delta)
         break
     }
   }
@@ -408,6 +416,62 @@ export class ServerEnemy {
     }
   }
 
+  private updateMinotaur(dx: number, dy: number, dist: number, dt: number, delta: number) {
+    const phase2 = this.hp < this.maxHp * 0.5
+    const spdMult = phase2 ? 1.5 : 1
+    // Arena bounds: rows 10-14, cols 10-14 = world ±500px; inset 24px from the wall edge
+    const ARENA = 476
+
+    if (this.bossState === 'chase') {
+      this.x += (dx / dist) * this.speed * spdMult * dt
+      this.y += (dy / dist) * this.speed * spdMult * dt
+      this.x = Math.max(-ARENA, Math.min(ARENA, this.x))
+      this.y = Math.max(-ARENA, Math.min(ARENA, this.y))
+      // Stomp — radial ring of projectiles
+      this.shootTimer -= delta
+      if (this.shootTimer <= 0) {
+        this.shootTimer = phase2 ? 5000 : 8000
+        const count = phase2 ? 20 : 12
+        for (let i = 0; i < count; i++) {
+          const angle = (i / count) * Math.PI * 2
+          this.pendingProjectiles.push({ x: this.x, y: this.y, vx: Math.cos(angle) * 180, vy: Math.sin(angle) * 180 })
+        }
+      }
+      // Charge windup
+      this.bossChargeTimer -= delta
+      if (this.bossChargeTimer <= 0) {
+        this.bossState = 'windup'
+        this.bossTimer = phase2 ? 800 : 1200
+        this.bossChargeVx = (dx / dist) * (phase2 ? 900 : 700)
+        this.bossChargeVy = (dy / dist) * (phase2 ? 900 : 700)
+      }
+    } else if (this.bossState === 'windup') {
+      // Keep re-aiming during telegraph
+      this.bossChargeVx = (dx / dist) * (phase2 ? 900 : 700)
+      this.bossChargeVy = (dy / dist) * (phase2 ? 900 : 700)
+      this.bossTimer -= delta
+      if (this.bossTimer <= 0) {
+        this.bossState = 'charging'
+        this.bossTimer = 700
+      }
+    } else {
+      this.x += this.bossChargeVx * dt
+      this.y += this.bossChargeVy * dt
+      // Hit arena wall — stop charge
+      if (Math.abs(this.x) >= ARENA || Math.abs(this.y) >= ARENA) {
+        this.x = Math.max(-ARENA, Math.min(ARENA, this.x))
+        this.y = Math.max(-ARENA, Math.min(ARENA, this.y))
+        this.bossState = 'chase'
+        this.bossChargeTimer = phase2 ? 3000 : 5000
+      }
+      this.bossTimer -= delta
+      if (this.bossTimer <= 0) {
+        this.bossState = 'chase'
+        this.bossChargeTimer = phase2 ? 3000 : 5000
+      }
+    }
+  }
+
   private fireRing(phase2: boolean) {
     const count = phase2 ? 24 : 16
     const speed = phase2 ? 280 : 220
@@ -420,6 +484,7 @@ export class ServerEnemy {
   snapshot(): EnemySnapshot {
     const snap: EnemySnapshot = { id: this.id, kind: this.kind, x: this.x, y: this.y, hp: this.hp, maxHp: this.maxHp }
     if (this.kind === 'charger') snap.isCharging = this.chargerState === 'charge'
+    if (this.kind === 'minotaur') snap.isCharging = this.bossState === 'windup' || this.bossState === 'charging'
     return snap
   }
 }

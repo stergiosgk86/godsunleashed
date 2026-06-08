@@ -418,19 +418,17 @@ export class CombatSystem {
       }
     }
 
-    // Arcane Wand: fires magic bolts at nearest enemy
+    // Arcane Wand: fires magic bolts, each targeting a different enemy
     if (wand) {
       this.wandTimer += delta
       if (this.wandTimer >= wandAttackInterval) {
         this.wandTimer = 0
-        const target = this.findNearest(playerX, playerY, enemies, 700)
-        if (target) {
-          const baseAngle = Math.atan2(target.y - playerY, target.x - playerX)
-          const spreadRad = 15 * (Math.PI / 180)
-          for (let i = 0; i <= multiShot + echo; i++) {
-            const side = i % 2 === 1 ? 1 : -1
-            const offset = i === 0 ? 0 : Math.ceil(i / 2) * side * spreadRad
-            const angle = baseAngle + offset
+        const boltCount = 1 + multiShot + echo
+        const targets = this.findNNearest(playerX, playerY, enemies, boltCount, 700)
+        if (targets.length > 0) {
+          for (let i = 0; i < boltCount; i++) {
+            const t = targets[i % targets.length]
+            const angle = Math.atan2(t.y - playerY, t.x - playerX)
             const proj = new Projectile(this.scene, playerX, playerY,
               playerX + Math.cos(angle) * 1000, playerY + Math.sin(angle) * 1000)
             proj.piercing = isPiercing
@@ -1821,5 +1819,27 @@ export class CombatSystem {
       }
     }
     return nearest ?? fallback
+  }
+
+  private findNNearest(px: number, py: number, enemies: AnyEnemy[], n: number, maxRange = Infinity): AnyEnemy[] {
+    const TEAMMATE_CLEAR_R = 60 * 60
+    const maxRange2 = maxRange * maxRange
+    const remotes = minimapData.remotePlayers
+    const preferred: { e: AnyEnemy; dist: number }[] = []
+    const fallback:  { e: AnyEnemy; dist: number }[] = []
+    for (const e of enemies) {
+      if (!e.active || !this.isOnScreen(e.x, e.y)) continue
+      const dx = e.x - px
+      const dy = e.y - py
+      const dist = dx * dx + dy * dy
+      if (dist > maxRange2) continue
+      const nearTeammate = remotes.some(rp => {
+        const rdx = e.x - rp.x, rdy = e.y - rp.y
+        return rdx * rdx + rdy * rdy < TEAMMATE_CLEAR_R
+      })
+      ;(nearTeammate ? fallback : preferred).push({ e, dist })
+    }
+    const sorted = [...preferred.sort((a, b) => a.dist - b.dist), ...fallback.sort((a, b) => a.dist - b.dist)]
+    return sorted.slice(0, n).map(o => o.e)
   }
 }

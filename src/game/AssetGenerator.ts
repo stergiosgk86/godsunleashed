@@ -359,3 +359,111 @@ export function generateAssets(scene: Phaser.Scene) {
 
   g.destroy()
 }
+
+export function generateTartarusTextures(scene: Phaser.Scene) {
+  const g = scene.add.graphics()
+  const T = 64
+
+  // ── tartarus_tiles (256×64) — 4 dark volcanic tiles ──────────────────────────
+  // Tile 0: very dark basalt base
+  g.fillStyle(0x0d0807); g.fillRect(0, 0, T, T)
+  g.fillStyle(0x0f0909)
+  for (let i = 0; i < 20; i++) {
+    const tx = (i * 17 + 3) % T, ty = (i * 23 + 7) % T
+    g.fillRect(tx, ty, 2, 2)
+  }
+  g.fillStyle(0x090604)
+  for (let i = 0; i < 12; i++) {
+    g.fillRect((i * 31 + 5) % T, (i * 19 + 9) % T, 1, 2)
+  }
+
+  // Tile 1: dark with faint red lava veins
+  g.fillStyle(0x0b0707); g.fillRect(T, 0, T, T)
+  g.fillStyle(0x280808)  // dark red vein
+  for (let i = 0; i < 6; i++) {
+    const vx = T + (i * 41 + 8) % T, vy = (i * 29 + 12) % T
+    g.fillRect(vx, vy, 1, (i % 3) + 1)
+    g.fillRect(vx + 2, vy + 2, (i % 4) + 2, 1)
+  }
+  g.fillStyle(0x090505)
+  for (let i = 0; i < 15; i++) {
+    g.fillRect(T + (i * 13 + 4) % T, (i * 37 + 3) % T, 1, 1)
+  }
+
+  // Tile 2: normal dark with subtle orange-red glow patches
+  g.fillStyle(0x0e0808); g.fillRect(T * 2, 0, T, T)
+  g.fillStyle(0x1e0900)  // orange-tinted spot
+  for (let i = 0; i < 5; i++) {
+    const gx = T * 2 + (i * 53 + 7) % T, gy = (i * 31 + 5) % T
+    g.fillCircle(gx + 2, gy + 2, 3)
+  }
+  g.fillStyle(0x380e00)  // brighter crack
+  for (let i = 0; i < 4; i++) {
+    const cx = T * 2 + (i * 47 + 11) % T, cy = (i * 43 + 17) % T
+    g.fillRect(cx, cy, (i % 3) + 1, 1)
+  }
+  g.fillStyle(0x0b0606)
+  for (let i = 0; i < 14; i++) {
+    g.fillRect(T * 2 + (i * 23 + 2) % T, (i * 41 + 6) % T, 1, 1)
+  }
+
+  // Tile 3: irregular cracks with stronger lava glow
+  g.fillStyle(0x0c0707); g.fillRect(T * 3, 0, T, T)
+  const cracks4: [number, number, number, number][] = [[5,10,18,1],[32,6,16,2],[8,38,22,1],[40,28,14,1],[14,50,20,2]]
+  for (const [cx, cy, cw, ch] of cracks4) {
+    g.fillStyle(0x440a00); g.fillRect(T * 3 + cx, cy, cw, ch)
+    g.fillStyle(0x260600); g.fillRect(T * 3 + cx + 1, cy + 1, cw - 2, ch)
+  }
+  g.fillStyle(0x180604)
+  g.fillRect(T * 3 + 2,  2,  28, 26)
+  g.fillRect(T * 3 + 36, 4,  24, 20)
+  g.fillRect(T * 3 + 4,  34, 20, 24)
+  g.fillRect(T * 3 + 30, 36, 26, 22)
+
+  g.generateTexture('tartarus_tiles', T * 4, T)
+  g.clear()
+
+  // ── labyrinth_floor (256×64) — 4 stone-block tiles ────────────────────────────
+  // Tile 0: base stone block
+  g.fillStyle(0x141218); g.fillRect(0, 0, T, T)
+  // horizontal grout lines at y=20 and y=42
+  g.fillStyle(0x0c0a10)
+  g.fillRect(0, 20, T, 2); g.fillRect(0, 42, T, 2)
+  // vertical grout (offset on alternating rows)
+  g.fillRect(32, 0, 2, 20); g.fillRect(16, 22, 2, 20); g.fillRect(48, 22, 2, 20); g.fillRect(32, 44, 2, 20)
+  // block face highlights
+  g.fillStyle(0x201e26)
+  g.fillRect(1, 1, 30, 1); g.fillRect(1, 1, 1, 18)
+  g.fillRect(1, 22, 14, 1); g.fillRect(1, 22, 1, 19)
+  g.fillRect(33, 22, 14, 1); g.fillRect(33, 22, 1, 19)
+
+  // Tile 1: slightly lighter stone
+  g.fillStyle(0x181620); g.fillRect(T, 0, T, T)
+  g.fillStyle(0x0e0c14)
+  g.fillRect(T, 21, T, 2); g.fillRect(T, 44, T, 2)
+  g.fillRect(T + 22, 0, 2, 21); g.fillRect(T + 44, 23, 2, 21); g.fillRect(T + 10, 46, 2, 18)
+  g.fillStyle(0x24222c)
+  g.fillRect(T + 1, 1, 20, 1); g.fillRect(T + 1, 1, 1, 19)
+
+  // Tile 2: darker worn stone
+  g.fillStyle(0x100e16); g.fillRect(T * 2, 0, T, T)
+  g.fillStyle(0x0a0812)
+  g.fillRect(T * 2, 18, T, 2); g.fillRect(T * 2, 40, T, 2)
+  g.fillRect(T * 2 + 36, 0, 2, 18); g.fillRect(T * 2 + 18, 20, 2, 20); g.fillRect(T * 2 + 50, 42, 2, 22)
+  g.fillStyle(0x1c1a24)
+  g.fillRect(T * 2 + 1, 1, 34, 1); g.fillRect(T * 2 + 1, 1, 1, 16)
+
+  // Tile 3: stone with moss-shadow variation
+  g.fillStyle(0x121018); g.fillRect(T * 3, 0, T, T)
+  g.fillStyle(0x0e0c14)
+  g.fillRect(T * 3, 22, T, 2); g.fillRect(T * 3, 46, T, 2)
+  g.fillRect(T * 3 + 28, 0, 2, 22); g.fillRect(T * 3 + 14, 24, 2, 22); g.fillRect(T * 3 + 42, 24, 2, 22)
+  g.fillStyle(0x1e1c28)
+  g.fillRect(T * 3 + 1, 1, 26, 1)
+  // shadow corner
+  g.fillStyle(0x0a0810)
+  g.fillRect(T * 3 + 40, 40, 22, 22)
+
+  g.generateTexture('labyrinth_floor', T * 4, T)
+  g.destroy()
+}

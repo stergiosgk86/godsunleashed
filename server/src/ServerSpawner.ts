@@ -154,9 +154,52 @@ interface ActiveSurge {
   nextEdge: number  // cycles 0→1→2→3→0 so the surge arrives from all sides
 }
 
+// Stage 5: The Labyrinth — 25×25 grid maze (must match MainScene constants)
+const S5_CELL     = 200
+const S5_ROWS     = 25
+const S5_COLS     = 25
+const S5_MAP_HALF = (S5_COLS * S5_CELL) / 2  // 2500
+const S5_WORLD_LEFT = -S5_MAP_HALF
+const S5_WORLD_TOP  = -S5_MAP_HALF
+const S5_MAZE_GRID: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1], // row 0  — N entry col 12
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // row 1  — wide top hall
+  [1,0,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1], // row 2  — chokes: 1,4,11,20,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1], // row 3  — three chambers
+  [1,1,1,1,1,0,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1], // row 4  — chokes: 5,7,10,16,22,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,1], // row 5  — corridors
+  [1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1], // row 6  — chokes: 1,5,11,17,23
+  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1], // row 7  — mid corridors
+  [1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1], // row 8  — chokes: 3,7,13,19,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1], // row 9  — approach corridors
+  [1,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,1], // row 10 — arena top + outer spurs
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // row 11 — wide ring around arena
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // row 12 — W/E entries; fully open
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // row 13 — wide ring around arena
+  [1,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,1], // row 14 — arena bottom + outer spurs
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1], // row 15 — approach corridors
+  [1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1], // row 16 — chokes: 3,7,13,19,23
+  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1], // row 17 — mid corridors
+  [1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1], // row 18 — chokes: 1,5,11,17,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,1], // row 19 — corridors
+  [1,1,1,1,1,0,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1], // row 20 — chokes: 5,7,10,16,22,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1], // row 21 — three chambers
+  [1,0,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1], // row 22 — chokes: 1,4,11,20,23
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // row 23 — wide bottom hall
+  [1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1], // row 24 — S exit col 12
+]
+function s5IsWall(wx: number, wy: number): boolean {
+  const col = Math.floor((wx - S5_WORLD_LEFT) / S5_CELL)
+  const row = Math.floor((wy - S5_WORLD_TOP)  / S5_CELL)
+  if (row < 0 || row >= S5_ROWS || col < 0 || col >= S5_COLS) return true
+  return S5_MAZE_GRID[row][col] === 1
+}
+
 export class ServerSpawner {
   disabled = false  // set true for stages that manage their own enemies
   stage2Mode = false  // VS Inlaid Library style — left/right only, 9 unique enemy types
+  stage4Mode = false  // Tartarus — same as Stage 1 but 1.5× harder HP scaling
+  stage5Mode = false  // The Labyrinth — cross-corridor, 4-directional Stage-2 enemy set
   corridorHalfY: number | null = null  // non-null in stage 2: clamps enemy Y to ±this value
   private enemies: ServerEnemy[] = []
   private elapsed   = 0
@@ -178,10 +221,19 @@ export class ServerSpawner {
   private stage2SurgesFired = new Set<number>()
   private stage2SurgeQueue: ActiveSurge[] = []
   private stage2InitialFillDone = false
+  // Stage 5 state (reuses Stage 2 enemy types, 4-directional)
+  private stage5LaneTimers: number[] = STAGE2_LANE_DEFS.map(l => l.intervalStart)
+  private stage5SurgesFired = new Set<number>()
+  private stage5SurgeQueue: ActiveSurge[] = []
+  private stage5InitialFillDone = false
+  private minotaur: ServerEnemy | null = null
+  private minotaurDefeated = false
+  private exitReached = false
 
   onBossWarning?:       (final: boolean) => void
   onBossSpawn?:         (e: ServerEnemy) => void
   onFinalBossDefeated?: () => void
+  onMinotaurDefeated?:  () => void
   onSurge?:             (type: string) => void
   onBossInvuln?:        (bossId: number, invulnerable: boolean) => void
   onExploderExplode?:   (x: number, y: number) => void
@@ -189,6 +241,7 @@ export class ServerSpawner {
   get all(): ServerEnemy[]  { return this.enemies }
   get runElapsed(): number   { return this.elapsed }
   get isFinished(): boolean  {
+    if (this.stage5Mode) return this.exitReached
     if (this.stage2Mode) return this.elapsed >= RUN_DURATION
     return this.elapsed >= RUN_DURATION && !this.finalBossAlive
   }
@@ -198,11 +251,13 @@ export class ServerSpawner {
   resumeFrom(ms: number) {
     this.elapsed = ms
     this.stage2InitialFillDone = true
+    this.stage5InitialFillDone = true
     for (const surge of SURGE_EVENTS) {
       if (surge.triggerTime <= ms) this.surgesFired.add(surge.triggerTime)
     }
     for (const surge of STAGE2_SURGE_EVENTS) {
       if (surge.triggerTime <= ms) this.stage2SurgesFired.add(surge.triggerTime)
+      if (surge.triggerTime <= ms) this.stage5SurgesFired.add(surge.triggerTime)
     }
     // Advance nextBossAt past all boss cycles that would have completed
     while (this.nextBossAt <= ms) {
@@ -218,10 +273,11 @@ export class ServerSpawner {
     if (this.disabled) { this.elapsed += delta; return }
     this.elapsed += delta
     if (this.stage2Mode) { this.updateStage2(players, delta); return }
+    if (this.stage5Mode) { this.updateStage5(players, delta); return }
 
     const speedMult   = computeSpeedScale(this.elapsed)
     const maxLevel    = players.length > 0 ? Math.max(...players.map(p => p.level)) : 1
-    const hpMult      = computeHpScale(this.elapsed, maxLevel)
+    const hpMult      = computeHpScale(this.elapsed, maxLevel) * (this.stage4Mode ? 1.5 : 1)
     const inFinal     = this.finalBossAlive || this.elapsed >= FINAL_BOSS_LOCK
     const playerScale = Math.sqrt(Math.max(1, players.length))
     const enemyCap    = Math.round(MAX_ENEMIES * playerScale)
@@ -612,6 +668,140 @@ export class ServerSpawner {
     }
 
     this.enemies = this.enemies.filter(e => e.active)
+  }
+
+  // ── Stage 5 update loop (cross-corridor labyrinth) ───────────────────────────
+  private updateStage5(players: SpawnerPlayer[], delta: number) {
+    const hpMult = computeStage2HpScale(this.elapsed)
+    const MAX_S5 = 300
+
+    if (!this.stage5InitialFillDone && players.length > 0) {
+      this.stage5InitialFillDone = true
+      // Announce and spawn the Minotaur at the maze center
+      this.onBossWarning?.(false)
+      this.minotaur = new ServerEnemy('minotaur', 0, 0, hpMult)
+      this.enemies.push(this.minotaur)
+      this.onBossSpawn?.(this.minotaur)
+      // Seed entry corridors with initial enemies
+      for (let i = 0; i < 4; i++) {
+        const pos = this.stage5EdgePoint(i)
+        this.enemies.push(new ServerEnemy('drifter', pos.x, pos.y, hpMult))
+      }
+    }
+
+    for (let i = 0; i < STAGE2_LANE_DEFS.length; i++) {
+      const lane = STAGE2_LANE_DEFS[i]
+      if (this.elapsed < lane.startTime) continue
+      this.stage5LaneTimers[i] -= delta
+      if (this.stage5LaneTimers[i] <= 0 && this.enemies.length < MAX_S5) {
+        this.stage5LaneTimers[i] = this.stage2LaneInterval(lane)
+        const count = Math.min(this.stage2LaneBurst(lane), MAX_S5 - this.enemies.length)
+        const side  = Math.floor(Math.random() * 4)
+        for (let j = 0; j < count; j++) {
+          const pos = this.stage5EdgePoint(side)
+          this.enemies.push(new ServerEnemy(lane.type as EnemyKind, pos.x, pos.y, hpMult))
+        }
+      }
+    }
+
+    for (const surge of STAGE2_SURGE_EVENTS) {
+      if (!this.stage5SurgesFired.has(surge.triggerTime) && this.elapsed >= surge.triggerTime) {
+        this.stage5SurgesFired.add(surge.triggerTime)
+        this.onSurge?.(surge.type)
+        this.stage5SurgeQueue.push({
+          type: surge.type, remaining: surge.count, timer: 0,
+          spawnInterval: surge.spawnInterval,
+          nextEdge: Math.floor(Math.random() * 4),
+        })
+      }
+    }
+    for (const surge of this.stage5SurgeQueue) {
+      surge.timer -= delta
+      if (surge.timer <= 0 && surge.remaining > 0 && this.enemies.length < MAX_S5 + 100) {
+        surge.timer += surge.spawnInterval
+        const pos = this.stage5EdgePoint(surge.nextEdge % 4)
+        surge.nextEdge = (surge.nextEdge + 1) % 4
+        const e = new ServerEnemy(surge.type as EnemyKind, pos.x, pos.y, hpMult)
+        e.speedMult = SURGE_SPEED_MULT
+        this.enemies.push(e)
+        surge.remaining--
+      }
+    }
+    this.stage5SurgeQueue = this.stage5SurgeQueue.filter(s => s.remaining > 0)
+
+    this.freezeTimer = Math.max(0, this.freezeTimer - delta)
+    for (const e of this.enemies) {
+      if (!e.active) continue
+      const ER = e.kind === 'minotaur' ? 28 : 14
+      const nearest = this.nearestPlayerTo(e.x, e.y, players)
+      const prevX = e.x, prevY = e.y
+      e.update(nearest.x, nearest.y, delta, this.freezeTimer > 0 ? 0 : 1)
+      // Maze wall collision (axis-separated — allows sliding along walls)
+      if (s5IsWall(e.x + ER, prevY) || s5IsWall(e.x - ER, prevY)) e.x = prevX
+      if (s5IsWall(e.x, e.y + ER) || s5IsWall(e.x, e.y - ER)) e.y = prevY
+      e.x = Math.max(-S5_MAP_HALF, Math.min(S5_MAP_HALF, e.x))
+      e.y = Math.max(-S5_MAP_HALF, Math.min(S5_MAP_HALF, e.y))
+    }
+
+    // Minotaur defeat + exit open detection
+    if (this.minotaur && !this.minotaur.active && !this.minotaurDefeated) {
+      this.minotaurDefeated = true
+      this.onMinotaurDefeated?.()
+    }
+    if (this.minotaurDefeated && !this.exitReached) {
+      for (const p of players) {
+        if (Math.abs(p.x) < 90 && p.y > 2300) { this.exitReached = true; break }
+      }
+    }
+
+    // Recycle enemies that escaped the map back to an entry corridor
+    for (const e of this.enemies) {
+      if (!e.active) continue
+      const offMap = Math.abs(e.x) > S5_MAP_HALF + 100 || Math.abs(e.y) > S5_MAP_HALF + 100
+      if (offMap) {
+        const pos = this.stage5EdgePoint(Math.floor(Math.random() * 4))
+        e.x = pos.x; e.y = pos.y
+      }
+    }
+
+    const SEP_RADIUS = 40, SEP_FORCE = 1.0, SEP_MAX = 5
+    const active = this.enemies.filter(e => e.active)
+    const preSepX = active.map(e => e.x)
+    const preSepY = active.map(e => e.y)
+    for (let i = 0; i < active.length; i++) {
+      for (let j = i + 1; j < active.length; j++) {
+        const a = active[i], b = active[j]
+        const dx = a.x - b.x, dy = a.y - b.y
+        const d2 = dx * dx + dy * dy
+        if (d2 < SEP_RADIUS * SEP_RADIUS && d2 > 0) {
+          const d = Math.sqrt(d2)
+          const push = Math.min((SEP_RADIUS - d) * SEP_FORCE, SEP_MAX)
+          const nx = dx / d, ny = dy / d
+          a.x += nx * push; a.y += ny * push
+          b.x -= nx * push; b.y -= ny * push
+        }
+      }
+    }
+    // Revert enemies pushed into walls by separation force
+    for (let i = 0; i < active.length; i++) {
+      const e = active[i]
+      if (s5IsWall(e.x, e.y)) { e.x = preSepX[i]; e.y = preSepY[i] }
+    }
+
+    this.enemies = this.enemies.filter(e => e.active)
+  }
+
+  // Spawn just outside one of the 4 maze entry corridors.
+  // Entry cells are at world x=0 (N/S) or world y=0 (W/E), width one cell (200px).
+  private stage5EdgePoint(side: number): { x: number; y: number } {
+    const edge   = S5_MAP_HALF + LANE_MARGIN  // just outside the 1500 boundary
+    const spread = (Math.random() * 2 - 1) * 85  // ±85px within the 200px entry corridor
+    switch (side) {
+      case 0: return { x: -edge, y: spread }  // W entry
+      case 1: return { x:  edge, y: spread }  // E entry
+      case 2: return { x: spread, y: -edge }  // N entry
+      default: return { x: spread, y:  edge } // S entry
+    }
   }
 
   private stage2LaneInterval(lane: Stage2LaneDef): number {

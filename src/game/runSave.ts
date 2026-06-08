@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore'
 export interface RunSnapshot {
   // character that saved this run — used to reject cross-character restores
   character?: string
-  stage?: 1 | 2 | 3
+  stage?: 1 | 2 | 3 | 4 | 5
   // time
   elapsed: number
   nextBossAt: number

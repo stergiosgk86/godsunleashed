@@ -522,6 +522,35 @@ apiRouter.post('/admin/players/:id/stages', async (req: Request, res: Response) 
   }
 })
 
+apiRouter.delete('/admin/players/:id', async (req: Request, res: Response) => {
+  try {
+    const userRes = await db.query('SELECT role FROM users WHERE id = $1', [req.userId])
+    if (userRes.rows[0]?.role !== 'super_admin') {
+      res.status(403).json({ error: 'Forbidden' }); return
+    }
+    const targetId = parseInt(String(req.params.id), 10)
+    if (!Number.isInteger(targetId) || targetId <= 0) {
+      res.status(400).json({ error: 'Invalid user id' }); return
+    }
+    if (targetId === req.userId) {
+      res.status(400).json({ error: 'Cannot delete your own account' }); return
+    }
+    const targetRes = await db.query('SELECT role FROM users WHERE id = $1', [targetId])
+    if (targetRes.rows[0]?.role === 'super_admin') {
+      res.status(400).json({ error: 'Cannot delete a super_admin account' }); return
+    }
+    // Delete child rows first, then the user itself
+    await db.query('DELETE FROM user_achievements WHERE user_id = $1', [targetId])
+    await db.query('DELETE FROM runs WHERE user_id = $1', [targetId])
+    await db.query('DELETE FROM profiles WHERE user_id = $1', [targetId])
+    await db.query('DELETE FROM users WHERE id = $1', [targetId])
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Admin delete account error:', err)
+    res.status(500).json({ error: 'Internal server error' })
+  }
+})
+
 // ── Leaderboard ───────────────────────────────────────────────────────────────
 
 apiRouter.get('/leaderboard', readRateLimit, async (req: Request, res: Response) => {

@@ -15,3 +15,23 @@ html, body, #root {
   overflow: hidden;
   background: #1a1a2e;
 }
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.04);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #6655ff 0%, #aa44cc 100%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #8877ff 0%, #cc66ee 100%);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #7755dd rgba(255,255,255,0.04);
+}

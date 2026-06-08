@@ -6,7 +6,7 @@ import { EffectsSystem } from './EffectsSystem'
 import { ClientEnemy } from './ClientEnemy'
 import { RemotePlayer } from './RemotePlayer'
 import { RemoteProjectile } from './RemoteProjectile'
-import { generateAssets, generatePropTextures } from './AssetGenerator'
+import { generateAssets, generatePropTextures, generateTartarusTextures } from './AssetGenerator'
 import { useGameStore, UPGRADE_POOL, type Upgrade, type AdminSpawnEntity } from '../store/gameStore'
 import { useCharacterStore } from '../store/characterStore'
 import { useProfileStore } from '../store/profileStore'
@@ -27,6 +27,66 @@ import { useStageStore } from '../store/stageStore'
 
 const SPAWN_X = 0
 const SPAWN_Y = 0
+
+// ── Stage 5: The Labyrinth — 25×25 grid maze ─────────────────────────────────
+// 1 = wall, 0 = floor. Entry openings: N=(row 0,col 12), S=(row 24,col 12),
+// W=(row 12,col 0), E=(row 12,col 24). Cell size 200px, world ±2500.
+const MAZE_CELL = 200
+const MAZE_ROWS = 25
+const MAZE_COLS = 25
+const MAZE_WORLD_LEFT = -(MAZE_COLS * MAZE_CELL) / 2  // -2500
+const MAZE_WORLD_TOP  = -(MAZE_ROWS * MAZE_CELL) / 2  // -2500
+const MAZE_GRID: number[][] = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1], // row 0  — N entry col 12
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // row 1  — wide top hall; player spawns here
+  [1,0,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1], // row 2  — chokes: 1,4,11,20,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1], // row 3  — three chambers
+  [1,1,1,1,1,0,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1], // row 4  — chokes: 5,7,10,16,22,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,1], // row 5  — corridors
+  [1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1], // row 6  — chokes: 1,5,11,17,23
+  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1], // row 7  — mid corridors
+  [1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1], // row 8  — chokes: 3,7,13,19,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1], // row 9  — approach corridors
+  [1,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,1], // row 10 — arena top + outer spurs
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // row 11 — wide ring around arena
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], // row 12 — W/E entries; fully open
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // row 13 — wide ring around arena
+  [1,0,1,1,1,0,1,1,1,0,0,0,0,0,0,0,1,1,1,0,1,1,1,0,1], // row 14 — arena bottom + outer spurs
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1], // row 15 — approach corridors
+  [1,1,1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,1], // row 16 — chokes: 3,7,13,19,23
+  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1], // row 17 — mid corridors
+  [1,0,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,1], // row 18 — chokes: 1,5,11,17,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,1,0,1], // row 19 — corridors
+  [1,1,1,1,1,0,1,0,1,1,0,1,1,1,1,1,0,1,1,1,1,1,0,0,1], // row 20 — chokes: 5,7,10,16,22,23
+  [1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,1,0,1], // row 21 — three chambers
+  [1,0,1,1,0,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,1,1,0,1], // row 22 — chokes: 1,4,11,20,23
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // row 23 — wide bottom hall
+  [1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,1,1], // row 24 — S exit col 12
+]
+function isMazeWall(wx: number, wy: number): boolean {
+  const col = Math.floor((wx - MAZE_WORLD_LEFT) / MAZE_CELL)
+  const row = Math.floor((wy - MAZE_WORLD_TOP)  / MAZE_CELL)
+  if (row < 0 || row >= MAZE_ROWS || col < 0 || col >= MAZE_COLS) return true
+  return MAZE_GRID[row][col] === 1
+}
+
+// Fixed lava pit positions for Stage 4 — Tartarus.
+// None within 400px of origin so the player has a safe spawn zone.
+const TARTARUS_PITS: { x: number; y: number; r: number }[] = [
+  // Inner ring (~700–1500px)
+  { x:  850, y:  180, r: 88 }, { x: -850, y: -180, r: 85 },
+  { x:  180, y:  850, r: 90 }, { x: -180, y: -850, r: 82 },
+  { x: 1100, y:  620, r: 86 }, { x: -1100, y: -620, r: 88 },
+  { x:  620, y: -1100, r: 84 }, { x: -620, y: 1100, r: 87 },
+  // Mid ring (~1500–2800px)
+  { x: 1650, y:    0, r: 92 }, { x: -1650, y:    0, r: 90 },
+  { x:    0, y: 1650, r: 88 }, { x:    0, y: -1650, r: 91 },
+  { x: 2050, y: 1050, r: 85 }, { x: -2050, y: -1050, r: 87 },
+  { x: 1050, y: -2050, r: 83 }, { x: -1050, y: 2050, r: 89 },
+  // Outer ring (~2800–4500px)
+  { x: 3200, y:  850, r: 95 }, { x: -3200, y: -850, r: 92 },
+  { x:  850, y: 3200, r: 90 }, { x: -850, y: -3200, r: 93 },
+]
 
 function stage2WaveLabel(elapsed: number): string {
   const t = elapsed
@@ -61,6 +121,8 @@ export class MainScene extends Phaser.Scene {
   private netBossAlive = false
   private netFinalBossAlive = false
   private netBossIsSummoner = false
+  private netBossKind = ''
+  private netExitOpen = false
   private netSurgeTimer = 0
   private saveTimer = 0
   private readonly SAVE_INTERVAL = 10_000
@@ -77,6 +139,10 @@ export class MainScene extends Phaser.Scene {
   private fogCanvas: HTMLCanvasElement | null = null
   private fogCtx: CanvasRenderingContext2D | null = null
   private camZoom = 1.2
+  // Stage 4 lava pits
+  private lavaDamagePool = 0
+  private lavaFlashTimer = 0
+  private lavaGlowTweens: Phaser.Tweens.Tween[] = []
 
   constructor() {
     super({ key: 'MainScene' })
@@ -87,6 +153,7 @@ export class MainScene extends Phaser.Scene {
 
     generateAssets(this)
     generatePropTextures(this)
+    generateTartarusTextures(this)
 
     if (this.selectedStage === 2) {
       // Stage 2 background set up after zoom is established (later in create)
@@ -95,6 +162,50 @@ export class MainScene extends Phaser.Scene {
       this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
       this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'ground_tiles')
         .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(-10)
+    } else if (this.selectedStage === 4) {
+      // Stage 4: Tartarus — open volcanic world with lava pits
+      this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
+      this.add.tileSprite(0, 0, 1_000_000, 1_000_000, 'tartarus_tiles')
+        .setOrigin(0.5, 0.5).setTileScale(0.1, 0.1).setDepth(-10)
+      this.spawnLavaPits()
+    } else if (this.selectedStage === 5) {
+      // Stage 5: The Labyrinth — proper 15×15 grid maze
+      const mapSize = MAZE_COLS * MAZE_CELL  // 3000
+      this.physics.world.setBounds(MAZE_WORLD_LEFT, MAZE_WORLD_TOP, mapSize, mapSize)
+      // Dark stone background (wall areas)
+      this.add.tileSprite(0, 0, mapSize + 400, mapSize + 400, 'tartarus_tiles')
+        .setOrigin(0.5).setTileScale(0.12, 0.12).setDepth(-12).setTint(0x0d0d14)
+      // Draw stone floor for every non-wall cell
+      const wallG = this.add.graphics().setDepth(-11)
+      for (let row = 0; row < MAZE_ROWS; row++) {
+        for (let col = 0; col < MAZE_COLS; col++) {
+          const wx = MAZE_WORLD_LEFT + col * MAZE_CELL + MAZE_CELL / 2
+          const wy = MAZE_WORLD_TOP  + row * MAZE_CELL + MAZE_CELL / 2
+          if (MAZE_GRID[row][col] === 0) {
+            this.add.tileSprite(wx, wy, MAZE_CELL, MAZE_CELL, 'labyrinth_floor')
+              .setTileScale(0.25, 0.25).setDepth(-10)
+          } else {
+            // Draw subtle wall shading so walls aren't pure black
+            wallG.fillStyle(0x1a1a2a, 0.6)
+            wallG.fillRect(MAZE_WORLD_LEFT + col * MAZE_CELL, MAZE_WORLD_TOP + row * MAZE_CELL, MAZE_CELL, MAZE_CELL)
+          }
+        }
+      }
+      // Wall border lines between floor and adjacent wall cells for depth
+      const borderG = this.add.graphics().setDepth(3.5)
+      borderG.lineStyle(3, 0x8888aa, 0.35)
+      for (let row = 0; row < MAZE_ROWS; row++) {
+        for (let col = 0; col < MAZE_COLS; col++) {
+          if (MAZE_GRID[row][col] !== 0) continue
+          const x0 = MAZE_WORLD_LEFT + col * MAZE_CELL
+          const y0 = MAZE_WORLD_TOP  + row * MAZE_CELL
+          const x1 = x0 + MAZE_CELL, y1 = y0 + MAZE_CELL
+          if (row === 0            || MAZE_GRID[row - 1][col] === 1) { borderG.beginPath(); borderG.moveTo(x0, y0); borderG.lineTo(x1, y0); borderG.strokePath() }
+          if (row === MAZE_ROWS-1  || MAZE_GRID[row + 1][col] === 1) { borderG.beginPath(); borderG.moveTo(x0, y1); borderG.lineTo(x1, y1); borderG.strokePath() }
+          if (col === 0            || MAZE_GRID[row][col - 1] === 1) { borderG.beginPath(); borderG.moveTo(x0, y0); borderG.lineTo(x0, y1); borderG.strokePath() }
+          if (col === MAZE_COLS-1  || MAZE_GRID[row][col + 1] === 1) { borderG.beginPath(); borderG.moveTo(x1, y0); borderG.lineTo(x1, y1); borderG.strokePath() }
+        }
+      }
     } else {
       // Stage 1: open world
       this.physics.world.setBounds(-500_000, -500_000, 1_000_000, 1_000_000)
@@ -113,7 +224,10 @@ export class MainScene extends Phaser.Scene {
     useGameStore.setState({ isMeleeChar: charType === 'ares' })
     const charDef = CHARACTER_DEFS[charType]
     const username = useAuthStore.getState().username ?? ''
-    this.player = new Player(this, SPAWN_X, SPAWN_Y, charDef.spriteKey, username, charDef.scale, charDef.staticSprite ?? false)
+    // Stage 5: spawn at north entry corridor (row 1, col 7) so the Minotaur at center isn't immediately adjacent
+    const spawnX = this.selectedStage === 5 ? 0 : SPAWN_X
+    const spawnY = this.selectedStage === 5 ? -2200 : SPAWN_Y
+    this.player = new Player(this, spawnX, spawnY, charDef.spriteKey, username, charDef.scale, charDef.staticSprite ?? false)
     this.joystick = new TouchJoystick(this)
     if (window.innerWidth <= 768) this.dashButton = new TouchDashButton(this)
     this.spawner = new EnemySpawner(this)
@@ -265,9 +379,8 @@ export class MainScene extends Phaser.Scene {
       this.spawner.corridorHalfHeight = CORRIDOR_HALF
     }
 
-    if (this.selectedStage === 3) {
-      // Plain DOM canvas overlay — sits above the Phaser canvas, below React HUD.
-      // Uses Canvas2D destination-out compositing for the gradient visibility hole.
+    if (this.selectedStage === 3 || this.selectedStage === 5) {
+      // Plain DOM canvas overlay for fog of war (Stage 3 and Stage 5)
       const W = this.scale.width, H = this.scale.height
       const parent = this.game.canvas.parentElement
       if (parent) {
@@ -409,6 +522,7 @@ export class MainScene extends Phaser.Scene {
         window.removeEventListener('beforeunload', this.beforeUnloadHandler)
         this.beforeUnloadHandler = null
       }
+      this.lavaGlowTweens = []
       this.chunkManager?.destroyAll()
       if (this.fogCanvas) {
         this.fogCanvas.parentElement?.removeChild(this.fogCanvas)
@@ -426,12 +540,92 @@ export class MainScene extends Phaser.Scene {
     })
   }
 
+  private spawnLavaPits() {
+    for (const pit of TARTARUS_PITS) {
+      const g = this.add.graphics().setDepth(0.5)
+
+      // Subtle heated-ground area fill under the cracks
+      g.fillStyle(0x4a0800, 0.30); g.fillCircle(pit.x, pit.y, pit.r * 0.75)
+      g.fillStyle(0x7a1200, 0.18); g.fillCircle(pit.x, pit.y, pit.r * 0.50)
+      g.fillStyle(0xcc2600, 0.10); g.fillCircle(pit.x, pit.y, pit.r * 0.28)
+
+      // Deterministic PRNG seeded from pit position so layout is stable across reloads
+      let s = ((pit.x * 137 + pit.y * 97) ^ 0x5a4f3b) | 0
+      const rng = () => { s ^= s << 13; s ^= s >> 17; s ^= s << 5; return (s >>> 0) / 4294967295 }
+
+      // Helper: draw a polyline path
+      const stroke = (pts: { x: number; y: number }[]) => {
+        g.beginPath(); g.moveTo(pts[0].x, pts[0].y)
+        for (let i = 1; i < pts.length; i++) g.lineTo(pts[i].x, pts[i].y)
+        g.strokePath()
+      }
+
+      // Helper: draw one crack arm and optional branch in multiple colour layers
+      const drawArm = (pts: { x: number; y: number }[], thick: boolean) => {
+        const w = thick ? 1 : 0.65
+        g.lineStyle(Math.round(16 * w), 0x0c0404, 1); stroke(pts)
+        g.lineStyle(Math.round(9  * w), 0x2c0700, 1); stroke(pts)
+        g.lineStyle(Math.round(5  * w), 0x7c1200, 1); stroke(pts)
+        g.lineStyle(Math.round(3  * w), 0xd03200, 1); stroke(pts)
+        g.lineStyle(Math.round(1  * w), 0xff5800, 1); stroke(pts)
+      }
+
+      // Build 5–6 arms radiating from pit centre
+      const numArms = 5 + Math.floor(rng() * 2)
+      for (let arm = 0; arm < numArms; arm++) {
+        const baseAngle = (arm / numArms) * Math.PI * 2 + rng() * 0.55
+        const armLen    = pit.r * (0.55 + rng() * 0.38)
+        const segs      = 4 + Math.floor(rng() * 2)
+        const segLen    = armLen / segs
+
+        const pts: { x: number; y: number }[] = [{ x: pit.x, y: pit.y }]
+        let cx = pit.x, cy = pit.y, angle = baseAngle
+        let branchSrc: { x: number; y: number } | null = null
+
+        for (let seg = 0; seg < segs; seg++) {
+          angle += (rng() - 0.5) * 0.55  // ±16° jitter per segment
+          cx += Math.cos(angle) * segLen
+          cy += Math.sin(angle) * segLen
+          pts.push({ x: cx, y: cy })
+          if (seg === Math.floor(segs * 0.45) && !branchSrc) branchSrc = { x: cx, y: cy }
+        }
+
+        drawArm(pts, true)
+
+        // Branch from mid-point at a diverging angle
+        if (branchSrc) {
+          const brAngle = baseAngle + (rng() < 0.5 ? 1 : -1) * (0.6 + rng() * 0.7)
+          const brLen   = armLen * (0.28 + rng() * 0.28)
+          const brSegs  = 3
+          const bPts: { x: number; y: number }[] = [branchSrc]
+          let bx = branchSrc.x, by = branchSrc.y, ba = brAngle
+          for (let bs = 0; bs < brSegs; bs++) {
+            ba += (rng() - 0.5) * 0.45
+            bx += Math.cos(ba) * (brLen / brSegs)
+            by += Math.sin(ba) * (brLen / brSegs)
+            bPts.push({ x: bx, y: by })
+          }
+          drawArm(bPts, false)
+        }
+      }
+
+      // Pulsing glow — alpha oscillates so the lava appears to breathe
+      const tw = this.tweens.add({
+        targets: g,
+        alpha: { from: 1.0, to: 0.55 },
+        duration: 700 + (Math.abs(pit.x) % 600),
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+      })
+      this.lavaGlowTweens.push(tw)
+    }
+  }
+
   private buildSnapshot(): RunSnapshot | null {
     const gs = useGameStore.getState()
     if (gs.isDead || gs.isWon) return null
     const base = {
       character: this.charType,
-      stage: this.selectedStage as 1 | 2 | 3,
+      stage: this.selectedStage as 1 | 2 | 3 | 4 | 5,
       elapsed: runData.elapsed,
       playerX: this.player.x,
       playerY: this.player.y,
@@ -520,6 +714,26 @@ export class MainScene extends Phaser.Scene {
       repeat: 10,
       onComplete: () => this.warningText.setAlpha(0),
     })
+  }
+
+  private openMazeExit() {
+    // South corridor opening: col 12, row 24 — center at x=0, y=2400
+    const exitX = 0, exitY = 2400
+    const g = this.add.graphics().setDepth(10)
+    g.fillStyle(0x00ff88, 0.25)
+    g.fillRect(exitX - 55, exitY - 80, 110, 160)
+    g.lineStyle(4, 0x00ff88, 0.9)
+    g.strokeRect(exitX - 55, exitY - 80, 110, 160)
+    // Arch top
+    g.fillStyle(0x00ff88, 0.5)
+    g.fillEllipse(exitX, exitY - 80, 110, 40)
+    void g  // held by Phaser scene
+    this.tweens.add({ targets: g, alpha: { from: 0.5, to: 1 }, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+
+    this.add.text(exitX, exitY - 100, 'EXIT', {
+      fontSize: '18px', fontFamily: 'monospace', color: '#00ff88',
+      stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5, 1).setDepth(11)
   }
 
   private showFinalWarning() {
@@ -676,10 +890,12 @@ export class MainScene extends Phaser.Scene {
     net.on('bossSpawn', (msg) => {
       this.netBossAlive = true
       this.netBossIsSummoner = msg.kind === 'summoner'
+      this.netBossKind = msg.kind
       if (msg.final) this.netFinalBossAlive = true
       if (useGameStore.getState().isPaused) return
       this.cameras.main.shake(msg.final ? 1000 : 600, msg.final ? 0.04 : 0.02)
       useGameStore.getState().setBossHp(msg.maxHp, msg.maxHp)
+      useGameStore.getState().setBossKind(msg.kind)
       useGameStore.getState().setBossInvulnerable(false)
       this.warningText.setAlpha(0)
       this.finalWarningText.setAlpha(0)
@@ -689,6 +905,7 @@ export class MainScene extends Phaser.Scene {
       if (msg.hp === 0) {
         this.netBossAlive = false
         this.netFinalBossAlive = false
+        this.netBossKind = ''
         useGameStore.getState().setBossInvulnerable(false)
       }
       useGameStore.getState().setBossHp(msg.hp === 0 ? null : msg.hp)
@@ -696,6 +913,13 @@ export class MainScene extends Phaser.Scene {
 
     net.on('bossInvuln', (msg) => {
       useGameStore.getState().setBossInvulnerable(msg.invulnerable)
+    })
+
+    net.on('exitOpen', () => {
+      this.netExitOpen = true
+      this.cameras.main.shake(800, 0.03)
+      soundSystem.bossWarning()
+      this.openMazeExit()
     })
 
     net.on('adminSpawnItem', (msg) => {
@@ -915,8 +1139,18 @@ export class MainScene extends Phaser.Scene {
       this.dashButton.update()
       if (this.dashButton.consumePress()) this.player.touchDashPressed = true
     }
+    const mazePrevX = this.player.x, mazePrevY = this.player.y
     const novaPaused = this.combat.novaPaused
     if (!novaPaused) this.player.update(delta, this.effects)
+    // Stage 5: maze wall collision (axis-separated)
+    if (this.selectedStage === 5) {
+      const r = 12  // player collision radius
+      if (isMazeWall(this.player.x + r, mazePrevY) || isMazeWall(this.player.x - r, mazePrevY)) this.player.x = mazePrevX
+      if (isMazeWall(this.player.x, this.player.y + r) || isMazeWall(this.player.x, this.player.y - r)) this.player.y = mazePrevY
+      const mapEdge = MAZE_COLS * MAZE_CELL / 2
+      this.player.x = Phaser.Math.Clamp(this.player.x, -mapEdge, mapEdge)
+      this.player.y = Phaser.Math.Clamp(this.player.y, -mapEdge, mapEdge)
+    }
     this.combat.setFacing(this.player.facingVx, this.player.facingVy)
     this.combat.setMoving(this.player.isMoving)
     this.effects.update(delta)
@@ -941,6 +1175,32 @@ export class MainScene extends Phaser.Scene {
       grad.addColorStop(1,    'rgba(0,0,0,0.97)')  // near-black at screen edges
       ctx.fillStyle = grad
       ctx.fillRect(0, 0, W, H)
+    }
+
+    // Stage 4: lava pit damage
+    if (this.selectedStage === 4) {
+      const px = this.player.x, py = this.player.y
+      let inLava = false
+      for (const pit of TARTARUS_PITS) {
+        const dx = px - pit.x, dy = py - pit.y
+        if (dx * dx + dy * dy < pit.r * pit.r) { inLava = true; break }
+      }
+      if (inLava) {
+        this.lavaDamagePool += 6 * (delta / 1000)  // 6 HP/sec
+        if (this.lavaDamagePool >= 1) {
+          const dmg = Math.floor(this.lavaDamagePool)
+          this.lavaDamagePool -= dmg
+          useGameStore.getState().takeDamage(dmg)
+        }
+        this.lavaFlashTimer += delta
+        if (this.lavaFlashTimer >= 500) {
+          this.lavaFlashTimer = 0
+          this.cameras.main.flash(180, 255, 80, 0)
+        }
+      } else {
+        this.lavaFlashTimer = 0
+        this.lavaDamagePool = 0
+      }
     }
 
     const net = activeNetClient
@@ -995,8 +1255,8 @@ export class MainScene extends Phaser.Scene {
       // Singleplayer
       if (!novaPaused) {
         runData.elapsed += delta
-        // Stage 2/3: survive-to-end win (server normally handles this; fallback for offline mode)
-        if ((this.selectedStage === 2 || this.selectedStage === 3) && runData.elapsed >= RUN_DURATION) {
+        // Stage 2/3/5: survive-to-end win (server normally handles this; fallback for offline mode)
+        if ((this.selectedStage === 2 || this.selectedStage === 3 || this.selectedStage === 5) && runData.elapsed >= RUN_DURATION) {
           soundSystem.bossDie()
           useGameStore.getState().win()
           this.scene.pause()
@@ -1039,13 +1299,14 @@ export class MainScene extends Phaser.Scene {
     if (net) {
       this.netSurgeTimer = Math.max(0, this.netSurgeTimer - delta)
       if (this.netFinalBossAlive) waveLabel = '☠ THE DEATH'
-      else if (this.netBossAlive) waveLabel = this.netBossIsSummoner ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
+      else if (this.netBossAlive) waveLabel = this.netBossKind === 'minotaur' ? '🐂 THE MINOTAUR' : this.netBossIsSummoner ? '⚠ SUMMONER' : '⚠ BOSS FIGHT'
+      else if (this.selectedStage === 5 && this.netExitOpen) waveLabel = '🚪 ESCAPE SOUTH!'
       else if (this.netSurgeTimer > 0) waveLabel = '⚡ SURGE!'
-      else waveLabel = this.selectedStage === 2
+      else waveLabel = (this.selectedStage === 2 || this.selectedStage === 5)
         ? stage2WaveLabel(runData.elapsed)
         : this.spawner.waveLabel(runData.elapsed)
     } else {
-      waveLabel = this.selectedStage === 2
+      waveLabel = (this.selectedStage === 2 || this.selectedStage === 5)
         ? stage2WaveLabel(runData.elapsed)
         : this.spawner.waveLabel()
     }
