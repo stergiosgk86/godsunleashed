@@ -198,6 +198,15 @@ export class EffectsSystem {
     }
   }
 
+  showAuraPop(x: number, y: number) {
+    if (this.particles.length >= MAX_PARTICLES) return
+    const colors = [0xcc44ff, 0x9922ee, 0xff88ff, 0x7700cc]
+    const count = Math.min(5, MAX_PARTICLES - this.particles.length)
+    for (let i = 0; i < count; i++) {
+      this.particles.push(new Particle(this.scene, x, y, colors[i % colors.length]))
+    }
+  }
+
   showXPCollect(x: number, y: number) {
     if (this.particles.length >= MAX_PARTICLES) return
     const count = Math.min(5, MAX_PARTICLES - this.particles.length)

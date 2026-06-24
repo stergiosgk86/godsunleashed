@@ -694,6 +694,21 @@ export class CombatSystem {
         }
       }
 
+      // Aura destroys incoming enemy projectiles within its radius (VS Garlic behaviour)
+      for (const e of enemies) {
+        if (!e.active) continue
+        const bullets = e.getProjectiles?.() ?? []
+        for (const b of bullets) {
+          if (!b.active) continue
+          const bx = b.x - playerX
+          const by = b.y - playerY
+          if (bx * bx + by * by < radius * radius) {
+            b.destroy()
+            this.effects.showAuraPop(b.x, b.y)
+          }
+        }
+      }
+
       // Always-visible base: soft pulsing field
       const pulse = 0.5 + 0.5 * Math.sin(this.auraAngle * 4)
       this.auraGraphic.fillStyle(0x4411cc, 0.04 + 0.03 * pulse)

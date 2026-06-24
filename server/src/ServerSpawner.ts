@@ -15,6 +15,7 @@ const BOSS_REPEAT      = 240_000
 const BOSS_WARNING     = 5_000
 const FINAL_BOSS_LOCK  = RUN_DURATION - 30_000
 const SURGE_SPEED_MULT = 2.5
+const PRESSURE_ROTATION_MS = 12_000  // rotate dominant spawn direction every 12 s
 
 // ── Difficulty curves (mirrors src/game/difficultyScale.ts) ──────────────────
 function computeSpeedScale(_elapsed: number): number {
@@ -216,6 +217,9 @@ export class ServerSpawner {
   private surgeQueue: ActiveSurge[] = []
   private fillTimer         = 0
   private freezeTimer       = 0
+  // Directional pressure: dominant spawn edge rotates every 12 s (VS-style waves)
+  private pressureEdge = 0
+  private pressureTimer = 0
   // Stage 2 state
   private stage2LaneTimers: number[] = STAGE2_LANE_DEFS.map(l => l.intervalStart)
   private stage2SurgesFired = new Set<number>()
@@ -282,6 +286,13 @@ export class ServerSpawner {
     const playerScale = Math.sqrt(Math.max(1, players.length))
     const enemyCap    = Math.round(MAX_ENEMIES * playerScale)
 
+    // Rotate dominant spawn direction clockwise — creates VS-style directional waves
+    this.pressureTimer += delta
+    if (this.pressureTimer >= PRESSURE_ROTATION_MS) {
+      this.pressureTimer = 0
+      this.pressureEdge  = (this.pressureEdge + 1) % 4
+    }
+
     // ── VS-style minimum count fill ───────────────────────────────────────────
     // If alive enemies drop below the current wave minimum, fill rapidly (80 ms/enemy).
     // This guarantees the screen is never sparse regardless of how fast the player kills.
@@ -296,7 +307,11 @@ export class ServerSpawner {
         this.fillTimer -= delta
         if (this.fillTimer <= 0) {
           this.fillTimer += FILL_INTERVAL_MS
-          const edge = this.fillEdgeCtr++ % 4
+          // 55% from dominant edge, 25% from opposite (pincer), 20% random flank
+          const fr   = Math.random()
+          const edge = fr < 0.55 ? this.pressureEdge
+                     : fr < 0.80 ? (this.pressureEdge + 2) % 4
+                     : Math.floor(Math.random() * 4)
           const pos  = this.laneEdgePoint(players, edge)
           this.spawnEnemy('basic', pos.x, pos.y, hpMult, players)
         }
@@ -311,8 +326,9 @@ export class ServerSpawner {
       if (this.laneTimers[i] <= 0 && this.enemies.length < enemyCap) {
         this.laneTimers[i] = this.laneInterval(lane)
         const count = Math.min(this.laneBurst(lane), enemyCap - this.enemies.length)
-        // Round-robin edge per burst so consecutive bursts come from different sides
-        const burstEdge   = this.laneEdgeCtr[i]++ % 4
+        // 65% bursts from dominant pressure edge, 35% from cycle — avoids pure blob
+        const cycleEdge   = this.laneEdgeCtr[i]++ % 4
+        const burstEdge   = Math.random() < 0.65 ? this.pressureEdge : cycleEdge
         const burstCenter = (Math.random() * 2 - 1) * 0.6
         for (let j = 0; j < count; j++) {
           const pos = this.laneEdgePoint(players, burstEdge, burstCenter)
@@ -409,7 +425,11 @@ export class ServerSpawner {
           if (d2 < minDist2) minDist2 = d2
         }
         if (minDist2 > 1) {
-          const pos = this.laneEdgePoint(players)
+          // Respawn from dominant or opposite edge — keeps directional pressure alive
+          const recycleEdge = Math.random() < 0.60
+            ? this.pressureEdge
+            : (this.pressureEdge + 2) % 4
+          const pos = this.laneEdgePoint(players, recycleEdge)
           e.x = pos.x
           e.y = pos.y
         }
