@@ -42,6 +42,7 @@ export type C2SMessage =
   | { type: 'collectXP'; amount: number }
   | { type: 'hitBrazier'; brazierId: number; damage: number }
   | { type: 'rerollUpgrade' }
+  | { type: 'ping' }
 
 export type S2CMessage =
   | { type: 'waiting'; playerCount: number; isHost: boolean }
@@ -76,4 +77,5 @@ export type S2CMessage =
   | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | 'rerollDie' | null; destroyedBy: string }
   | { type: 'rerollChoices'; choices: string[] }
   | { type: 'rerollGrant' }
+  | { type: 'pong' }
   | { type: 'exitOpen' }

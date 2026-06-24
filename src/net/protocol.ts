@@ -40,6 +40,7 @@ export type C2SMessage =
   | { type: 'collectXP'; amount: number }
   | { type: 'hitBrazier'; brazierId: number; damage: number }
   | { type: 'rerollUpgrade' }
+  | { type: 'ping' }
 
 // Server → Client
 export type S2CMessage =
@@ -70,6 +71,7 @@ export type S2CMessage =
   | { type: 'playerProfileUpdate'; userId: number; coins: number; upgrades: Record<string, number> | null; last_active: string | null; unlocked_stages: number[] | null; role: string | null }
   | { type: 'adminOnlineSnapshot'; onlineUserIds: number[] }
   | { type: 'profileSync' }
+  | { type: 'pong' }
   | { type: 'brazierSpawn'; id: number; x: number; y: number; hp: number }
   | { type: 'brazierHit'; id: number; hp: number }
   | { type: 'brazierDestroy'; id: number; x: number; y: number; drop: 'coin' | 'coinBag' | 'hp' | 'xp' | 'magnet' | 'freeze' | 'divineWrath' | 'rerollDie' | null; destroyedBy: string }

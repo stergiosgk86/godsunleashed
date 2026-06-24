@@ -259,6 +259,8 @@ wss.on('connection', (ws) => {
       if (room) room.handleHitBrazier(playerId, msg.brazierId, msg.damage)
     } else if (msg.type === 'rerollUpgrade') {
       if (room) room.handleRerollUpgrade(playerId)
+    } else if (msg.type === 'ping') {
+      if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'pong' }))
     } else if (msg.type === 'adminClearUpgrades') {
       const r = room
       if (r) {

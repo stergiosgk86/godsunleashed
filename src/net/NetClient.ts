@@ -8,6 +8,7 @@ type HandlerMap = {
 export class NetClient {
   private ws: WebSocket
   private handlers: HandlerMap = {}
+  private keepaliveTimer: ReturnType<typeof setInterval> | null = null
   playerId = ''
 
   constructor(url: string) {
@@ -21,6 +22,11 @@ export class NetClient {
     this.ws.onerror = () => {
       console.error(`[NetClient] WebSocket error connecting to ${url}`)
     }
+    this.ws.addEventListener('open', () => {
+      this.keepaliveTimer = setInterval(() => {
+        if (this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify({ type: 'ping' }))
+      }, 20_000)
+    }, { once: true })
   }
 
   on<K extends S2CMessage['type']>(
@@ -50,5 +56,9 @@ export class NetClient {
   }
 
   closedGracefully = false
-  close() { this.closedGracefully = true; this.ws.close() }
+  close() {
+    this.closedGracefully = true
+    if (this.keepaliveTimer) { clearInterval(this.keepaliveTimer); this.keepaliveTimer = null }
+    this.ws.close()
+  }
 }
